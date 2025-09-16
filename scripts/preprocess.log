@@ -1,0 +1,379 @@
+INFO:root:Loaded 15 rows from ../input/../input/rodent_dataset.xlsx
+INFO:root:Columns after loading: ['SCHOOL TYPE', 'SCHOOL NAME', 'CLIENT ID', 'FIRST NAME', 'LAST NAME', 'AGE', 'DATE OF BIRTH', 'STREET ADDRESS LINE 1', 'STREET ADDRESS LINE 2', 'CITY', 'PROVINCE/TERRITORY', 'POSTAL CODE', 'OVERDUE DISEASE', 'OVERDUE AGENT', 'IMMS GIVEN', 'UNIQUE ID', 'DISEASE(S)/AGENT(S)', 'IMMS HISTORY BY AGENT']
+INFO:root:All required columns are present.
+INFO:root:Separating data by SCHOOL_NAME...
+INFO:root:Saved group BURROW_PUBLIC_SCHOOL with 3 rows to ../output/by_school/BURROW_PUBLIC_SCHOOL.csv
+INFO:root:Saved group CHEESE_WHEEL_ACADEMY with 3 rows to ../output/by_school/CHEESE_WHEEL_ACADEMY.csv
+INFO:root:Saved group NUTCRACKER_ACADEMY with 3 rows to ../output/by_school/NUTCRACKER_ACADEMY.csv
+INFO:root:Saved group TUNNEL_ACADEMY with 3 rows to ../output/by_school/TUNNEL_ACADEMY.csv
+INFO:root:Saved group WHISKER_ELEMENTARY with 3 rows to ../output/by_school/WHISKER_ELEMENTARY.csv
+INFO:root:Data separated by SCHOOL_NAME. Files saved to ../output/by_school.
+INFO:root:Completed splitting into batches.
+INFO:root:Loaded 15 rows from ../input/../input/rodent_dataset.xlsx
+INFO:root:Columns after loading: ['SCHOOL TYPE', 'SCHOOL NAME', 'CLIENT ID', 'FIRST NAME', 'LAST NAME', 'AGE', 'DATE OF BIRTH', 'STREET ADDRESS LINE 1', 'STREET ADDRESS LINE 2', 'CITY', 'PROVINCE/TERRITORY', 'POSTAL CODE', 'OVERDUE DISEASE', 'OVERDUE AGENT', 'IMMS GIVEN', 'UNIQUE ID', 'DISEASE(S)/AGENT(S)', 'IMMS HISTORY BY AGENT']
+INFO:root:All required columns are present.
+INFO:root:Separating data by SCHOOL_NAME...
+INFO:root:Saved group BURROW_PUBLIC_SCHOOL with 3 rows to ../output/by_school/BURROW_PUBLIC_SCHOOL.csv
+INFO:root:Saved group CHEESE_WHEEL_ACADEMY with 3 rows to ../output/by_school/CHEESE_WHEEL_ACADEMY.csv
+INFO:root:Saved group NUTCRACKER_ACADEMY with 3 rows to ../output/by_school/NUTCRACKER_ACADEMY.csv
+INFO:root:Saved group TUNNEL_ACADEMY with 3 rows to ../output/by_school/TUNNEL_ACADEMY.csv
+INFO:root:Saved group WHISKER_ELEMENTARY with 3 rows to ../output/by_school/WHISKER_ELEMENTARY.csv
+INFO:root:Data separated by SCHOOL_NAME. Files saved to ../output/by_school.
+INFO:root:Completed splitting into batches.
+INFO:root:Preprocessing completed successfully.
+INFO:root:Preprocessing completed successfully.
+INFO:root:Preprocessing completed successfully.
+INFO:root:Preprocessing completed successfully.
+INFO:root:Preprocessing completed successfully.
+INFO:root:Loaded 15 rows from ../input/../input/rodent_dataset.xlsx
+INFO:root:Columns after loading: ['SCHOOL TYPE', 'SCHOOL NAME', 'CLIENT ID', 'FIRST NAME', 'LAST NAME', 'AGE', 'DATE OF BIRTH', 'STREET ADDRESS LINE 1', 'STREET ADDRESS LINE 2', 'CITY', 'PROVINCE/TERRITORY', 'POSTAL CODE', 'OVERDUE DISEASE', 'OVERDUE AGENT', 'IMMS GIVEN', 'UNIQUE ID', 'DISEASE(S)/AGENT(S)', 'IMMS HISTORY BY AGENT']
+INFO:root:All required columns are present.
+INFO:root:Separating data by SCHOOL_NAME...
+INFO:root:Saved group BURROW_PUBLIC_SCHOOL with 3 rows to ../output/by_school/BURROW_PUBLIC_SCHOOL.csv
+INFO:root:Saved group CHEESE_WHEEL_ACADEMY with 3 rows to ../output/by_school/CHEESE_WHEEL_ACADEMY.csv
+INFO:root:Saved group NUTCRACKER_ACADEMY with 3 rows to ../output/by_school/NUTCRACKER_ACADEMY.csv
+INFO:root:Saved group TUNNEL_ACADEMY with 3 rows to ../output/by_school/TUNNEL_ACADEMY.csv
+INFO:root:Saved group WHISKER_ELEMENTARY with 3 rows to ../output/by_school/WHISKER_ELEMENTARY.csv
+INFO:root:Data separated by SCHOOL_NAME. Files saved to ../output/by_school.
+INFO:root:Completed splitting into batches.
+INFO:root:Preprocessing completed successfully.
+INFO:root:Preprocessing completed successfully.
+INFO:root:Preprocessing completed successfully.
+INFO:root:Preprocessing completed successfully.
+INFO:root:Preprocessing completed successfully.
+INFO:root:Loaded 15 rows from ../input/../input/rodent_dataset.xlsx
+INFO:root:Columns after loading: ['SCHOOL TYPE', 'SCHOOL NAME', 'CLIENT ID', 'FIRST NAME', 'LAST NAME', 'AGE', 'DATE OF BIRTH', 'STREET ADDRESS LINE 1', 'STREET ADDRESS LINE 2', 'CITY', 'PROVINCE/TERRITORY', 'POSTAL CODE', 'OVERDUE DISEASE', 'OVERDUE AGENT', 'IMMS GIVEN', 'UNIQUE ID', 'DISEASE(S)/AGENT(S)', 'IMMS HISTORY BY AGENT']
+INFO:root:All required columns are present.
+INFO:root:Separating data by SCHOOL_NAME...
+INFO:root:Saved group BURROW_PUBLIC_SCHOOL with 3 rows to ../output/by_school/BURROW_PUBLIC_SCHOOL.csv
+INFO:root:Saved group CHEESE_WHEEL_ACADEMY with 3 rows to ../output/by_school/CHEESE_WHEEL_ACADEMY.csv
+INFO:root:Saved group NUTCRACKER_ACADEMY with 3 rows to ../output/by_school/NUTCRACKER_ACADEMY.csv
+INFO:root:Saved group TUNNEL_ACADEMY with 3 rows to ../output/by_school/TUNNEL_ACADEMY.csv
+INFO:root:Saved group WHISKER_ELEMENTARY with 3 rows to ../output/by_school/WHISKER_ELEMENTARY.csv
+INFO:root:Data separated by SCHOOL_NAME. Files saved to ../output/by_school.
+INFO:root:Completed splitting into batches.
+INFO:root:Preprocessing completed successfully.
+INFO:root:Preprocessing completed successfully.
+INFO:root:Preprocessing completed successfully.
+INFO:root:Preprocessing completed successfully.
+INFO:root:Preprocessing completed successfully.
+INFO:root:Loaded 15 rows from ../input/../input/rodent_dataset.xlsx
+INFO:root:Columns after loading: ['SCHOOL TYPE', 'SCHOOL NAME', 'CLIENT ID', 'FIRST NAME', 'LAST NAME', 'AGE', 'DATE OF BIRTH', 'STREET ADDRESS LINE 1', 'STREET ADDRESS LINE 2', 'CITY', 'PROVINCE/TERRITORY', 'POSTAL CODE', 'OVERDUE DISEASE', 'OVERDUE AGENT', 'IMMS GIVEN', 'UNIQUE ID', 'DISEASE(S)/AGENT(S)', 'IMMS HISTORY BY AGENT']
+INFO:root:All required columns are present.
+INFO:root:Separating data by SCHOOL_NAME...
+INFO:root:Saved group BURROW_PUBLIC_SCHOOL with 3 rows to ../output/by_school/BURROW_PUBLIC_SCHOOL.csv
+INFO:root:Saved group CHEESE_WHEEL_ACADEMY with 3 rows to ../output/by_school/CHEESE_WHEEL_ACADEMY.csv
+INFO:root:Saved group NUTCRACKER_ACADEMY with 3 rows to ../output/by_school/NUTCRACKER_ACADEMY.csv
+INFO:root:Saved group TUNNEL_ACADEMY with 3 rows to ../output/by_school/TUNNEL_ACADEMY.csv
+INFO:root:Saved group WHISKER_ELEMENTARY with 3 rows to ../output/by_school/WHISKER_ELEMENTARY.csv
+INFO:root:Data separated by SCHOOL_NAME. Files saved to ../output/by_school.
+INFO:root:Completed splitting into batches.
+INFO:root:Preprocessing completed successfully.
+INFO:root:Preprocessing completed successfully.
+INFO:root:Preprocessing completed successfully.
+INFO:root:Preprocessing completed successfully.
+INFO:root:Preprocessing completed successfully.
+INFO:root:Loaded 15 rows from ../input/../input/rodent_dataset.xlsx
+INFO:root:Columns after loading: ['SCHOOL TYPE', 'SCHOOL NAME', 'CLIENT ID', 'FIRST NAME', 'LAST NAME', 'AGE', 'DATE OF BIRTH', 'STREET ADDRESS LINE 1', 'STREET ADDRESS LINE 2', 'CITY', 'PROVINCE/TERRITORY', 'POSTAL CODE', 'OVERDUE DISEASE', 'OVERDUE AGENT', 'IMMS GIVEN', 'UNIQUE ID', 'DISEASE(S)/AGENT(S)', 'IMMS HISTORY BY AGENT']
+INFO:root:All required columns are present.
+INFO:root:Separating data by SCHOOL_NAME...
+INFO:root:Saved group BURROW_PUBLIC_SCHOOL with 3 rows to ../output/by_school/BURROW_PUBLIC_SCHOOL.csv
+INFO:root:Saved group CHEESE_WHEEL_ACADEMY with 3 rows to ../output/by_school/CHEESE_WHEEL_ACADEMY.csv
+INFO:root:Saved group NUTCRACKER_ACADEMY with 3 rows to ../output/by_school/NUTCRACKER_ACADEMY.csv
+INFO:root:Saved group TUNNEL_ACADEMY with 3 rows to ../output/by_school/TUNNEL_ACADEMY.csv
+INFO:root:Saved group WHISKER_ELEMENTARY with 3 rows to ../output/by_school/WHISKER_ELEMENTARY.csv
+INFO:root:Data separated by SCHOOL_NAME. Files saved to ../output/by_school.
+INFO:root:Completed splitting into batches.
+INFO:root:Preprocessing completed successfully.
+INFO:root:Preprocessing completed successfully.
+INFO:root:Preprocessing completed successfully.
+INFO:root:Preprocessing completed successfully.
+INFO:root:Preprocessing completed successfully.
+INFO:root:Loaded 15 rows from ../input/../input/rodent_dataset.xlsx
+INFO:root:Columns after loading: ['SCHOOL TYPE', 'SCHOOL NAME', 'CLIENT ID', 'FIRST NAME', 'LAST NAME', 'AGE', 'DATE OF BIRTH', 'STREET ADDRESS LINE 1', 'STREET ADDRESS LINE 2', 'CITY', 'PROVINCE/TERRITORY', 'POSTAL CODE', 'OVERDUE DISEASE', 'OVERDUE AGENT', 'IMMS GIVEN', 'UNIQUE ID', 'DISEASE(S)/AGENT(S)', 'IMMS HISTORY BY AGENT']
+INFO:root:All required columns are present.
+INFO:root:Separating data by SCHOOL_NAME...
+INFO:root:Saved group BURROW_PUBLIC_SCHOOL with 3 rows to ../output/by_school/BURROW_PUBLIC_SCHOOL.csv
+INFO:root:Saved group CHEESE_WHEEL_ACADEMY with 3 rows to ../output/by_school/CHEESE_WHEEL_ACADEMY.csv
+INFO:root:Saved group NUTCRACKER_ACADEMY with 3 rows to ../output/by_school/NUTCRACKER_ACADEMY.csv
+INFO:root:Saved group TUNNEL_ACADEMY with 3 rows to ../output/by_school/TUNNEL_ACADEMY.csv
+INFO:root:Saved group WHISKER_ELEMENTARY with 3 rows to ../output/by_school/WHISKER_ELEMENTARY.csv
+INFO:root:Data separated by SCHOOL_NAME. Files saved to ../output/by_school.
+INFO:root:Completed splitting into batches.
+INFO:root:Preprocessing completed successfully.
+INFO:root:Preprocessing completed successfully.
+INFO:root:Preprocessing completed successfully.
+INFO:root:Preprocessing completed successfully.
+INFO:root:Preprocessing completed successfully.
+INFO:root:Loaded 15 rows from ../input/../input/rodent_dataset.xlsx
+INFO:root:Columns after loading: ['SCHOOL TYPE', 'SCHOOL NAME', 'CLIENT ID', 'FIRST NAME', 'LAST NAME', 'AGE', 'DATE OF BIRTH', 'STREET ADDRESS LINE 1', 'STREET ADDRESS LINE 2', 'CITY', 'PROVINCE/TERRITORY', 'POSTAL CODE', 'OVERDUE DISEASE', 'OVERDUE AGENT', 'IMMS GIVEN', 'UNIQUE ID', 'DISEASE(S)/AGENT(S)', 'IMMS HISTORY BY AGENT']
+INFO:root:All required columns are present.
+INFO:root:Separating data by SCHOOL_NAME...
+INFO:root:Saved group BURROW_PUBLIC_SCHOOL with 3 rows to ../output/by_school/BURROW_PUBLIC_SCHOOL.csv
+INFO:root:Saved group CHEESE_WHEEL_ACADEMY with 3 rows to ../output/by_school/CHEESE_WHEEL_ACADEMY.csv
+INFO:root:Saved group NUTCRACKER_ACADEMY with 3 rows to ../output/by_school/NUTCRACKER_ACADEMY.csv
+INFO:root:Saved group TUNNEL_ACADEMY with 3 rows to ../output/by_school/TUNNEL_ACADEMY.csv
+INFO:root:Saved group WHISKER_ELEMENTARY with 3 rows to ../output/by_school/WHISKER_ELEMENTARY.csv
+INFO:root:Data separated by SCHOOL_NAME. Files saved to ../output/by_school.
+INFO:root:Completed splitting into batches.
+INFO:root:Preprocessing completed successfully.
+INFO:root:Preprocessing completed successfully.
+INFO:root:Preprocessing completed successfully.
+INFO:root:Preprocessing completed successfully.
+INFO:root:Preprocessing completed successfully.
+INFO:root:Loaded 15 rows from ../input/../input/rodent_dataset.xlsx
+INFO:root:Columns after loading: ['SCHOOL TYPE', 'SCHOOL NAME', 'CLIENT ID', 'FIRST NAME', 'LAST NAME', 'AGE', 'DATE OF BIRTH', 'STREET ADDRESS LINE 1', 'STREET ADDRESS LINE 2', 'CITY', 'PROVINCE/TERRITORY', 'POSTAL CODE', 'OVERDUE DISEASE', 'OVERDUE AGENT', 'IMMS GIVEN', 'UNIQUE ID', 'DISEASE(S)/AGENT(S)', 'IMMS HISTORY BY AGENT']
+INFO:root:All required columns are present.
+INFO:root:Separating data by SCHOOL_NAME...
+INFO:root:Saved group BURROW_PUBLIC_SCHOOL with 3 rows to ../output/by_school/BURROW_PUBLIC_SCHOOL.csv
+INFO:root:Saved group CHEESE_WHEEL_ACADEMY with 3 rows to ../output/by_school/CHEESE_WHEEL_ACADEMY.csv
+INFO:root:Saved group NUTCRACKER_ACADEMY with 3 rows to ../output/by_school/NUTCRACKER_ACADEMY.csv
+INFO:root:Saved group TUNNEL_ACADEMY with 3 rows to ../output/by_school/TUNNEL_ACADEMY.csv
+INFO:root:Saved group WHISKER_ELEMENTARY with 3 rows to ../output/by_school/WHISKER_ELEMENTARY.csv
+INFO:root:Data separated by SCHOOL_NAME. Files saved to ../output/by_school.
+INFO:root:Completed splitting into batches.
+INFO:root:Preprocessing completed successfully.
+INFO:root:Preprocessing completed successfully.
+INFO:root:Preprocessing completed successfully.
+INFO:root:Preprocessing completed successfully.
+INFO:root:Preprocessing completed successfully.
+INFO:root:Loaded 15 rows from ../input/../input/rodent_dataset.xlsx
+INFO:root:Columns after loading: ['SCHOOL TYPE', 'SCHOOL NAME', 'CLIENT ID', 'FIRST NAME', 'LAST NAME', 'AGE', 'DATE OF BIRTH', 'STREET ADDRESS LINE 1', 'STREET ADDRESS LINE 2', 'CITY', 'PROVINCE/TERRITORY', 'POSTAL CODE', 'OVERDUE DISEASE', 'OVERDUE AGENT', 'IMMS GIVEN', 'UNIQUE ID', 'DISEASE(S)/AGENT(S)', 'IMMS HISTORY BY AGENT']
+INFO:root:All required columns are present.
+INFO:root:Separating data by SCHOOL_NAME...
+INFO:root:Saved group BURROW_PUBLIC_SCHOOL with 3 rows to ../output/by_school/BURROW_PUBLIC_SCHOOL.csv
+INFO:root:Saved group CHEESE_WHEEL_ACADEMY with 3 rows to ../output/by_school/CHEESE_WHEEL_ACADEMY.csv
+INFO:root:Saved group NUTCRACKER_ACADEMY with 3 rows to ../output/by_school/NUTCRACKER_ACADEMY.csv
+INFO:root:Saved group TUNNEL_ACADEMY with 3 rows to ../output/by_school/TUNNEL_ACADEMY.csv
+INFO:root:Saved group WHISKER_ELEMENTARY with 3 rows to ../output/by_school/WHISKER_ELEMENTARY.csv
+INFO:root:Data separated by SCHOOL_NAME. Files saved to ../output/by_school.
+INFO:root:Completed splitting into batches.
+INFO:root:Preprocessing completed successfully.
+INFO:root:Preprocessing completed successfully.
+INFO:root:Preprocessing completed successfully.
+INFO:root:Preprocessing completed successfully.
+INFO:root:Preprocessing completed successfully.
+INFO:root:Loaded 15 rows from ../input/../input/rodent_dataset.xlsx
+INFO:root:Columns after loading: ['SCHOOL TYPE', 'SCHOOL NAME', 'CLIENT ID', 'FIRST NAME', 'LAST NAME', 'AGE', 'DATE OF BIRTH', 'STREET ADDRESS LINE 1', 'STREET ADDRESS LINE 2', 'CITY', 'PROVINCE/TERRITORY', 'POSTAL CODE', 'OVERDUE DISEASE', 'OVERDUE AGENT', 'IMMS GIVEN', 'UNIQUE ID', 'DISEASE(S)/AGENT(S)', 'IMMS HISTORY BY AGENT']
+INFO:root:All required columns are present.
+INFO:root:Separating data by SCHOOL_NAME...
+INFO:root:Saved group BURROW_PUBLIC_SCHOOL with 3 rows to ../output/by_school/BURROW_PUBLIC_SCHOOL.csv
+INFO:root:Saved group CHEESE_WHEEL_ACADEMY with 3 rows to ../output/by_school/CHEESE_WHEEL_ACADEMY.csv
+INFO:root:Saved group NUTCRACKER_ACADEMY with 3 rows to ../output/by_school/NUTCRACKER_ACADEMY.csv
+INFO:root:Saved group TUNNEL_ACADEMY with 3 rows to ../output/by_school/TUNNEL_ACADEMY.csv
+INFO:root:Saved group WHISKER_ELEMENTARY with 3 rows to ../output/by_school/WHISKER_ELEMENTARY.csv
+INFO:root:Data separated by SCHOOL_NAME. Files saved to ../output/by_school.
+INFO:root:Completed splitting into batches.
+INFO:root:Preprocessing completed successfully.
+INFO:root:Preprocessing completed successfully.
+INFO:root:Preprocessing completed successfully.
+INFO:root:Preprocessing completed successfully.
+INFO:root:Preprocessing completed successfully.
+INFO:root:Loaded 15 rows from ../input/../input/rodent_dataset.xlsx
+INFO:root:Columns after loading: ['SCHOOL TYPE', 'SCHOOL NAME', 'CLIENT ID', 'FIRST NAME', 'LAST NAME', 'AGE', 'DATE OF BIRTH', 'STREET ADDRESS LINE 1', 'STREET ADDRESS LINE 2', 'CITY', 'PROVINCE/TERRITORY', 'POSTAL CODE', 'OVERDUE DISEASE', 'OVERDUE AGENT', 'IMMS GIVEN', 'UNIQUE ID', 'DISEASE(S)/AGENT(S)', 'IMMS HISTORY BY AGENT']
+INFO:root:All required columns are present.
+INFO:root:Separating data by SCHOOL_NAME...
+INFO:root:Saved group BURROW_PUBLIC_SCHOOL with 3 rows to ../output/by_school/BURROW_PUBLIC_SCHOOL.csv
+INFO:root:Saved group CHEESE_WHEEL_ACADEMY with 3 rows to ../output/by_school/CHEESE_WHEEL_ACADEMY.csv
+INFO:root:Saved group NUTCRACKER_ACADEMY with 3 rows to ../output/by_school/NUTCRACKER_ACADEMY.csv
+INFO:root:Saved group TUNNEL_ACADEMY with 3 rows to ../output/by_school/TUNNEL_ACADEMY.csv
+INFO:root:Saved group WHISKER_ELEMENTARY with 3 rows to ../output/by_school/WHISKER_ELEMENTARY.csv
+INFO:root:Data separated by SCHOOL_NAME. Files saved to ../output/by_school.
+INFO:root:Completed splitting into batches.
+INFO:root:Preprocessing completed successfully.
+INFO:root:Preprocessing completed successfully.
+INFO:root:Preprocessing completed successfully.
+INFO:root:Preprocessing completed successfully.
+INFO:root:Preprocessing completed successfully.
+INFO:root:Loaded 15 rows from ../input/../input/rodent_dataset.xlsx
+INFO:root:Columns after loading: ['SCHOOL TYPE', 'SCHOOL NAME', 'CLIENT ID', 'FIRST NAME', 'LAST NAME', 'AGE', 'DATE OF BIRTH', 'STREET ADDRESS LINE 1', 'STREET ADDRESS LINE 2', 'CITY', 'PROVINCE/TERRITORY', 'POSTAL CODE', 'OVERDUE DISEASE', 'OVERDUE AGENT', 'IMMS GIVEN', 'UNIQUE ID', 'DISEASE(S)/AGENT(S)', 'IMMS HISTORY BY AGENT']
+INFO:root:All required columns are present.
+INFO:root:Separating data by SCHOOL_NAME...
+INFO:root:Saved group BURROW_PUBLIC_SCHOOL with 3 rows to ../output/by_school/BURROW_PUBLIC_SCHOOL.csv
+INFO:root:Saved group CHEESE_WHEEL_ACADEMY with 3 rows to ../output/by_school/CHEESE_WHEEL_ACADEMY.csv
+INFO:root:Saved group NUTCRACKER_ACADEMY with 3 rows to ../output/by_school/NUTCRACKER_ACADEMY.csv
+INFO:root:Saved group TUNNEL_ACADEMY with 3 rows to ../output/by_school/TUNNEL_ACADEMY.csv
+INFO:root:Saved group WHISKER_ELEMENTARY with 3 rows to ../output/by_school/WHISKER_ELEMENTARY.csv
+INFO:root:Data separated by SCHOOL_NAME. Files saved to ../output/by_school.
+INFO:root:Completed splitting into batches.
+INFO:root:Preprocessing completed successfully.
+INFO:root:Preprocessing completed successfully.
+INFO:root:Preprocessing completed successfully.
+INFO:root:Preprocessing completed successfully.
+INFO:root:Preprocessing completed successfully.
+INFO:root:Loaded 15 rows from ../input/../input/rodent_dataset.xlsx
+INFO:root:Columns after loading: ['SCHOOL TYPE', 'SCHOOL NAME', 'CLIENT ID', 'FIRST NAME', 'LAST NAME', 'AGE', 'DATE OF BIRTH', 'STREET ADDRESS LINE 1', 'STREET ADDRESS LINE 2', 'CITY', 'PROVINCE/TERRITORY', 'POSTAL CODE', 'OVERDUE DISEASE', 'OVERDUE AGENT', 'IMMS GIVEN', 'UNIQUE ID', 'DISEASE(S)/AGENT(S)', 'IMMS HISTORY BY AGENT']
+INFO:root:All required columns are present.
+INFO:root:Separating data by SCHOOL_NAME...
+INFO:root:Saved group BURROW_PUBLIC_SCHOOL with 3 rows to ../output/by_school/BURROW_PUBLIC_SCHOOL.csv
+INFO:root:Saved group CHEESE_WHEEL_ACADEMY with 3 rows to ../output/by_school/CHEESE_WHEEL_ACADEMY.csv
+INFO:root:Saved group NUTCRACKER_ACADEMY with 3 rows to ../output/by_school/NUTCRACKER_ACADEMY.csv
+INFO:root:Saved group TUNNEL_ACADEMY with 3 rows to ../output/by_school/TUNNEL_ACADEMY.csv
+INFO:root:Saved group WHISKER_ELEMENTARY with 3 rows to ../output/by_school/WHISKER_ELEMENTARY.csv
+INFO:root:Data separated by SCHOOL_NAME. Files saved to ../output/by_school.
+INFO:root:Completed splitting into batches.
+INFO:root:Preprocessing completed successfully.
+INFO:root:Preprocessing completed successfully.
+INFO:root:Preprocessing completed successfully.
+INFO:root:Preprocessing completed successfully.
+INFO:root:Preprocessing completed successfully.
+INFO:root:Loaded 15 rows from ../input/../input/rodent_dataset.xlsx
+INFO:root:Columns after loading: ['SCHOOL TYPE', 'SCHOOL NAME', 'CLIENT ID', 'FIRST NAME', 'LAST NAME', 'AGE', 'DATE OF BIRTH', 'STREET ADDRESS LINE 1', 'STREET ADDRESS LINE 2', 'CITY', 'PROVINCE/TERRITORY', 'POSTAL CODE', 'OVERDUE DISEASE', 'OVERDUE AGENT', 'IMMS GIVEN', 'UNIQUE ID', 'DISEASE(S)/AGENT(S)', 'IMMS HISTORY BY AGENT']
+INFO:root:All required columns are present.
+INFO:root:Separating data by SCHOOL_NAME...
+INFO:root:Saved group BURROW_PUBLIC_SCHOOL with 3 rows to ../output/by_school/BURROW_PUBLIC_SCHOOL.csv
+INFO:root:Saved group CHEESE_WHEEL_ACADEMY with 3 rows to ../output/by_school/CHEESE_WHEEL_ACADEMY.csv
+INFO:root:Saved group NUTCRACKER_ACADEMY with 3 rows to ../output/by_school/NUTCRACKER_ACADEMY.csv
+INFO:root:Saved group TUNNEL_ACADEMY with 3 rows to ../output/by_school/TUNNEL_ACADEMY.csv
+INFO:root:Saved group WHISKER_ELEMENTARY with 3 rows to ../output/by_school/WHISKER_ELEMENTARY.csv
+INFO:root:Data separated by SCHOOL_NAME. Files saved to ../output/by_school.
+INFO:root:Completed splitting into batches.
+INFO:root:Preprocessing completed successfully.
+INFO:root:Preprocessing completed successfully.
+INFO:root:Preprocessing completed successfully.
+INFO:root:Preprocessing completed successfully.
+INFO:root:Preprocessing completed successfully.
+INFO:root:Loaded 15 rows from ../input/../input/rodent_dataset.xlsx
+INFO:root:Columns after loading: ['SCHOOL TYPE', 'SCHOOL NAME', 'CLIENT ID', 'FIRST NAME', 'LAST NAME', 'AGE', 'DATE OF BIRTH', 'STREET ADDRESS LINE 1', 'STREET ADDRESS LINE 2', 'CITY', 'PROVINCE/TERRITORY', 'POSTAL CODE', 'OVERDUE DISEASE', 'OVERDUE AGENT', 'IMMS GIVEN', 'UNIQUE ID', 'DISEASE(S)/AGENT(S)', 'IMMS HISTORY BY AGENT']
+INFO:root:All required columns are present.
+INFO:root:Separating data by SCHOOL_NAME...
+INFO:root:Saved group BURROW_PUBLIC_SCHOOL with 3 rows to ../output/by_school/BURROW_PUBLIC_SCHOOL.csv
+INFO:root:Saved group CHEESE_WHEEL_ACADEMY with 3 rows to ../output/by_school/CHEESE_WHEEL_ACADEMY.csv
+INFO:root:Saved group NUTCRACKER_ACADEMY with 3 rows to ../output/by_school/NUTCRACKER_ACADEMY.csv
+INFO:root:Saved group TUNNEL_ACADEMY with 3 rows to ../output/by_school/TUNNEL_ACADEMY.csv
+INFO:root:Saved group WHISKER_ELEMENTARY with 3 rows to ../output/by_school/WHISKER_ELEMENTARY.csv
+INFO:root:Data separated by SCHOOL_NAME. Files saved to ../output/by_school.
+INFO:root:Completed splitting into batches.
+INFO:root:Preprocessing completed successfully.
+INFO:root:Preprocessing completed successfully.
+INFO:root:Preprocessing completed successfully.
+INFO:root:Preprocessing completed successfully.
+INFO:root:Preprocessing completed successfully.
+INFO:root:Loaded 15 rows from ../input/../input/rodent_dataset.xlsx
+INFO:root:Columns after loading: ['SCHOOL TYPE', 'SCHOOL NAME', 'CLIENT ID', 'FIRST NAME', 'LAST NAME', 'AGE', 'DATE OF BIRTH', 'STREET ADDRESS LINE 1', 'STREET ADDRESS LINE 2', 'CITY', 'PROVINCE/TERRITORY', 'POSTAL CODE', 'OVERDUE DISEASE', 'OVERDUE AGENT', 'IMMS GIVEN', 'UNIQUE ID', 'DISEASE(S)/AGENT(S)', 'IMMS HISTORY BY AGENT']
+INFO:root:All required columns are present.
+INFO:root:Separating data by SCHOOL_NAME...
+INFO:root:Saved group BURROW_PUBLIC_SCHOOL with 3 rows to ../output/by_school/BURROW_PUBLIC_SCHOOL.csv
+INFO:root:Saved group CHEESE_WHEEL_ACADEMY with 3 rows to ../output/by_school/CHEESE_WHEEL_ACADEMY.csv
+INFO:root:Saved group NUTCRACKER_ACADEMY with 3 rows to ../output/by_school/NUTCRACKER_ACADEMY.csv
+INFO:root:Saved group TUNNEL_ACADEMY with 3 rows to ../output/by_school/TUNNEL_ACADEMY.csv
+INFO:root:Saved group WHISKER_ELEMENTARY with 3 rows to ../output/by_school/WHISKER_ELEMENTARY.csv
+INFO:root:Data separated by SCHOOL_NAME. Files saved to ../output/by_school.
+INFO:root:Completed splitting into batches.
+INFO:root:Preprocessing completed successfully.
+INFO:root:Preprocessing completed successfully.
+INFO:root:Preprocessing completed successfully.
+INFO:root:Preprocessing completed successfully.
+INFO:root:Preprocessing completed successfully.
+INFO:root:Loaded 15 rows from ../input/../input/rodent_dataset.xlsx
+INFO:root:Columns after loading: ['SCHOOL TYPE', 'SCHOOL NAME', 'CLIENT ID', 'FIRST NAME', 'LAST NAME', 'AGE', 'DATE OF BIRTH', 'STREET ADDRESS LINE 1', 'STREET ADDRESS LINE 2', 'CITY', 'PROVINCE/TERRITORY', 'POSTAL CODE', 'OVERDUE DISEASE', 'OVERDUE AGENT', 'IMMS GIVEN', 'UNIQUE ID', 'DISEASE(S)/AGENT(S)', 'IMMS HISTORY BY AGENT']
+INFO:root:All required columns are present.
+INFO:root:Separating data by SCHOOL_NAME...
+INFO:root:Saved group BURROW_PUBLIC_SCHOOL with 3 rows to ../output/by_school/BURROW_PUBLIC_SCHOOL.csv
+INFO:root:Saved group CHEESE_WHEEL_ACADEMY with 3 rows to ../output/by_school/CHEESE_WHEEL_ACADEMY.csv
+INFO:root:Saved group NUTCRACKER_ACADEMY with 3 rows to ../output/by_school/NUTCRACKER_ACADEMY.csv
+INFO:root:Saved group TUNNEL_ACADEMY with 3 rows to ../output/by_school/TUNNEL_ACADEMY.csv
+INFO:root:Saved group WHISKER_ELEMENTARY with 3 rows to ../output/by_school/WHISKER_ELEMENTARY.csv
+INFO:root:Data separated by SCHOOL_NAME. Files saved to ../output/by_school.
+INFO:root:Completed splitting into batches.
+INFO:root:Preprocessing completed successfully.
+INFO:root:Preprocessing completed successfully.
+INFO:root:Preprocessing completed successfully.
+INFO:root:Preprocessing completed successfully.
+INFO:root:Preprocessing completed successfully.
+INFO:root:Loaded 15 rows from ../input/../input/rodent_dataset.xlsx
+INFO:root:Columns after loading: ['SCHOOL TYPE', 'SCHOOL NAME', 'CLIENT ID', 'FIRST NAME', 'LAST NAME', 'AGE', 'DATE OF BIRTH', 'STREET ADDRESS LINE 1', 'STREET ADDRESS LINE 2', 'CITY', 'PROVINCE/TERRITORY', 'POSTAL CODE', 'OVERDUE DISEASE', 'OVERDUE AGENT', 'IMMS GIVEN', 'UNIQUE ID', 'DISEASE(S)/AGENT(S)', 'IMMS HISTORY BY AGENT']
+INFO:root:All required columns are present.
+INFO:root:Separating data by SCHOOL_NAME...
+INFO:root:Saved group BURROW_PUBLIC_SCHOOL with 3 rows to ../output/by_school/BURROW_PUBLIC_SCHOOL.csv
+INFO:root:Saved group CHEESE_WHEEL_ACADEMY with 3 rows to ../output/by_school/CHEESE_WHEEL_ACADEMY.csv
+INFO:root:Saved group NUTCRACKER_ACADEMY with 3 rows to ../output/by_school/NUTCRACKER_ACADEMY.csv
+INFO:root:Saved group TUNNEL_ACADEMY with 3 rows to ../output/by_school/TUNNEL_ACADEMY.csv
+INFO:root:Saved group WHISKER_ELEMENTARY with 3 rows to ../output/by_school/WHISKER_ELEMENTARY.csv
+INFO:root:Data separated by SCHOOL_NAME. Files saved to ../output/by_school.
+INFO:root:Completed splitting into batches.
+INFO:root:Preprocessing completed successfully.
+INFO:root:Preprocessing completed successfully.
+INFO:root:Preprocessing completed successfully.
+INFO:root:Preprocessing completed successfully.
+INFO:root:Preprocessing completed successfully.
+INFO:root:Loaded 15 rows from ../input/../input/rodent_dataset.xlsx
+INFO:root:Columns after loading: ['SCHOOL TYPE', 'SCHOOL NAME', 'CLIENT ID', 'FIRST NAME', 'LAST NAME', 'AGE', 'DATE OF BIRTH', 'STREET ADDRESS LINE 1', 'STREET ADDRESS LINE 2', 'CITY', 'PROVINCE/TERRITORY', 'POSTAL CODE', 'OVERDUE DISEASE', 'OVERDUE AGENT', 'IMMS GIVEN', 'UNIQUE ID', 'DISEASE(S)/AGENT(S)', 'IMMS HISTORY BY AGENT']
+INFO:root:All required columns are present.
+INFO:root:Separating data by SCHOOL_NAME...
+INFO:root:Saved group BURROW_PUBLIC_SCHOOL with 3 rows to ../output/by_school/BURROW_PUBLIC_SCHOOL.csv
+INFO:root:Saved group CHEESE_WHEEL_ACADEMY with 3 rows to ../output/by_school/CHEESE_WHEEL_ACADEMY.csv
+INFO:root:Saved group NUTCRACKER_ACADEMY with 3 rows to ../output/by_school/NUTCRACKER_ACADEMY.csv
+INFO:root:Saved group TUNNEL_ACADEMY with 3 rows to ../output/by_school/TUNNEL_ACADEMY.csv
+INFO:root:Saved group WHISKER_ELEMENTARY with 3 rows to ../output/by_school/WHISKER_ELEMENTARY.csv
+INFO:root:Data separated by SCHOOL_NAME. Files saved to ../output/by_school.
+INFO:root:Completed splitting into batches.
+INFO:root:Preprocessing completed successfully.
+INFO:root:Preprocessing completed successfully.
+INFO:root:Preprocessing completed successfully.
+INFO:root:Preprocessing completed successfully.
+INFO:root:Preprocessing completed successfully.
+INFO:root:Loaded 15 rows from ../input/../input/rodent_dataset.xlsx
+INFO:root:Columns after loading: ['SCHOOL TYPE', 'SCHOOL NAME', 'CLIENT ID', 'FIRST NAME', 'LAST NAME', 'AGE', 'DATE OF BIRTH', 'STREET ADDRESS LINE 1', 'STREET ADDRESS LINE 2', 'CITY', 'PROVINCE/TERRITORY', 'POSTAL CODE', 'OVERDUE DISEASE', 'OVERDUE AGENT', 'IMMS GIVEN', 'UNIQUE ID', 'DISEASE(S)/AGENT(S)', 'IMMS HISTORY BY AGENT']
+INFO:root:All required columns are present.
+INFO:root:Separating data by SCHOOL_NAME...
+INFO:root:Saved group BURROW_PUBLIC_SCHOOL with 3 rows to ../output/by_school/BURROW_PUBLIC_SCHOOL.csv
+INFO:root:Saved group CHEESE_WHEEL_ACADEMY with 3 rows to ../output/by_school/CHEESE_WHEEL_ACADEMY.csv
+INFO:root:Saved group NUTCRACKER_ACADEMY with 3 rows to ../output/by_school/NUTCRACKER_ACADEMY.csv
+INFO:root:Saved group TUNNEL_ACADEMY with 3 rows to ../output/by_school/TUNNEL_ACADEMY.csv
+INFO:root:Saved group WHISKER_ELEMENTARY with 3 rows to ../output/by_school/WHISKER_ELEMENTARY.csv
+INFO:root:Data separated by SCHOOL_NAME. Files saved to ../output/by_school.
+INFO:root:Completed splitting into batches.
+INFO:root:Preprocessing completed successfully.
+INFO:root:Preprocessing completed successfully.
+INFO:root:Preprocessing completed successfully.
+INFO:root:Preprocessing completed successfully.
+INFO:root:Preprocessing completed successfully.
+INFO:root:Loaded 15 rows from ../input/../input/rodent_dataset.xlsx
+INFO:root:Columns after loading: ['SCHOOL TYPE', 'SCHOOL NAME', 'CLIENT ID', 'FIRST NAME', 'LAST NAME', 'AGE', 'DATE OF BIRTH', 'STREET ADDRESS LINE 1', 'STREET ADDRESS LINE 2', 'CITY', 'PROVINCE/TERRITORY', 'POSTAL CODE', 'OVERDUE DISEASE', 'OVERDUE AGENT', 'IMMS GIVEN', 'UNIQUE ID', 'DISEASE(S)/AGENT(S)', 'IMMS HISTORY BY AGENT']
+INFO:root:All required columns are present.
+INFO:root:Separating data by SCHOOL_NAME...
+INFO:root:Saved group BURROW_PUBLIC_SCHOOL with 3 rows to ../output/by_school/BURROW_PUBLIC_SCHOOL.csv
+INFO:root:Saved group CHEESE_WHEEL_ACADEMY with 3 rows to ../output/by_school/CHEESE_WHEEL_ACADEMY.csv
+INFO:root:Saved group NUTCRACKER_ACADEMY with 3 rows to ../output/by_school/NUTCRACKER_ACADEMY.csv
+INFO:root:Saved group TUNNEL_ACADEMY with 3 rows to ../output/by_school/TUNNEL_ACADEMY.csv
+INFO:root:Saved group WHISKER_ELEMENTARY with 3 rows to ../output/by_school/WHISKER_ELEMENTARY.csv
+INFO:root:Data separated by SCHOOL_NAME. Files saved to ../output/by_school.
+INFO:root:Completed splitting into batches.
+INFO:root:Preprocessing completed successfully.
+INFO:root:Preprocessing completed successfully.
+INFO:root:Preprocessing completed successfully.
+INFO:root:Preprocessing completed successfully.
+INFO:root:Preprocessing completed successfully.
+INFO:root:Loaded 15 rows from ../input/../input/rodent_dataset.xlsx
+INFO:root:Columns after loading: ['SCHOOL TYPE', 'SCHOOL NAME', 'CLIENT ID', 'FIRST NAME', 'LAST NAME', 'AGE', 'DATE OF BIRTH', 'STREET ADDRESS LINE 1', 'STREET ADDRESS LINE 2', 'CITY', 'PROVINCE/TERRITORY', 'POSTAL CODE', 'OVERDUE DISEASE', 'OVERDUE AGENT', 'IMMS GIVEN', 'UNIQUE ID', 'DISEASE(S)/AGENT(S)', 'IMMS HISTORY BY AGENT']
+INFO:root:All required columns are present.
+INFO:root:Separating data by SCHOOL_NAME...
+INFO:root:Saved group BURROW_PUBLIC_SCHOOL with 3 rows to ../output/by_school/BURROW_PUBLIC_SCHOOL.csv
+INFO:root:Saved group CHEESE_WHEEL_ACADEMY with 3 rows to ../output/by_school/CHEESE_WHEEL_ACADEMY.csv
+INFO:root:Saved group NUTCRACKER_ACADEMY with 3 rows to ../output/by_school/NUTCRACKER_ACADEMY.csv
+INFO:root:Saved group TUNNEL_ACADEMY with 3 rows to ../output/by_school/TUNNEL_ACADEMY.csv
+INFO:root:Saved group WHISKER_ELEMENTARY with 3 rows to ../output/by_school/WHISKER_ELEMENTARY.csv
+INFO:root:Data separated by SCHOOL_NAME. Files saved to ../output/by_school.
+INFO:root:Completed splitting into batches.
+INFO:root:Preprocessing completed successfully.
+INFO:root:Preprocessing completed successfully.
+INFO:root:Preprocessing completed successfully.
+INFO:root:Preprocessing completed successfully.
+INFO:root:Preprocessing completed successfully.
+INFO:root:Loaded 15 rows from ../input/../input/rodent_dataset.xlsx
+INFO:root:Columns after loading: ['SCHOOL TYPE', 'SCHOOL NAME', 'CLIENT ID', 'FIRST NAME', 'LAST NAME', 'AGE', 'DATE OF BIRTH', 'STREET ADDRESS LINE 1', 'STREET ADDRESS LINE 2', 'CITY', 'PROVINCE/TERRITORY', 'POSTAL CODE', 'OVERDUE DISEASE', 'OVERDUE AGENT', 'IMMS GIVEN', 'UNIQUE ID', 'DISEASE(S)/AGENT(S)', 'IMMS HISTORY BY AGENT']
+INFO:root:All required columns are present.
+INFO:root:Separating data by SCHOOL_NAME...
+INFO:root:Saved group BURROW_PUBLIC_SCHOOL with 3 rows to ../output/by_school/BURROW_PUBLIC_SCHOOL.csv
+INFO:root:Saved group CHEESE_WHEEL_ACADEMY with 3 rows to ../output/by_school/CHEESE_WHEEL_ACADEMY.csv
+INFO:root:Saved group NUTCRACKER_ACADEMY with 3 rows to ../output/by_school/NUTCRACKER_ACADEMY.csv
+INFO:root:Saved group TUNNEL_ACADEMY with 3 rows to ../output/by_school/TUNNEL_ACADEMY.csv
+INFO:root:Saved group WHISKER_ELEMENTARY with 3 rows to ../output/by_school/WHISKER_ELEMENTARY.csv
+INFO:root:Data separated by SCHOOL_NAME. Files saved to ../output/by_school.
+INFO:root:Completed splitting into batches.
+INFO:root:Preprocessing completed successfully.
+INFO:root:Preprocessing completed successfully.
+INFO:root:Preprocessing completed successfully.
+INFO:root:Preprocessing completed successfully.
+INFO:root:Preprocessing completed successfully.
