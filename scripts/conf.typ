@@ -13,7 +13,7 @@
   
     columns: (50%,50%), 
     gutter: 5%, 
-    [#image(logo, width: 7.3cm)],
+    [#image(logo, width: 6cm)],
     [#set align(center + bottom)
       #text(size: 18pt, fill: black)[*Request for your child's immunization record*]]
     
@@ -24,6 +24,7 @@
   equal_split: true,
   vline: true, 
   client_data,
+  client_id,
   font_size
 ) = {
   // Define column widths based on equal_split
@@ -99,7 +100,7 @@
   title
 ) = {
 
-  image(signature, width: 4cm)
+  image(signature, width: 3cm)
   
   text(name)
   linebreak()

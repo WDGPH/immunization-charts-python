@@ -315,7 +315,7 @@ if __name__ == "__main__":
         processor = ClientDataProcessor(
             df=df_batch,
             disease_map=json.load(open("../config/disease_map.json")),
-            vaccine_ref=json.load(open("../input/vaccine_reference.json")),
+            vaccine_ref=json.load(open("../config/vaccine_reference.json")),
             ignore_agents=["-unspecified", "unspecified", "Not Specified", "Not specified", "Not Specified-unspecified"],
             delivery_date="2024-06-01",
             language=language  # or 'french'

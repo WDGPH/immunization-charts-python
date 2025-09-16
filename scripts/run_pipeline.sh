@@ -54,11 +54,11 @@ STEP3_START=$(date +%s)
 
 # Check to see if the conf.typ file is in the _json directory
 if [ -e "${OUTDIR}/${LANG}_json/conf.typ" ]; then
-    echo "Found conf.typ in ${OUTDIR}/${LANG}_json/"
+    echo "Found conf.typ in ${OUTDIR}/json_${LANG}/"
 else
     # Move conf.typ to the _json directory
-    echo "Moving conf.typ to ${OUTDIR}/${LANG}_json/"
-    cp ./conf.typ "${OUTDIR}/${LANG}_json/conf.typ"
+    echo "Moving conf.typ to ${OUTDIR}/json_${LANG}/"
+    cp ./conf.typ "${OUTDIR}/json_${LANG}/conf.typ"
 fi
 
 echo ""
@@ -76,12 +76,12 @@ echo ""
 echo "📏 Step 4: Checking length of compiled files..."
 
 # Remove conf.pdf if it exists
-if [ -e "${OUTDIR}/${LANG}_json/conf.pdf" ]; then
+if [ -e "${OUTDIR}/json_${LANG}/conf.pdf" ]; then
     echo "Removing existing conf.pdf..."
-    rm "${OUTDIR}/${LANG}_json/conf.pdf"
+    rm "${OUTDIR}/json_${LANG}/conf.pdf"
 fi
 
-for file in "${OUTDIR}/${LANG}_json/"*.pdf; do
+for file in "${OUTDIR}/json_${LANG}/"*.pdf; do
     python count_pdfs.py ${file}
 done
 
