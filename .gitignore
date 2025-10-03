@@ -1,1 +1,7 @@
 output/*
+__pycache__/
+*.pyc
+*.pyo
+*.log
+*.tmp
+uv.lock

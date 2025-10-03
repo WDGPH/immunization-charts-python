@@ -50,10 +50,11 @@ The main pipeline script automates the end-to-end workflow for generating immuni
 
 **Usage Example:**
 ```bash
-bash scripts/run_pipeline.sh <input_file> <language>
+cd scripts
+./run_pipeline.sh <input_file> <language>
 ```
 - `<input_file>`: Name of the input file (e.g., `students.xlsx`)
-- `<language>`: Language code (`en` or `fr`)
+- `<language>`: Language code (`english` or `french`)
 
 **Outputs:**
 - Processed notices and charts in the `output/` directory
