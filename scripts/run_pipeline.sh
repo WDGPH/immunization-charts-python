@@ -6,6 +6,11 @@ LANG=$2
 INDIR="../input"
 OUTDIR="../output"
 
+if [ "$LANG" != "english" ] && [ "$LANG" != "french" ]; then
+    echo "Error: Language must be 'english' or 'french'"
+    exit 1
+fi
+
 echo ""
 echo "🚀 Starting VIPER Pipeline"
 echo "🗂️  Input File: ${INFILE}"

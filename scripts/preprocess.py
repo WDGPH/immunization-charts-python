@@ -263,8 +263,8 @@ def separate_by_school(df: pd.DataFrame, output_dir: str, school_column: str = "
     logging.info(f"Data separated by {school_column}. Files saved to {output_path}.")
 
 if __name__ == "__main__":
-    if len(sys.argv) < 3:
-        print("Usage: python preprocess.py <input_file> <output_dir>")
+    if len(sys.argv) < 4:
+        print("Usage: python preprocess.py <input_dir> <input_file> <output_dir> [language]")
         sys.exit(1)
     
     required_columns = [
@@ -286,7 +286,11 @@ if __name__ == "__main__":
     input_dir = sys.argv[1]
     input_file = sys.argv[2]
     output_dir = sys.argv[3]
-    language = "english"  # or 'french', FIXME make this come from a config file or command line argument
+    language = sys.argv[4] if len(sys.argv) > 4 else "english"
+
+    if language not in ["english", "french"]:
+        print("Error: Language must be 'english' or 'french'")
+        sys.exit(1)
 
     output_dir_school = output_dir + "/by_school"
     output_dir_batch = output_dir + "/batches"
