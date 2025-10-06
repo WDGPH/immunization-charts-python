@@ -6,6 +6,15 @@ LOGO=${3}
 SIGNATURE=${4}
 PARAMETERS=${5}
 
+#v(0.2cm)
+
+#conf.header_info_cim("${LOGO}")
+
+#v(0.2cm)
+
+#conf.client_info_tbl_fr(equal_split: false, vline: false, client, font_size)4}
+PARAMETERS=${5}
+
 CLIENTIDFILE=${FILENAME}_client_ids.csv
 JSONFILE=${FILENAME}.json
 OUTFILE=${INDIR}/${FILENAME}_immunization_notice.typ
@@ -49,7 +58,7 @@ echo "
 #let date = date(yaml(\"${PARAMETERS}\"))
 
 // Immunization Notice Section
-#let immunization_notice(client, client_id, immunizations_due, date, font_size) = block[
+#let immunization_notice(data, value, immunizations_due, date, font_size) = block[
 
 #v(0.2cm)
 
@@ -57,7 +66,35 @@ echo "
 
 #v(0.2cm)
 
-#conf.client_info_tbl_fr(equal_split: false, vline: false, client, client_id, font_size)
+#align(center)[
+#table(
+  columns: (0.3fr, 0.5fr, 0.2fr),
+  inset: 11pt,
+  [#align(left)[
+    Aux parents/tuteurs de: \
+    #linebreak()
+*#data.name* \
+#linebreak()
+
+*#data.address*  \
+#linebreak()
+*#data.city*, *Ontario* *#data.postal_code*  ]],
+table.vline(stroke: {1pt + black} ),
+  [#align(left)[
+    ID du client: #smallcaps[*#value*]\
+    #v(0.02cm)
+    Date de naissance: *#data.date_of_birth*\
+    #v(0.02cm)
+    Centre de garde d'enfants: #smallcaps[*#data.school*]
+  ]],
+table.vline(stroke: {1pt + black} ),
+  [#align(right)[
+    #if \"qr_code\" in data [
+      #image(data.qr_code, width: 2.5cm)
+    ]
+  ]],
+)
+]
 
 #v(0.3cm)
 
@@ -151,7 +188,7 @@ Si vous avez des questions sur les vaccins de votre enfant, veuillez appeler le 
     pagebreak(weak: true)
     counter(page).update(1) // Reset page counter for this section
     pagebreak(weak: true)
-    immunization_notice(data, row, vaccines_due_array, date, 11pt)
+    immunization_notice(data, value, vaccines_due_array, date, 11pt)
     pagebreak()
     vaccine_table_page(value)
     conf.immunization-table(5, num_rows, received, diseases, 11pt)

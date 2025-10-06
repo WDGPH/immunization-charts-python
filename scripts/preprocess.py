@@ -36,7 +36,8 @@ class ClientDataProcessor:
             "date_of_birth": "",
             "age": "",
             "over_16": "",
-            "received": []
+            "received": [],
+            "qr_code": ""  # Base64-encoded QR code image
         })
 
     def process_vaccines_due(self, vaccines_due: str) -> str:
@@ -68,6 +69,8 @@ class ClientDataProcessor:
         return vax_date
     
     def build_notices(self):
+        from utils import generate_qr_code
+        
         for _, row in self.df.iterrows():
             client_id = row.CLIENT_ID
             self.notices[client_id]["name"] = f"{row.FIRST_NAME} {row.LAST_NAME}"
@@ -76,6 +79,15 @@ class ClientDataProcessor:
             self.notices[client_id]["date_of_birth"] = (
                 convert_date_string_french(row.DATE_OF_BIRTH) if self.language == 'french' else convert_date_string(row.DATE_OF_BIRTH)
             )
+            
+            # Generate QR code with client information
+            qr_data = {
+                "id": client_id,
+                "name": f"{row.FIRST_NAME} {row.LAST_NAME}",
+                "dob": row.DATE_OF_BIRTH,
+                "school": row.SCHOOL_NAME
+            }
+            self.notices[client_id]["qr_code"] = generate_qr_code(str(qr_data), client_id)
             self.notices[client_id]["address"] = row.STREET_ADDRESS
             self.notices[client_id]["city"] = row.CITY
             self.notices[client_id]["postal_code"] = row.POSTAL_CODE if pd.notna(row.POSTAL_CODE) and row.POSTAL_CODE != "" else "Not provided"
