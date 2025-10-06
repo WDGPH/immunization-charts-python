@@ -111,7 +111,7 @@ class ClientDataProcessor:
                 vax_list = [v.replace('-unspecified', '*').replace(' unspecified', '*') for v in vax_list]
                 # translate to French if needed
                 if self.language == 'french':
-                    disease_list = [self.vaccine_ref_fr.get(d, d) for d in disease_list]
+                    disease_list = [self.vaccine_ref.get(d, d) for d in disease_list]
                 self.notices[client_id]["received"].append({"date_given": date_str, "vaccine": vax_list, "diseases": disease_list})
                 i += 1
 
