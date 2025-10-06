@@ -1,6 +1,9 @@
 import typst
 from datetime import datetime
 import pandas as pd
+import qrcode
+import base64
+from io import BytesIO
 
 def convert_date_string_french(date_str):
     """
@@ -106,6 +109,40 @@ def calculate_age(DOB, DOV):
 
     return f"{years}Y {months}M"
 
-def compile_typst(immunization_record, outpath):
+def generate_qr_code(data: str, client_id: str = None) -> str:
+    """
+    Generate a QR code and save it as a PNG file, return the file path
+    
+    Args:
+        data (str): Data to encode in QR code
+        client_id (str): Client ID for unique filename
+        
+    Returns:
+        str: Path to the generated QR code image file
+    """
+    qr = qrcode.QRCode(
+        version=1,
+        error_correction=qrcode.constants.ERROR_CORRECT_L,
+        box_size=10,
+        border=4,
+    )
+    qr.add_data(data)
+    qr.make(fit=True)
+    
+    img = qr.make_image(fill_color="black", back_color="white")
+    
+    # Save as PNG file
+    if client_id:
+        filename = f"qr_{client_id}.png"
+    else:
+        filename = "qr_code.png"
+    
+    filepath = f"../qr_codes/{filename}"
+    import os
+    os.makedirs("../output/qr_codes", exist_ok=True)
+    img.save(f"../output/qr_codes/{filename}")
+    
+    return filepath
 
+def compile_typst(immunization_record, outpath):
     typst.compile(immunization_record, output = outpath)
