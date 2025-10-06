@@ -64,6 +64,49 @@
   ]
 }
 
+#let client_info_tbl_fr(
+  equal_split: true,
+  vline: true, 
+  client_data,
+  client_id,
+  font_size
+) = {
+  // Define column widths based on equal_split
+  let columns = if equal_split {
+    (0.5fr, 0.5fr)
+  } else {
+    (0.4fr, 0.6fr)
+  }
+
+  let vline_stroke = if vline { 1pt + black } else { none }
+
+  // Content for the first column
+  let col1_content = align(left)[
+    Au parent ou tuteur de: #linebreak()
+    *#client_data.name* #linebreak()
+    *#client_data.address* #linebreak()
+    *#client_data.city*, *Ontario* *#client_data.postal_code*
+  ]
+
+  // Content for the second column
+  let col2_content = align(left)[
+    Identifiant du client: #smallcaps[*#client_id.at(0)*] #linebreak()
+    Date de naissance: *#client_data.date_of_birth* #linebreak()
+    École: #smallcaps[*#client_data.school*]
+  ]
+
+  // Central alignment for the entire table
+  align(center)[
+    #table(
+      columns: columns,
+      inset: font_size,
+      col1_content,
+      table.vline(stroke: vline_stroke),
+      col2_content,
+    )
+  ]
+}
+
 #let client_immunization_list(
   immunizations_due
 ) = {
