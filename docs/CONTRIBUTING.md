@@ -71,7 +71,7 @@ During ISPA production season:
 - Keep discussions respectful; we learn by explaining our reasoning.
 - Proof-of-concept work is encouraged but should be scoped and documented.
 - Both AI and human-generated code must be understood by the contributor
-- Try to treat reviews as knowledge sharing (this is fun!): explain why something works :) 
+- Try to treat reviews as knowledge sharing (this is fun!): explain why something works :)
 
 ---
 
