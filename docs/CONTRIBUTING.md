@@ -48,7 +48,7 @@ Every contribution, whether it’s a small fix, a new feature, or an exploratory
 ---
 
 ## 4. Code Standards
-- **Python:**: 
+- **Python:**
     * Include docstrings and type hints on all new functions and classes
     * Maintain consistent logging and clear variable naming
     * Keep functions modular; small, testable, single purpose 
@@ -94,7 +94,7 @@ Even if not merged, branches contribute to team learning and future iteration!
 
 For guidance or clarification: 
 
-* Tag kassy or justin in PR or issue
+* Tag @kassyray or @jangevaare in PR or issue
 * Use our GitHub or Teams for conceptual proposals 
 
 ## Closing Thought
