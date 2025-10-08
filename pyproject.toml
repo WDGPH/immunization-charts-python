@@ -1,16 +1,69 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "immunization-charts-python"
 version = "0.1.0"
-requires-python = ">=3.8"
+description = "A Python package for generating personalized immunization history charts and notice letters"
+readme = "README.md"
+requires-python = ">=3.8.1"
+authors = [
+    {name = "Immunization Charts Team"}
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Healthcare Industry",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+]
 dependencies = [
-    "pandas",
-    "PyYAML",
-    "openpyxl",
-    "PyPDF2",
+    "pandas>=1.3.0",
+    "PyYAML>=6.0",
+    "openpyxl>=3.0.0",
+    "PyPDF2>=3.0.0",
     "typst>=0.13.2",
+    "streamlit>=1.28.0",
 ]
 
-[dependency-groups]
+[project.optional-dependencies]
 dev = [
-    "ipykernel",
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "black>=23.0.0",
+    "isort>=5.12.0",
+    "flake8>=5.0.0,<6.0.0",
+    "mypy>=1.0.0",
+    "ipykernel>=6.0.0",
 ]
+
+[project.scripts]
+immunization-charts = "immunization_charts.cli.main:main"
+immunization-charts-web = "immunization_charts.web.streamlit_app:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.black]
+line-length = 88
+target-version = ['py38']
+
+[tool.isort]
+profile = "black"
+multi_line_output = 3
+
+[tool.mypy]
+python_version = "3.8"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]

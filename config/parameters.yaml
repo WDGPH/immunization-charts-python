@@ -7,16 +7,19 @@ output_folder: "demo-output-"
 
 # Columns that are expected in the input file
 expected_columns:
-  - School
-  - Client_ID
-  - First_Name
-  - Last_Name
-  - Date_of_Birth
-  - Street_Address
-  - City
-  - Province
-  - Postal_Code
-  - Received_Agents
+  - SCHOOL_NAME
+  - CLIENT_ID
+  - FIRST_NAME
+  - LAST_NAME
+  - DATE_OF_BIRTH
+  - STREET_ADDRESS_LINE_1
+  - STREET_ADDRESS_LINE_2
+  - CITY
+  - PROVINCE
+  - POSTAL_CODE
+  - AGE
+  - OVERDUE_DISEASE
+  - IMMS_GIVEN
 
 # Vaccines or agents that should occur in the template for the chart 
 chart_diseases_header:
