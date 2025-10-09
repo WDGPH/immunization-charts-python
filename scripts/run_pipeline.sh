@@ -5,6 +5,7 @@ INFILE=$1
 LANG=$2
 INDIR="../input"
 OUTDIR="../output"
+BATCH_SIZE=100
 
 if [ "$LANG" != "english" ] && [ "$LANG" != "french" ]; then
     echo "Error: Language must be 'english' or 'french'"
@@ -33,12 +34,26 @@ echo "✅ Step 1: Preprocessing complete in ${STEP1_DURATION} seconds."
 ##########################################
 # Record count
 ##########################################
-CSV_PATH="${INDIR}/${CSVFILE}"
-if [ -f "$CSV_PATH" ]; then
-    TOTAL_RECORDS=$(tail -n +2 "$CSV_PATH" | wc -l)
+TOTAL_RECORDS=$(python - <<PY
+import pandas as pd
+from pathlib import Path
+path = Path("${INDIR}/${INFILE}")
+if not path.exists():
+    print(0)
+else:
+    suffix = path.suffix.lower()
+    if suffix in {'.xlsx', '.xls'}:
+        df = pd.read_excel(path, engine="openpyxl")
+    else:
+        df = pd.read_csv(path)
+    print(len(df.index))
+PY
+)
+
+if [ "$TOTAL_RECORDS" -gt 0 ]; then
     echo "📊 Total records (excluding header): $TOTAL_RECORDS"
 else
-    echo "⚠️ CSV not found for record count: $CSV_PATH"
+    echo "⚠️ Unable to determine record count from ${INDIR}/${INFILE}"
 fi
 
 ##########################################
@@ -94,7 +109,7 @@ done
 # Step 5: Cleanup
 ##########################################
 
-echo "🧹 Step 4: Cleanup started..."
+echo "🧹 Step 5: Cleanup started..."
 bash ./cleanup.sh ${LANG}
 
 ##########################################
