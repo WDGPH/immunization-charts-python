@@ -1,51 +1,9 @@
-#!/bi#let immunization_notice(data, value, immunizations_due, date, font_size) = block[
+#!/bin/bash
 
-#v(0.2cm)
-
-#conf.header_info_cim(\"${LOGO}\")
-
-#v(0.2cm)
-
-#align(center)[
-#table(
-  columns: (0.3fr, 0.5fr, 0.2fr),
-  inset: 11pt,
-  [#align(left)[
-    To Parent/Guardian of: \
-    #linebreak()
-*#data.name* \
-#linebreak()
-
-*#data.address*  \
-#linebreak()
-*#data.city*, *Ontario* *#data.postal_code*  ]],
-table.vline(stroke: {1pt + black} ),
-  [#align(left)[
-    Client ID: #smallcaps[*#value*]\
-    #v(0.02cm)
-    Date of Birth: *#data.date_of_birth*\
-    #v(0.02cm)
-    Childcare Centre: #smallcaps[*#data.school*]
-  ]],
-table.vline(stroke: {1pt + black} ),
-  [#align(right)[
-    #if \"qr_code\" in data [
-      #image(data.qr_code, width: 2.5cm)
-    ]
-  ]],
-)
-]NDIR=${1}
+INDIR=${1}
 FILENAME=${2}
 LOGO=${3}
-SIG#let immunization_notice(client_data, client_id, immunizations_due, date, font_size) = block[
-
-#v(0.2cm)
-
-#conf.header_info_cim("${LOGO}")
-
-#v(0.2cm)
-
-#conf.client_info_tbl_en(equal_split: false, vline: false, client: client_data, client_id: client_id, font_size: font_size)4}
+SIGNATURE=${4}
 PARAMETERS=${5}
 
 CLIENTIDFILE=${FILENAME}_client_ids.csv
@@ -91,7 +49,7 @@ echo "
 #let date = date(yaml(\"${PARAMETERS}\"))
 
 // Immunization Notice Section
-#let immunization_notice(client, client_id, immunizations_due, date, font_size) = block[
+#let immunization_notice(data, value, immunizations_due, date, font_size) = block[
 
 #v(0.2cm)
 
@@ -99,7 +57,35 @@ echo "
 
 #v(0.2cm)
 
-#conf.client_info_tbl_en(equal_split: false, vline: false, client_data: data, client_id: row, font_size: font_size)
+#align(center)[
+#table(
+  columns: (0.3fr, 0.5fr, 0.2fr),
+  inset: 11pt,
+  [#align(left)[
+    To Parent/Guardian of: \
+    #linebreak()
+*#data.name* \
+#linebreak()
+
+*#data.address*  \
+#linebreak()
+*#data.city*, *Ontario* *#data.postal_code*  ]],
+table.vline(stroke: {1pt + black} ),
+  [#align(left)[
+    Client ID: #smallcaps[*#value*]\
+    #v(0.02cm)
+    Date of Birth: *#data.date_of_birth*\
+    #v(0.02cm)
+    Childcare Centre: #smallcaps[*#data.school*]
+  ]],
+table.vline(stroke: {1pt + black} ),
+  [#align(right)[
+    #if \"qr_code\" in data [
+      #image(data.qr_code, width: 2.5cm)
+    ]
+  ]],
+)
+]
 
 #v(0.3cm)
 
