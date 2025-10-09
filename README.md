@@ -51,10 +51,11 @@ The main pipeline script automates the end-to-end workflow for generating immuni
 **Usage Example:**
 ```bash
 cd scripts
-./run_pipeline.sh <input_file> <language>
+./run_pipeline.sh <input_file> <language> [--no-cleanup]
 ```
 - `<input_file>`: Name of the input file (e.g., `students.xlsx`)
 - `<language>`: Language code (`english` or `french`)
+- `--no-cleanup` (optional): Skip deleting intermediate Typst artifacts and PDFs.
 
 **Outputs:**
 - Processed notices and charts in the `output/` directory
