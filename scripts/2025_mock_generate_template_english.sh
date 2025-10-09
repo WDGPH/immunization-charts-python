@@ -87,7 +87,7 @@ table.vline(stroke: {1pt + black} ),
 )
 ]
 
-#v(0.3cm)
+#v(0.1cm)
 
 // Notice for immunizations
 As of *#date* our files show that your child has not received the following immunization(s):  
@@ -108,11 +108,9 @@ Please update Public Health and your childcare centre every time your child rece
 If there is an outbreak of a vaccine-preventable disease, Public Health may require that children who are not adequately immunized (including those with exemptions) be excluded from the childcare centre until the outbreak is over. 
 
 If you have any questions about your child’s vaccines, please call 555-555-5555 ext. 1234 to speak with a Public Health Nurse.
-
-  Sincerely, 
-
+Sincerely, 
+#v(0.2cm)
 #conf.signature(\"${SIGNATURE}\", \"Dr. Jane Smith, MPH\", \"Associate Medical Officer of Health\")
-  
 ]
 
 #let vaccine_table_page(client_id) = block[

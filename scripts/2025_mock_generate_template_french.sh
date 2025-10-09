@@ -118,8 +118,8 @@ En cas d'éclosion d'une maladie évitable par la vaccination, la Santé publiqu
 
 Si vous avez des questions sur les vaccins de votre enfant, veuillez appeler le 555-555-5555 poste 1234 pour parler à une infirmière de la Santé publique.
 
-  Sincères salutations, 
-
+Sincères salutations, 
+#v(0.2cm)
 #conf.signature(\"${SIGNATURE}\", \"Dr. Jane Smith, MPH\", \"Médecin hygiéniste adjoint\")
   
 ]
