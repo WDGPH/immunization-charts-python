@@ -294,7 +294,7 @@ if __name__ == "__main__":
 
     output_dir_school = output_dir + "/by_school"
     output_dir_batch = output_dir + "/batches"
-    output_dir_final = output_dir + "/json_" + language
+    output_dir_final = output_dir + "/artifacts_" + language
 
     df = load_data(input_dir + '/' + input_file)
     validate_transform_columns(df, required_columns) #FIXME make required_columns come from a config file
