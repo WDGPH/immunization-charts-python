@@ -1,10 +1,31 @@
 #!/bin/bash
 set -e
 
+if [ $# -lt 2 ]; then
+    echo "Usage: $0 <input_file> <language> [--no-cleanup]"
+    exit 1
+fi
+
 INFILE=$1
 LANG=$2
+SKIP_CLEANUP=false
+
+if [ $# -ge 3 ]; then
+    case "$3" in
+        --no-cleanup|--skip-cleanup)
+            SKIP_CLEANUP=true
+            ;;
+        *)
+            echo "Unknown option: $3"
+            echo "Usage: $0 <input_file> <language> [--no-cleanup]"
+            exit 1
+            ;;
+    esac
+fi
+
 INDIR="../input"
 OUTDIR="../output"
+BATCH_SIZE=100
 
 if [ "$LANG" != "english" ] && [ "$LANG" != "french" ]; then
     echo "Error: Language must be 'english' or 'french'"
@@ -94,8 +115,13 @@ done
 # Step 5: Cleanup
 ##########################################
 
-echo "🧹 Step 4: Cleanup started..."
-bash ./cleanup.sh ${LANG}
+echo ""
+if [ "$SKIP_CLEANUP" = true ]; then
+    echo "🧹 Step 5: Cleanup skipped (--no-cleanup flag)."
+else
+    echo "🧹 Step 5: Cleanup started..."
+    bash ./cleanup.sh ${LANG}
+fi
 
 ##########################################
 # Summary
@@ -114,4 +140,6 @@ echo "  - Total Time:            ${TOTAL_DURATION}s"
 echo ""
 echo "📦 Batch size:             ${BATCH_SIZE}"
 echo "📊 Total records:          ${TOTAL_RECORDS}"
-
+if [ "$SKIP_CLEANUP" = true ]; then
+    echo "🧹 Cleanup:                Skipped"
+fi
