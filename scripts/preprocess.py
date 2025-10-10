@@ -276,7 +276,7 @@ if __name__ == "__main__":
         "CITY",
         "POSTAL CODE",
         "PROVINCE/TERRITORY",
-        "POSTAL CODE",
+        "AGE",
         "OVERDUE DISEASE",
         "IMMS GIVEN",
         "STREET ADDRESS LINE 1",
