@@ -76,6 +76,7 @@ class ClientDataProcessor:
             self.notices[client_id]["date_of_birth"] = (
                 convert_date_string_french(row.DATE_OF_BIRTH) if self.language == 'french' else convert_date_string(row.DATE_OF_BIRTH)
             )
+            self.notices[client_id]["date_of_birth_iso"] = row.DATE_OF_BIRTH
             self.notices[client_id]["address"] = row.STREET_ADDRESS
             self.notices[client_id]["city"] = row.CITY
             self.notices[client_id]["postal_code"] = row.POSTAL_CODE if pd.notna(row.POSTAL_CODE) and row.POSTAL_CODE != "" else "Not provided"
