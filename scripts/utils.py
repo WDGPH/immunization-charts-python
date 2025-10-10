@@ -1,6 +1,9 @@
 import typst
 from datetime import datetime
 import pandas as pd
+import hashlib
+from Crypto.Cipher import AES
+from Crypto.Util.Padding import pad, unpad
 
 def convert_date_string_french(date_str):
     """
@@ -59,6 +62,36 @@ def convert_date_iso(date_str):
     date_obj = datetime.strptime(date_str, "%b %d, %Y")
     return date_obj.strftime("%Y-%m-%d")
 
+def convert_date_french_to_iso(date_str: str) -> str:
+    """
+    Convert a French-formatted date string like "8 mai 2025" to "2025-05-08".
+    """
+    months = {
+        "janvier": 1,
+        "février": 2,
+        "mars": 3,
+        "avril": 4,
+        "mai": 5,
+        "juin": 6,
+        "juillet": 7,
+        "août": 8,
+        "septembre": 9,
+        "octobre": 10,
+        "novembre": 11,
+        "décembre": 12,
+    }
+
+    parts = date_str.strip().split()
+    if len(parts) != 3:
+        raise ValueError(f"Unexpected French date format: {date_str}")
+
+    day = int(parts[0])
+    month = months.get(parts[1].lower())
+    if month is None:
+        raise ValueError(f"Unknown French month: {parts[1]}")
+    year = int(parts[2])
+    return f"{year:04d}-{month:02d}-{day:02d}"
+
 def over_16_check(date_of_birth, delivery_date):
     """
     Check if the age is over 16 years.
@@ -109,3 +142,49 @@ def calculate_age(DOB, DOV):
 def compile_typst(immunization_record, outpath):
 
     typst.compile(immunization_record, output = outpath)
+
+# Function to derive a key from client details
+
+def derive_key(oen_partial: str, dob: str) -> bytes:
+    # Combine OEN and DOB to create a unique key
+    key_material = f"{oen_partial}{dob}".encode('utf-8')
+    # Use SHA-256 to hash the key material
+    return hashlib.sha256(key_material).digest()
+
+# Function to encrypt PDF
+
+def encrypt_pdf(file_path: str, oen_partial: str, dob: str) -> str:
+    key = derive_key(oen_partial, dob)
+    cipher = AES.new(key, AES.MODE_CBC)
+    iv = cipher.iv
+
+    with open(file_path, 'rb') as f:
+        plaintext = f.read()
+
+    ciphertext = cipher.encrypt(pad(plaintext, AES.block_size))
+
+    # Save the encrypted PDF with IV prepended
+    encrypted_file_path = file_path.replace('.pdf', '_encrypted.pdf')
+    with open(encrypted_file_path, 'wb') as f:
+        f.write(iv + ciphertext)
+
+    return encrypted_file_path
+
+# Function to decrypt PDF
+
+def decrypt_pdf(encrypted_file_path: str, oen_partial: str, dob: str) -> str:
+    key = derive_key(oen_partial, dob)
+
+    with open(encrypted_file_path, 'rb') as f:
+        iv = f.read(16)  # Read the IV from the beginning
+        ciphertext = f.read()
+
+    cipher = AES.new(key, AES.MODE_CBC, iv)
+    plaintext = unpad(cipher.decrypt(ciphertext), AES.block_size)
+
+    # Save the decrypted PDF
+    decrypted_file_path = encrypted_file_path.replace('_encrypted.pdf', '_decrypted.pdf')
+    with open(decrypted_file_path, 'wb') as f:
+        f.write(plaintext)
+
+    return decrypted_file_path

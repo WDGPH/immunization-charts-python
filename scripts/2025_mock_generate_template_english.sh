@@ -162,5 +162,4 @@ If you have any questions about your child’s vaccines, please call 555-555-555
 
 }
 
-
 " > "${OUTFILE}"

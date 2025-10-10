@@ -162,5 +162,4 @@ Si vous avez des questions sur les vaccins de votre enfant, veuillez appeler le 
 
 }
 
-
 " > "${OUTFILE}"
