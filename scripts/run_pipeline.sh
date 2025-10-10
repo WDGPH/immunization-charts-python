@@ -87,6 +87,9 @@ if [ -e "${OUTDIR}/json_${LANG}/conf.pdf" ]; then
 fi
 
 for file in "${OUTDIR}/json_${LANG}/"*.pdf; do
+    if [[ "${file}" == *_encrypted.pdf ]]; then
+        continue
+    fi
     python count_pdfs.py ${file}
 done
 
@@ -114,4 +117,3 @@ echo "  - Total Time:            ${TOTAL_DURATION}s"
 echo ""
 echo "📦 Batch size:             ${BATCH_SIZE}"
 echo "📊 Total records:          ${TOTAL_RECORDS}"
-
