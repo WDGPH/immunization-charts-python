@@ -27,6 +27,7 @@ Every contribution, whether it’s a small fix, a new feature, or an exploratory
 | Type | Branch Prefix | Description | Merge Timing |
 |------|----------------|--------------|---------------|
 | Bug fix | `fix/` | Patches or small improvements | Anytime |
+| Docs | `docs/` | Improvements to documentation without changes to functionality | Anytime |
 | Enhancement | `feat/` | New features or updates | Before code freeze |
 | Proof of Concept | `poc/` | Exploratory or experimental work | Not merged until reviewed |
 | Refactor | `refactor/` | Structural reorganization | Requires discussion before starting |

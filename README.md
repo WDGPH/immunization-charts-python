@@ -14,10 +14,10 @@ Reports are generated in PDF format using [Typst](https://typst.app) and a custo
 
 ### Virtual Environment
 
-To create and activate the virtual environment:
+Install all dependencies (and create the `.venv` if it doesn't yet exist) before doing anything else:
 
 ```bash
-uv venv
+uv sync
 source .venv/bin/activate
 ```
 
