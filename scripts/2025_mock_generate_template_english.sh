@@ -59,7 +59,7 @@ echo "
 
 #align(center)[
 #table(
-  columns: (0.3fr, 0.5fr, 0.2fr),
+  columns: (0.5fr, 0.5fr),
   inset: 11pt,
   [#align(left)[
     To Parent/Guardian of: \
@@ -77,12 +77,6 @@ table.vline(stroke: {1pt + black} ),
     Date of Birth: *#data.date_of_birth*\
     #v(0.02cm)
     Childcare Centre: #smallcaps[*#data.school*]
-  ]],
-table.vline(stroke: {1pt + black} ),
-  [#align(right)[
-    #if \"qr_code\" in data [
-      #image(data.qr_code, width: 2.5cm)
-    ]
   ]],
 )
 ]
@@ -111,6 +105,10 @@ If you have any questions about your child’s vaccines, please call 555-555-555
 Sincerely, 
 #v(0.2cm)
 #conf.signature(\"${SIGNATURE}\", \"Dr. Jane Smith, MPH\", \"Associate Medical Officer of Health\")
+
+#if \"qr_code\" in data [
+  #place(bottom + right)[#image(data.qr_code, width: 2.5cm)]
+]
 ]
 
 #let vaccine_table_page(client_id) = block[
