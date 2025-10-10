@@ -68,7 +68,7 @@ echo "
 
 #align(center)[
 #table(
-  columns: (0.3fr, 0.5fr, 0.2fr),
+  columns: (0.5fr, 0.5fr),
   inset: 11pt,
   [#align(left)[
     Aux parents/tuteurs de: \
@@ -86,12 +86,6 @@ table.vline(stroke: {1pt + black} ),
     Date de naissance: *#data.date_of_birth*\
     #v(0.02cm)
     Centre de garde d'enfants: #smallcaps[*#data.school*]
-  ]],
-table.vline(stroke: {1pt + black} ),
-  [#align(right)[
-    #if \"qr_code\" in data [
-      #image(data.qr_code, width: 2.5cm)
-    ]
   ]],
 )
 ]
@@ -121,6 +115,10 @@ Si vous avez des questions sur les vaccins de votre enfant, veuillez appeler le 
 Sincères salutations, 
 #v(0.2cm)
 #conf.signature(\"${SIGNATURE}\", \"Dr. Jane Smith, MPH\", \"Médecin hygiéniste adjoint\")
+
+#if \"qr_code\" in data [
+  #place(bottom + right)[#image(data.qr_code, width: 2.5cm)]
+]
   
 ]
 
