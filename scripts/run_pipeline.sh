@@ -54,21 +54,7 @@ echo "✅ Step 1: Preprocessing complete in ${STEP1_DURATION} seconds."
 ##########################################
 # Record count
 ##########################################
-TOTAL_RECORDS=$(python - <<PY
-import pandas as pd
-from pathlib import Path
-path = Path("${INDIR}/${INFILE}")
-if not path.exists():
-    print(0)
-else:
-    suffix = path.suffix.lower()
-    if suffix in {'.xlsx', '.xls'}:
-        df = pd.read_excel(path, engine="openpyxl")
-    else:
-        df = pd.read_csv(path)
-    print(len(df.index))
-PY
-)
+TOTAL_RECORDS=$(python scripts/count_records.py "${INDIR}/${INFILE}")
 
 if [ "$TOTAL_RECORDS" -gt 0 ]; then
     echo "📊 Total records (excluding header): $TOTAL_RECORDS"
