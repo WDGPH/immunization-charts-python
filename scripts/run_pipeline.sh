@@ -78,11 +78,11 @@ echo "✅ Step 2: Template generation complete in ${STEP2_DURATION} seconds."
 ##########################################
 STEP3_START=$(date +%s)
 
-# Check to see if the conf.typ file is in the _json directory
-if [ -e "${OUTDIR}/${LANG}_json/conf.typ" ]; then
+# Check to see if the conf.typ file is in the json_ directory
+if [ -e "${OUTDIR}/json_${LANG}/conf.typ" ]; then
     echo "Found conf.typ in ${OUTDIR}/json_${LANG}/"
 else
-    # Move conf.typ to the _json directory
+    # Move conf.typ to the json_ directory
     echo "Moving conf.typ to ${OUTDIR}/json_${LANG}/"
     cp ./conf.typ "${OUTDIR}/json_${LANG}/conf.typ"
 fi
