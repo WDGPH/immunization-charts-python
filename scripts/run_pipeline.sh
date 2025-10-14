@@ -12,7 +12,7 @@ SKIP_CLEANUP=false
 
 if [ $# -ge 3 ]; then
     case "$3" in
-        --no-cleanup|--skip-cleanup)
+        --no-cleanup)
             SKIP_CLEANUP=true
             ;;
         *)
