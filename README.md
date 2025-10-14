@@ -1,5 +1,7 @@
 # 🩺 Immunization Charts (python Version)
 
+**Current version:** v0.1.0  
+
 ## 📘 Introduction
 
 This project provides a Python and Bash-based workflow for generating **personalized immunization history charts** and **notice letters** for children overdue for mandated vaccinations under the **Child Care and Early Years Act (CCEYA)** and ISPA.
