@@ -1,11 +1,10 @@
 import sys
-import os
-import glob
 import shutil
 import argparse
 from pathlib import Path
 
 def parse_args():
+    """Parse command line arguments."""
     parser = argparse.ArgumentParser(description="Cleanup generated files in the specified directory.")
     parser.add_argument("outdir_path", type=str, help="Path to the output directory.")
     parser.add_argument("language", type=str, help="Language (e.g., 'english', 'french').")
@@ -26,6 +25,7 @@ def remove_files_with_ext(base_dir: Path, extensions=('typ', 'json', 'csv')):
             safe_delete(file)
 
 def cleanup(outdir_path: Path, language: str):
+    """Perform cleanup of generated files and directories."""
     json_file_path = outdir_path / f'json_{language}'
     for folder in ['by_school', 'batches']:
         safe_delete(outdir_path / folder)
