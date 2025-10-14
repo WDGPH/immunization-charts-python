@@ -5,7 +5,6 @@ Replaces run_pipeline with Python orchestrator
 
 import os
 import sys
-import logging
 import pandas as pd
 from pathlib import Path
 import yaml 
@@ -14,12 +13,9 @@ import json
 import re
 from collections import defaultdict
 from utils import convert_date_string_french, over_16_check, convert_date_iso, convert_date_string
+from logger_config import get_logger
 
-logging.basicConfig(
-    filename = "preprocess.log",
-    level = logging.INFO,
-
-)
+logger = get_logger("preprocess", Path("../logs"))
 
 class ClientDataProcessor:
     def __init__(self, df: pd.DataFrame, disease_map: dict, vaccine_ref: dict,
@@ -124,7 +120,8 @@ class ClientDataProcessor:
         # save JSON
         with open(outdir / f"{filename}.json", 'w') as f:
             json.dump(notices_dict, f, indent=4)
-        print(f"Structured data saved to {outdir / f'{filename}.json'}")
+        
+        logger.info(f"Saved {len(notices_dict)} notices to {outdir / f'{filename}.json'}")
 
 
 def detect_file_type(file_path: Path) -> str:
@@ -156,11 +153,11 @@ def read_input(file_path: Path) -> pd.DataFrame:
         else:
             raise ValueError(f"Unsupported file type: {ext}")
 
-        logging.info(f"Loaded {len(df)} rows from {file_path}")
+        logger.info(f"Loaded {len(df)} rows from {file_path}")
         return df
 
     except Exception as e:
-        logging.error(f"Failed to read {file_path}: {e}")
+        logger.error(f"Failed to read {file_path}: {e}")
         raise
 
 def separate_by_column(data: pd.DataFrame, col_name: str, out_path: Path):
@@ -179,9 +176,9 @@ def separate_by_column(data: pd.DataFrame, col_name: str, out_path: Path):
         safe_name = str(name).replace(" ", "_").replace("/", "_").replace("-","_").replace(".","").upper()
         output_file = f"{out_path}/{safe_name}.csv"  # Save as CSV
         
-        print(f"Processing group: {safe_name}")
+        logger.info(f"Processing group: {safe_name} with {len(group)} rows")
         group.to_csv(output_file, index=False, sep=";")
-        logging.info(f"Saved group {safe_name} with {len(group)} rows to {output_file}")
+        logger.info(f"Saved group {safe_name} with {len(group)} rows to {output_file}")
 
 
 def split_batches(input_dir: Path, output_dir: Path, batch_size: int):
@@ -195,7 +192,7 @@ def split_batches(input_dir: Path, output_dir: Path, batch_size: int):
     csv_files = list(input_dir.glob("*.csv"))
 
     if not csv_files:
-        print(f"No CSV files found in {input_dir}")
+        logger.warning(f"No CSV files found in {input_dir}")
         return
 
     for file in csv_files:
@@ -211,15 +208,15 @@ def split_batches(input_dir: Path, output_dir: Path, batch_size: int):
 
             batch_file = output_dir / f"{filename_base}_{i+1:02d}.csv"
             batch_df.to_csv(batch_file, index=False, sep=";")
-            print(f"Saved batch: {batch_file} ({len(batch_df)} rows)")
+            logger.info(f"Created batch file: {batch_file} with {len(batch_df)} rows")
 
 def check_file_existence(file_path: Path) -> bool:
     """Check if a file exists and is accessible."""
     exists = file_path.exists() and file_path.is_file()
     if exists:
-        logging.info(f"File exists: {file_path}")
+        logger.info(f"File exists: {file_path}")
     else:
-        logging.warning(f"File does not exist: {file_path}")
+        logger.warning(f"File does not exist: {file_path}")
     return exists
 
 def load_data(input_file: str) -> pd.DataFrame:
@@ -228,7 +225,7 @@ def load_data(input_file: str) -> pd.DataFrame:
 
     # Replace column names with uppercase 
     df.columns = [col.strip().upper() for col in df.columns]
-    logging.info(f"Columns after loading: {df.columns.tolist()}")
+    logger.info(f"Columns after loading: {df.columns.tolist()}")
 
     return df
 
@@ -244,7 +241,7 @@ def validate_transform_columns(df: pd.DataFrame, required_columns: list):
     # Rename PROVINCE/TERRITORY to PROVINCE
     df.rename(columns={"PROVINCE/TERRITORY": "PROVINCE"}, inplace=True)
 
-    logging.info("All required columns are present.")
+    logger.info("All required columns are present.")
 
 def separate_by_school(df: pd.DataFrame, output_dir: str, school_column: str = "School Name"):
     """
@@ -258,12 +255,13 @@ def separate_by_school(df: pd.DataFrame, output_dir: str, school_column: str = "
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
 
-    logging.info(f"Separating data by {school_column}...")
+    logger.info(f"Separating data by {school_column}...")
     separate_by_column(df, school_column, output_path)
-    logging.info(f"Data separated by {school_column}. Files saved to {output_path}.")
+    logger.info(f"Data separated by {school_column}. Files saved to {output_path}.")
 
 if __name__ == "__main__":
     if len(sys.argv) < 4:
+        logger.error("Insufficient arguments provided.")
         print("Usage: python preprocess.py <input_dir> <input_file> <output_dir> [language]")
         sys.exit(1)
     
@@ -289,6 +287,7 @@ if __name__ == "__main__":
     language = sys.argv[4] if len(sys.argv) > 4 else "english"
 
     if language not in ["english", "french"]:
+        logger.error("Invalid language specified.")
         print("Error: Language must be 'english' or 'french'")
         sys.exit(1)
 
@@ -304,12 +303,12 @@ if __name__ == "__main__":
     batch_size = 100  # FIXME make this come from a config file
     batch_dir = Path(output_dir + "/batches")
     split_batches(Path(output_dir_school), Path(batch_dir), batch_size)
-    logging.info("Completed splitting into batches.")
+    logger.info("Completed splitting into batches.")
 
     all_batch_files = sorted(batch_dir.glob("*.csv"))
 
     for batch_file in all_batch_files:
-        print(f"Processing batch file: {batch_file}")
+        logger.info(f"Processing batch file: {batch_file}")
         df_batch = pd.read_csv(batch_file, sep=";", engine="python", encoding="latin-1", quotechar='"')
 
         if 'STREET_ADDRESS_LINE_2' in df_batch.columns:
@@ -326,4 +325,4 @@ if __name__ == "__main__":
         )
         processor.build_notices()
         processor.save_output(Path(output_dir_final), batch_file.stem)
-        logging.info("Preprocessing completed successfully.")
+        logger.info("Preprocessing completed successfully.")
