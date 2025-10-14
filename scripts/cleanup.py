@@ -2,39 +2,46 @@ import sys
 import os
 import glob
 import shutil
+import argparse
+from pathlib import Path
 
-# Check system arguments
-if len(sys.argv) != 3:
-    print("Usage: python cleanup.py <directory_path>")
-    sys.exit(1)
+def parse_args():
+    parser = argparse.ArgumentParser(description="Cleanup generated files in the specified directory.")
+    parser.add_argument("outdir_path", type=str, help="Path to the output directory.")
+    parser.add_argument("language", type=str, help="Language (e.g., 'english', 'french').")
+    return parser.parse_args()
 
-outdir_path = sys.argv[1]
-language = sys.argv[2]
+def safe_delete(path: Path):
+    """Safely delete a file or directory if it exists."""
+    if path.exists():
+        if path.is_dir():
+            shutil.rmtree(path)
+        else:
+            path.unlink()
 
-# Validate directory path
-if not os.path.isdir(outdir_path):
-    print(f"Error: The path '{outdir_path}' is not a valid directory.")
-    sys.exit(1)
+def remove_files_with_ext(base_dir: Path, extensions=('typ', 'json', 'csv')):
+    """Remove files with specified extensions in the given directory."""
+    for ext in extensions:
+        for file in base_dir.glob(f'*.{ext}'):
+            safe_delete(file)
 
-# Remove by_school directory
-school_dir = os.path.join(outdir_path, 'by_school')
-batch_dirs = os.path.join(outdir_path, 'batches')
+def cleanup(outdir_path: Path, language: str):
+    json_file_path = outdir_path / f'json_{language}'
+    for folder in ['by_school', 'batches']:
+        safe_delete(outdir_path / folder)
+    remove_files_with_ext(json_file_path)
+    safe_delete(json_file_path / 'conf.pdf')
+        
+def main():
+    args = parse_args()
+    outdir_path = Path(args.outdir_path)
 
-if os.path.exists(school_dir):
-    shutil.rmtree(school_dir)
+    if not outdir_path.is_dir():
+        print(f"Error: The path {outdir_path} is not a valid directory.")
+        sys.exit(1)
+    
+    cleanup(outdir_path, args.language)
+    print("Cleanup completed successfully.")
 
-if os.path.exists(batch_dirs):
-    shutil.rmtree(batch_dirs)
-
-json_file_path = outdir_path + '/json_' + language + '/'
-
-typst_files = glob.glob(os.path.join(json_file_path, '*.typ'))
-json_files = glob.glob(os.path.join(json_file_path, '*.json'))
-csv_files = glob.glob(os.path.join(json_file_path, '*.csv'))
-
-for file in typst_files + json_files + csv_files:
-    os.remove(file)
-
-# if conf.pdf exists, remove it
-if os.path.exists(json_file_path + 'conf.pdf'):
-    os.remove(json_file_path + 'conf.pdf')
+if __name__ == "__main__":
+    main()
