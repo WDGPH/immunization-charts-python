@@ -138,3 +138,6 @@ Steps performed:
     - Save JSON + client IDs
 
 
+## Changelog
+
+See [CHANGELOG.md](./CHANGELOG.md) for details of each release.
