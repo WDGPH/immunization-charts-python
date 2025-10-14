@@ -97,7 +97,14 @@ Please review the Immunization Record on page 2 and update your child's record b
 
 Please update Public Health and your childcare centre every time your child receives a vaccine. By keeping your child's vaccinations up to date, you are not only protecting their health but also the health of other children and staff at the childcare centre.  
 
-*If you are choosing not to immunize your child*, a valid medical exemption or statement of conscience or religious belief must be completed and submitted to Public Health. Links to these forms can be located at #text(fill:conf.wdgteal)[#link(\"https://www.test-immunization.ca/exemptions\")]. Please note this exemption is for childcare only and a new exemption will be required upon enrollment in elementary school.
+#grid(
+  columns: (1fr, auto),
+  gutter: 10pt,
+  [*If you are choosing not to immunize your child*, a valid medical exemption or statement of conscience or religious belief must be completed and submitted to Public Health. Links to these forms can be located at #text(fill:conf.wdgteal)[#link(\"https://www.test-immunization.ca/exemptions\")]. Please note this exemption is for childcare only and a new exemption will be required upon enrollment in elementary school.],
+  [#if \"qr_code\" in data [
+    #image(data.qr_code, width: 2cm)
+  ]]
+)
 
 If there is an outbreak of a vaccine-preventable disease, Public Health may require that children who are not adequately immunized (including those with exemptions) be excluded from the childcare centre until the outbreak is over. 
 
@@ -106,9 +113,7 @@ Sincerely,
 #v(0.2cm)
 #conf.signature(\"${SIGNATURE}\", \"Dr. Jane Smith, MPH\", \"Associate Medical Officer of Health\")
 
-#if \"qr_code\" in data [
-  #place(bottom + right)[#image(data.qr_code, width: 2.5cm)]
-]
+
 ]
 
 #let vaccine_table_page(client_id) = block[
