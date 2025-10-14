@@ -57,7 +57,7 @@ cd scripts
 - `<language>`: Language code (`english` or `french`)
 - `--no-cleanup` (optional): Skip deleting intermediate Typst artifacts.
 
-> ℹ️ **Typst preview note:** The WDGPH code-server development environments render Typst files via Tinymist. The shared template at `scripts/conf.typ` only defines helper functions, colour tokens, and table layouts that the generated notice `.typ` files import; it doesn't emit any pages on its own, so Tinymist has nothing to preview if attempted on this file. To examine the actual markup that uses these helpers, run the pipeline with `--no-cleanup` so the generated notice `.typ` files stay in `output/artifacts_<lang>/` for manual inspection.
+> ℹ️ **Typst preview note:** The WDGPH code-server development environments render Typst files via Tinymist. The shared template at `scripts/conf.typ` only defines helper functions, colour tokens, and table layouts that the generated notice `.typ` files import; it doesn't emit any pages on its own, so Tinymist has nothing to preview if attempted on this file. To examine the actual markup that uses these helpers, run the pipeline with `--no-cleanup` so the generated notice `.typ` files stay in `output/json_<lang>/` for manual inspection.
 
 **Outputs:**
 - Processed notices and charts in the `output/` directory
