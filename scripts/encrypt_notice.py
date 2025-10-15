@@ -1,6 +1,7 @@
 import json
 import sys
 from pathlib import Path
+from utils import encrypt_pdf, convert_date
 
 def encrypt_notice(json_path: str, pdf_path: str, language: str) -> None:
     """
@@ -17,14 +18,6 @@ def encrypt_notice(json_path: str, pdf_path: str, language: str) -> None:
     if not json_path.exists() or not pdf_path.exists():
         return
 
-    # Import utils from parent directory
-    sys.path.insert(0, str(Path.cwd()))
-    from utils import encrypt_pdf, convert_date_iso
-    try:
-        from utils import convert_date_french_to_iso
-    except ImportError:
-        convert_date_french_to_iso = None
-
     data = json.loads(json_path.read_text())
     if not data:
         return
@@ -38,12 +31,9 @@ def encrypt_notice(json_path: str, pdf_path: str, language: str) -> None:
         dob_display = record.get("date_of_birth")
         if not dob_display:
             return
-        if language == "english":
-            dob_iso = convert_date_iso(dob_display)
-        elif convert_date_french_to_iso:
-            dob_iso = convert_date_french_to_iso(dob_display)
-        else:
-            return
+        # Convert display date to ISO format using language parameter
+        dob_iso = convert_date(dob_display, to_format='iso', 
+                             lang='fr' if language == 'french' else 'en')
 
     try:
         encrypt_pdf(str(pdf_path), str(client_id), dob_iso)

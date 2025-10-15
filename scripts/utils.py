@@ -1,98 +1,91 @@
 import typst
+import locale
 from datetime import datetime
 import pandas as pd
+from typing import Optional
 
 try:
     from pypdf import PdfReader, PdfWriter
 except ImportError:  # pragma: no cover - fallback for legacy environments
     from PyPDF2 import PdfReader, PdfWriter  # type: ignore
 
-def convert_date_string_french(date_str):
+def convert_date(date_str: str, to_format: str = 'display', lang: str = 'en') -> Optional[str]:
     """
-    Convert a date string from "YYYY-MM-DD" to "8 mai 2025" (in French), without using locale.
-    """
-    MONTHS_FR = [
-        "janvier", "février", "mars", "avril", "mai", "juin",
-        "juillet", "août", "septembre", "octobre", "novembre", "décembre"
-    ]
-
-    date_obj = datetime.strptime(date_str, "%Y-%m-%d")
-    day = date_obj.day
-    month = MONTHS_FR[date_obj.month - 1]
-    year = date_obj.year
-
-    return f"{day} {month} {year}"
-
-def convert_date_string(date_str):
-    """
-    Convert a date (string or Timestamp) from 'YYYY-MM-DD' to 'Mon DD, YYYY'.
+    Convert dates between ISO and localized display formats.
     
     Parameters:
-        date_str (str | datetime | pd.Timestamp): 
-            Date string in 'YYYY-MM-DD' format or datetime-like object.
+        date_str (str | datetime | pd.Timestamp): Date string to convert
+        to_format (str): Target format - 'iso' or 'display' (default: 'display')
+        lang (str): Language code ('en', 'fr', etc.) (default: 'en')
     
     Returns:
-        str: Date in the format 'Mon DD, YYYY'.
+        str: Formatted date string according to specified format
+    
+    Examples:
+        convert_date('2025-05-08', 'display', 'en') -> 'May 8, 2025'
+        convert_date('2025-05-08', 'display', 'fr') -> '8 mai 2025'
+        convert_date('May 8, 2025', 'iso', 'en') -> '2025-05-08'
+        convert_date('8 mai 2025', 'iso', 'fr') -> '2025-05-08'
     """
     if pd.isna(date_str):
         return None
-    
-    # If it's already a datetime or Timestamp
-    if isinstance(date_str, (pd.Timestamp, datetime)):
-        return date_str.strftime("%b %d, %Y")
 
-    # Otherwise assume string input
-    try:
-        date_obj = datetime.strptime(str(date_str).strip(), "%Y-%m-%d")
-        return date_obj.strftime("%b %d, %Y")
-    except ValueError:
-        raise ValueError(f"Unrecognized date format: {date_str}")
-
-def convert_date_iso(date_str):
-    """
-    Convert a date string from "Mon DD, YYYY" format to "YYYY-MM-DD".
-
-    Parameters:
-        date_str (str): Date in the format "Mon DD, YYYY" (e.g., "May 8, 2025").
-
-    Returns:
-        str: Date in the format "YYYY-MM-DD".
-
-    Example:
-        convert_date("May 8, 2025") -> "2025-05-08"
-    """
-    date_obj = datetime.strptime(date_str, "%b %d, %Y")
-    return date_obj.strftime("%Y-%m-%d")
-
-def convert_date_french_to_iso(date_str: str) -> str:
-    """
-    Convert a French-formatted date string like "8 mai 2025" to "2025-05-08".
-    """
-    months = {
-        "janvier": 1,
-        "février": 2,
-        "mars": 3,
-        "avril": 4,
-        "mai": 5,
-        "juin": 6,
-        "juillet": 7,
-        "août": 8,
-        "septembre": 9,
-        "octobre": 10,
-        "novembre": 11,
-        "décembre": 12,
+    # Month mappings for fallback
+    FRENCH_MONTHS = {
+        1: 'janvier', 2: 'février', 3: 'mars', 4: 'avril',
+        5: 'mai', 6: 'juin', 7: 'juillet', 8: 'août',
+        9: 'septembre', 10: 'octobre', 11: 'novembre', 12: 'décembre'
     }
+    FRENCH_MONTHS_REV = {v: k for k, v in FRENCH_MONTHS.items()}
+    
+    ENGLISH_MONTHS = {
+        1: 'Jan', 2: 'Feb', 3: 'Mar', 4: 'Apr',
+        5: 'May', 6: 'Jun', 7: 'Jul', 8: 'Aug',
+        9: 'Sep', 10: 'Oct', 11: 'Nov', 12: 'Dec'
+    }
+    ENGLISH_MONTHS_REV = {v: k for k, v in ENGLISH_MONTHS.items()}
 
-    parts = date_str.strip().split()
-    if len(parts) != 3:
-        raise ValueError(f"Unexpected French date format: {date_str}")
+    try:
+        # Convert input to datetime object
+        if isinstance(date_str, (pd.Timestamp, datetime)):
+            date_obj = date_str
+        elif isinstance(date_str, str):
+            if '-' in date_str:  # ISO format
+                date_obj = datetime.strptime(date_str.strip(), "%Y-%m-%d")
+            else:  # Localized format
+                try:
+                    if lang == 'fr':
+                        day, month, year = date_str.split()
+                        month_num = FRENCH_MONTHS_REV.get(month.lower())
+                        if not month_num:
+                            raise ValueError(f"Invalid French month: {month}")
+                        date_obj = datetime(int(year), month_num, int(day))
+                    else:
+                        month, rest = date_str.split(maxsplit=1)
+                        day, year = rest.rstrip(',').split(',')
+                        month_num = ENGLISH_MONTHS_REV.get(month.strip())
+                        if not month_num:
+                            raise ValueError(f"Invalid English month: {month}")
+                        date_obj = datetime(int(year), month_num, int(day.strip()))
+                except (ValueError, KeyError) as e:
+                    raise ValueError(f"Unable to parse date string: {date_str}") from e
+        else:
+            raise ValueError(f"Unsupported date type: {type(date_str)}")
 
-    day = int(parts[0])
-    month = months.get(parts[1].lower())
-    if month is None:
-        raise ValueError(f"Unknown French month: {parts[1]}")
-    year = int(parts[2])
-    return f"{year:04d}-{month:02d}-{day:02d}"
+        # Convert to target format
+        if to_format == 'iso':
+            return date_obj.strftime("%Y-%m-%d")
+        else:  # display format
+            if lang == 'fr':
+                month_name = FRENCH_MONTHS[date_obj.month]
+                return f"{date_obj.day} {month_name} {date_obj.year}"
+            else:
+                month_name = ENGLISH_MONTHS[date_obj.month]
+                return f"{month_name} {date_obj.day}, {date_obj.year}"
+
+    except Exception as e:
+        raise ValueError(f"Date conversion failed: {str(e)}") from e
+
 
 def over_16_check(date_of_birth, delivery_date):
     """
