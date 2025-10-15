@@ -87,13 +87,13 @@ You'll see a quick summary of which checks ran (right now that’s the clean-up 
 
 ## Preprocessing
 
-The Python-based pipeline `preprocess.py` orchestrates immunization record preparation and structuring. It replaces the previous Bash script and provides:
+The Python-based pipeline `preprocess.py` orchestrates immunization record preparation and structuring. It replaces the previous Bash script and now provides:
 
-- Reading and validating input files (CSV/Excel)
-- Separating data by school
-- Splitting files into batch chunks
-- Cleaning and transforming client data
-- Building structured notices (JSON + client ID list)
+- Reading and validating input files (CSV/Excel) with schema enforcement
+- Cleaning and transforming client data (dates, addresses, vaccine history)
+- Synthesizing stable school/board identifiers when they are missing in the extract
+- Assigning deterministic per-client sequence numbers sorted by school → last name → first name
+- Emitting a normalized run artifact at `output/artifacts/preprocessed_clients_<run_id>.json` (while still keeping the legacy `output/json_<language>/` payloads during the transition to the Python generator)
 
 Logging is written to `preprocess.log` for traceability.
 
