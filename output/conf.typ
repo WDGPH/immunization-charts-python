@@ -20,71 +20,17 @@
   )
 }
 
-#let client_info_tbl_fr(
-  equal_split: true,
-  vline: true, 
-  client,
-  client_id,
-  font_size
-) = {
-  // Define column widths based on equal_split
-  let columns = if equal_split {
-    (0.4fr, 0.4fr, 0.2fr)
-  } else {
-    (0.3fr, 0.5fr, 0.2fr)
-  }
-
-  let vline_stroke = if vline { 1pt + black } else { none }
-
-  // Content for the first column
-  let col1_content = align(left)[
-    Aux parents/tuteurs de : #linebreak()
-    *#client.name* #linebreak()
-    #v(0.02cm)
-    *#client.address* #linebreak()
-    *#client.city*, *Ontario* *#client.postal_code*
-  ]
-
-  // Content for the second column
-  let col2_content = align(left)[
-    ID du client : #smallcaps[*#client_id*] #v(0.02cm)
-    Date de naissance : *#client.date_of_birth* #v(0.02cm)
-    Centre de garde d'enfants : #smallcaps[*#client.school*]
-  ]
-
-  // QR code column
-  let col3_content = align(right)[
-    #if "qr_code" in client [
-      #image.decode(client.qr_code, width: 2.5cm)
-    ]
-  ]
-
-  // Central alignment for the entire table
-  align(center)[
-    #table(
-      columns: columns,
-      inset: font_size,
-      col1_content,
-      table.vline(stroke: vline_stroke),
-      col2_content,
-      table.vline(stroke: vline_stroke),
-      col3_content
-    )
-  ]
-}
-
 #let client_info_tbl_en(
   equal_split: true,
   vline: true, 
-  client,
-  client_id,
+  client_data,
   font_size
 ) = {
   // Define column widths based on equal_split
   let columns = if equal_split {
-    (0.4fr, 0.4fr, 0.2fr)
+    (0.5fr, 0.5fr)
   } else {
-    (0.3fr, 0.5fr, 0.2fr)
+    (0.4fr, 0.6fr)
   }
 
   let vline_stroke = if vline { 1pt + black } else { none }
@@ -92,24 +38,17 @@
   // Content for the first column
   let col1_content = align(left)[
     To Parent/Guardian of: #linebreak()
-    *#client.name* #linebreak()
+    *#client_data.name* #linebreak()
     #v(0.02cm)
-    *#client.address* #linebreak()
-    *#client.city*, *Ontario* *#client.postal_code*
+    *#client_data.address* #linebreak()
+    *#client_data.city*, *Ontario* *#client_data.postal_code*
   ]
 
   // Content for the second column
   let col2_content = align(left)[
-    Client ID: #smallcaps[*#client_id*] #v(0.02cm)
-    Date of Birth: *#client.date_of_birth* #v(0.02cm)
-    Childcare Centre: #smallcaps[*#client.school*]
-  ]
-
-  // QR code column
-  let col3_content = align(right)[
-    #if "qr_code" in client [
-      #image.decode(client.qr_code, width: 2.5cm)
-    ]
+    Client ID: #smallcaps[*#client_id.at(0)*] #v(0.02cm)
+    Date of Birth: *#client_data.date_of_birth* #v(0.02cm)
+    Childcare Centre: #smallcaps[*#client_data.school*]
   ]
 
   // Central alignment for the entire table
@@ -120,8 +59,6 @@
       col1_content,
       table.vline(stroke: vline_stroke),
       col2_content,
-      table.vline(stroke: vline_stroke),
-      col3_content
     )
   ]
 }
