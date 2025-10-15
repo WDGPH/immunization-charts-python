@@ -1,0 +1,48 @@
+# Configuration for notice contact details and QR payload templates.
+
+# Placeholders allowed in templated strings. These correspond to fields
+# documented in the README and validated during preprocessing.
+allowed_placeholders:
+  - client_id
+  - first_name
+  - last_name
+  - name
+  - date_of_birth
+  - date_of_birth_iso
+  - school
+  - city
+  - postal_code
+  - province
+  - street_address
+  - language
+  - language_code
+  - delivery_date
+
+# Optional override for the delivery date used when calculating ages.
+delivery_date: "2025-04-08"
+
+# QR payload templates can be customised per language. The strings accept the
+# placeholders listed above and behave like Python f-strings.
+qr_payload_template:
+  english: "https://www.test-immunization.ca/records?client_id={client_id}&dob={date_of_birth_iso}&lang={language_code}"
+  french: "https://www.test-immunization.ca/records?client_id={client_id}&dob={date_of_birth_iso}&lang={language_code}"
+
+# Contact actions control the surfaced communication details inside the notice.
+# Each value supports the placeholders declared in allowed_placeholders.
+contact_actions:
+  english:
+    portal_url: "https://www.test-immunization.ca/records?client_id={client_id}"
+    portal_label: "www.test-immunization.ca"
+    email: "records@test-immunization.ca"
+    mail_recipient: "Test Health"
+    mail_address: "123 Placeholder Street, Sample City, ON A1A 1A1"
+    phone: "555-555-5555 ext. 1234"
+    exemption_url: "https://www.test-immunization.ca/exemptions"
+  french:
+    portal_url: "https://www.test-immunization.ca/records?client_id={client_id}"
+    portal_label: "www.test-immunization.ca"
+    email: "records@test-immunization.ca"
+    mail_recipient: "Test Health"
+    mail_address: "123 Placeholder Street, Sample City, ON A1A 1A1"
+    phone: "555-555-5555 poste 1234"
+    exemption_url: "https://www.test-immunization.ca/exemptions"
