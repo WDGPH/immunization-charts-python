@@ -23,7 +23,7 @@ logging.basicConfig(
 
 )
 
-SUPPORTED_TEMPLATE_FIELDS = {
+SUPPORTED_QR_TEMPLATE_FIELDS = {
     "client_id",
     "first_name",
     "last_name",
@@ -37,28 +37,6 @@ SUPPORTED_TEMPLATE_FIELDS = {
     "street_address",
     "language",
     "language_code",
-    "delivery_date",
-}
-
-DEFAULT_CONTACT_ACTIONS = {
-    "english": {
-        "portal_url": "https://www.test-immunization.ca",
-        "portal_label": "www.test-immunization.ca",
-        "email": "records@test-immunization.ca",
-        "mail_recipient": "Test Health",
-        "mail_address": "123 Placeholder Street, Sample City, ON A1A 1A1",
-        "phone": "555-555-5555 ext. 1234",
-        "exemption_url": "https://www.test-immunization.ca/exemptions",
-    },
-    "french": {
-        "portal_url": "https://www.test-immunization.ca",
-        "portal_label": "www.test-immunization.ca",
-        "email": "records@test-immunization.ca",
-        "mail_recipient": "Test Health",
-        "mail_address": "123 Placeholder Street, Sample City, ON A1A 1A1",
-        "phone": "555-555-5555 poste 1234",
-        "exemption_url": "https://www.test-immunization.ca/exemptions",
-    },
 }
 
 DEFAULT_QR_PAYLOAD_TEMPLATE = {
@@ -70,7 +48,6 @@ DEFAULT_QR_PAYLOAD_TEMPLATE = {
 class ClientDataProcessor:
     def __init__(self, df: pd.DataFrame, disease_map: dict, vaccine_ref: dict,
                 ignore_agents: list, delivery_date: str, language: str = "en",
-                contact_templates: Optional[Dict[str, Any]] = None,
                 qr_payload_template: Optional[str] = None,
                 allowed_template_fields: Optional[Set[str]] = None):
         self.df = df.copy()
@@ -79,11 +56,10 @@ class ClientDataProcessor:
         self.ignore_agents = ignore_agents
         self.delivery_date = delivery_date
         self.language = language
-        base_allowed_fields = set(SUPPORTED_TEMPLATE_FIELDS)
+        base_allowed_fields = set(SUPPORTED_QR_TEMPLATE_FIELDS)
         if allowed_template_fields:
             base_allowed_fields |= set(allowed_template_fields)
         self.allowed_template_fields = base_allowed_fields
-        self.contact_templates = contact_templates or {}
         self.qr_payload_template = qr_payload_template
         self.formatter = Formatter()
         self.notices = defaultdict(lambda: {
@@ -95,7 +71,6 @@ class ClientDataProcessor:
             "received": [],
             "qr_code": "",  # File path to QR code image
             "qr_payload": "",
-            "contact_actions": {},
         })
 
     def process_vaccines_due(self, vaccines_due: str) -> str:
@@ -175,41 +150,6 @@ class ClientDataProcessor:
 
         return template.format(**context)
 
-    def _resolve_template_mapping(self, mapping: Dict[str, Any], context: Dict[str, Any], prefix: str) -> Dict[str, Any]:
-        resolved = {}
-        for key, value in mapping.items():
-            current_key = f"{prefix}.{key}" if prefix else key
-            if isinstance(value, dict):
-                resolved[key] = self._resolve_template_mapping(value, context, current_key)
-            elif isinstance(value, str):
-                resolved[key] = self._format_template(value, context, current_key)
-            elif value is None:
-                resolved[key] = ""
-            else:
-                resolved[key] = value
-        return resolved
-
-    def _build_contact_actions(self, context: Dict[str, Any]) -> Dict[str, Any]:
-        if not self.contact_templates:
-            return {}
-
-        actions = self._resolve_template_mapping(self.contact_templates, context, "contact_templates")
-
-        email_address = actions.get("email")
-        if isinstance(email_address, str) and email_address:
-            actions.setdefault("email_display", email_address)
-            actions.setdefault("email_link", f"mailto:{email_address}")
-
-        portal_url = actions.get("portal_url")
-        if isinstance(portal_url, str) and portal_url:
-            actions.setdefault("portal_label", portal_url)
-
-        phone_number = actions.get("phone")
-        if isinstance(phone_number, str) and phone_number:
-            actions.setdefault("phone_display", phone_number)
-
-        return actions
-
     def _build_qr_payload(self, context: Dict[str, Any], default_payload: str) -> str:
         if not self.qr_payload_template:
             return default_payload
@@ -246,7 +186,6 @@ class ClientDataProcessor:
             self.notices[client_id]["city"] = row.CITY
             self.notices[client_id]["postal_code"] = row.POSTAL_CODE if pd.notna(row.POSTAL_CODE) and row.POSTAL_CODE != "" else "Not provided"
             self.notices[client_id]["province"] = row.PROVINCE
-            self.notices[client_id]["contact_actions"] = self._build_contact_actions(context)
             age_value = row.AGE if "AGE" in row else row.get("AGE")
             if age_value is not None and not pd.isna(age_value):
                 over_16 = age_value > 16
@@ -483,35 +422,28 @@ if __name__ == "__main__":
     config_dir = Path("../config")
     disease_map_path = config_dir / "disease_map.json"
     vaccine_ref_path = config_dir / "vaccine_reference.json"
-    notice_config_path = config_dir / "notice_config.yaml"
+    qr_config_path = config_dir / "qr_config.yaml"
 
     with open(disease_map_path, "r") as disease_map_file:
         disease_map = json.load(disease_map_file)
     with open(vaccine_ref_path, "r") as vaccine_ref_file:
         vaccine_ref = json.load(vaccine_ref_file)
 
-    notice_config: Dict[str, Any] = {}
-    if notice_config_path.exists():
-        with open(notice_config_path, "r") as notice_config_file:
-            notice_config = yaml.safe_load(notice_config_file) or {}
+    qr_config: Dict[str, Any] = {}
+    if qr_config_path.exists():
+        with open(qr_config_path, "r") as qr_config_file:
+            qr_config = yaml.safe_load(qr_config_file) or {}
     else:
-        logging.warning("Notice configuration not found at %s; falling back to defaults.", notice_config_path)
-
-    contact_templates = DEFAULT_CONTACT_ACTIONS.get(language, {}).copy()
-    contact_overrides = notice_config.get("contact_actions", {})
-    if isinstance(contact_overrides, dict):
-        language_overrides = contact_overrides.get(language)
-        if isinstance(language_overrides, dict):
-            contact_templates.update(language_overrides)
+        logging.info("QR configuration not found at %s; using default payload template.", qr_config_path)
 
     qr_payload_template = DEFAULT_QR_PAYLOAD_TEMPLATE.get(language)
-    qr_template_config = notice_config.get("qr_payload_template")
+    qr_template_config = qr_config.get("qr_payload_template")
     if isinstance(qr_template_config, dict):
         qr_payload_template = qr_template_config.get(language, qr_payload_template)
     elif isinstance(qr_template_config, str):
         qr_payload_template = qr_template_config
 
-    allowed_placeholder_overrides = notice_config.get("allowed_placeholders")
+    allowed_placeholder_overrides = qr_config.get("allowed_placeholders")
     if isinstance(allowed_placeholder_overrides, (list, set, tuple)):
         allowed_placeholder_set = set(allowed_placeholder_overrides)
     else:
@@ -519,7 +451,7 @@ if __name__ == "__main__":
         if allowed_placeholder_overrides not in (None, []):
             logging.warning("Ignoring invalid allowed_placeholders configuration: expected a list of strings.")
 
-    delivery_date_value = notice_config.get("delivery_date", "2024-06-01")
+    delivery_date_value = qr_config.get("delivery_date", "2024-06-01")
 
     for batch_file in all_batch_files:
         print(f"Processing batch file: {batch_file}")
@@ -536,9 +468,8 @@ if __name__ == "__main__":
             ignore_agents=["-unspecified", "unspecified", "Not Specified", "Not specified", "Not Specified-unspecified"],
             delivery_date=delivery_date_value,
             language=language,
-            contact_templates=contact_templates,
             qr_payload_template=qr_payload_template,
-            allowed_template_fields=allowed_placeholder_set,
+            allowed_template_fields=allowed_placeholder_set or None,
         )
         processor.build_notices()
         processor.save_output(Path(output_dir_final), batch_file.stem)
