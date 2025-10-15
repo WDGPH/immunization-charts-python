@@ -13,7 +13,7 @@ import glob
 import json
 import re
 from collections import defaultdict
-from utils import convert_date_string_french, over_16_check, convert_date_iso, convert_date_string
+from utils import over_16_check, convert_date
 
 logging.basicConfig(
     filename = "preprocess.log",
@@ -60,7 +60,7 @@ class ClientDataProcessor:
         vax_date = []
         for m in matches:
             date_str, vaccine = m.split(' - ')
-            date_str = convert_date_iso(date_str.strip())
+            date_str = convert_date(date_str.strip(), to_format='iso')
             if vaccine in self.ignore_agents:
                 continue
             vax_date.append([date_str, vaccine.strip()])
@@ -74,7 +74,8 @@ class ClientDataProcessor:
             row.SCHOOL_NAME = row.SCHOOL_NAME.replace("_", " ")
             self.notices[client_id]["school"] = row.SCHOOL_NAME
             self.notices[client_id]["date_of_birth"] = (
-                convert_date_string_french(row.DATE_OF_BIRTH) if self.language == 'french' else convert_date_string(row.DATE_OF_BIRTH)
+                convert_date(row.DATE_OF_BIRTH, to_format='display', lang='fr') if self.language == 'french' 
+                else convert_date(row.DATE_OF_BIRTH, to_format='display')
             )
             self.notices[client_id]["date_of_birth_iso"] = row.DATE_OF_BIRTH
             self.notices[client_id]["address"] = row.STREET_ADDRESS
