@@ -1,127 +1,91 @@
-"""
-Preprocessing pipeline for immunization-charts.
-Replaces run_pipeline with Python orchestrator
-"""
-
-import sys
-import logging
-import pandas as pd
-from pathlib import Path
+import argparse
 import json
+import logging
 import re
-from collections import defaultdict
-from utils import convert_date_string_french, convert_date_iso, convert_date_string
+from dataclasses import dataclass
+from datetime import datetime, timezone
+from hashlib import sha1
+from pathlib import Path
+from typing import Any, Dict, List
 
+import pandas as pd
+
+try:  # Allow both package and script style execution
+    from .utils import convert_date_iso, convert_date_string, convert_date_string_french
+except ImportError:  # pragma: no cover - fallback for CLI execution
+    from utils import convert_date_iso, convert_date_string, convert_date_string_french
+
+LOG_FILE = Path(__file__).with_name("preprocess.log")
 logging.basicConfig(
-    filename = "preprocess.log",
-    level = logging.INFO,
-
+    filename=str(LOG_FILE),
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(message)s",
 )
 
-class ClientDataProcessor:
-    def __init__(self, df: pd.DataFrame, disease_map: dict, vaccine_ref: dict,
-                ignore_agents: list, delivery_date: str, language: str = "en"):
-        self.df = df.copy()
-        self.disease_map = disease_map
-        self.vaccine_ref = vaccine_ref
-        self.ignore_agents = ignore_agents
-        self.delivery_date = delivery_date,
-        self.language = language
-        self.notices = defaultdict(lambda: {
-            "name": "",
-            "school": "",
-            "date_of_birth": "",
-            "age": "",
-            "over_16": "",
-            "received": []
-        })
+SCRIPT_DIR = Path(__file__).resolve().parent
+CONFIG_DIR = SCRIPT_DIR.parent / "config"
+DISEASE_MAP_PATH = CONFIG_DIR / "disease_map.json"
+VACCINE_REFERENCE_PATH = CONFIG_DIR / "vaccine_reference.json"
 
-    def process_vaccines_due(self, vaccines_due: str) -> str:
-        """Map diseases to vaccines using disease_map and handle language-specific cases."""
-        if not vaccines_due:
-            return ""
-        vaccines_updated = []
-        for v in vaccines_due.split(', '):
-            v_clean = v.strip()
-            # language-specific replacements
-            if self.language == 'en' and v_clean == 'Haemophilus influenzae infection, invasive':
-                v_clean = 'Invasive Haemophilus influenzae infection (Hib)'
-            elif self.language == 'fr' and v_clean == 'infection à Haemophilus influenzae, invasive':
-                v_clean = 'Haemophilus influenzae de type b (Hib)'
-            mapped = self.disease_map.get(v_clean, v_clean)
-            vaccines_updated.append(mapped)
-        return ', '.join(vaccines_updated).replace("'", "").replace('"', '').rstrip(', ')
+IGNORE_AGENTS = [
+    "-unspecified",
+    "unspecified",
+    "Not Specified",
+    "Not specified",
+    "Not Specified-unspecified",
+]
 
-    def process_received_agents(self, received_agents: str):
-        matches = re.findall(r'\w{3} \d{1,2}, \d{4} - [^,]+', received_agents)
-        vax_date = []
-        for m in matches:
-            date_str, vaccine = m.split(' - ')
-            date_str = convert_date_iso(date_str.strip())
-            if vaccine in self.ignore_agents:
-                continue
-            vax_date.append([date_str, vaccine.strip()])
-        vax_date.sort(key=lambda x: x[0])
-        return vax_date
-    
-    def build_notices(self):
-        for _, row in self.df.iterrows():
-            client_id = row.CLIENT_ID
-            self.notices[client_id]["name"] = f"{row.FIRST_NAME} {row.LAST_NAME}"
-            row.SCHOOL_NAME = row.SCHOOL_NAME.replace("_", " ")
-            self.notices[client_id]["school"] = row.SCHOOL_NAME
-            self.notices[client_id]["date_of_birth"] = (
-                convert_date_string_french(row.DATE_OF_BIRTH) if self.language == 'fr' else convert_date_string(row.DATE_OF_BIRTH)
-            )
-            self.notices[client_id]["address"] = row.STREET_ADDRESS
-            self.notices[client_id]["city"] = row.CITY
-            self.notices[client_id]["postal_code"] = row.POSTAL_CODE if pd.notna(row.POSTAL_CODE) and row.POSTAL_CODE != "" else "Not provided"
-            self.notices[client_id]["province"] = row.PROVINCE
-            self.notices[client_id]["over_16"] = row.AGE > 16
-            self.notices[client_id]["vaccines_due"] = self.process_vaccines_due(row.OVERDUE_DISEASE) 
+REQUIRED_COLUMNS = [
+    "SCHOOL NAME",
+    "CLIENT ID",
+    "FIRST NAME",
+    "LAST NAME",
+    "DATE OF BIRTH",
+    "CITY",
+    "POSTAL CODE",
+    "PROVINCE/TERRITORY",
+    "OVERDUE DISEASE",
+    "IMMS GIVEN",
+    "STREET ADDRESS LINE 1",
+    "STREET ADDRESS LINE 2",
+]
 
-            vax_date_list = self.process_received_agents(row.IMMS_GIVEN)
-            i = 0
-            while i < len(vax_date_list):
 
-                vax_list = []
-                disease_list = []
+@dataclass
+class PreprocessResult:
+    clients: List[Dict[str, Any]]
+    legacy_payload: Dict[str, Dict[str, Any]]
+    client_ids: List[str]
+    warnings: List[str]
 
-                date_str, vaccine = vax_date_list[i]
-                vax_list.append(vaccine)
 
-                # group vaccines with the same date
-                for j in range(i + 1, len(vax_date_list)):
-
-                    date_str_next, vaccine_next = vax_date_list[j]
-
-                    if date_str == date_str_next:
-                        vax_list.append(vaccine_next)
-                        i += 1
-                    else:
-                        break
-                
-                disease_list = [self.vaccine_ref.get(v, v) for v in vax_list]
-                # flatten disease lists 
-                disease_list = [d for sublist in disease_list for d in (sublist if isinstance(sublist, list) else [sublist])]
-                # replace 'unspecified' vaccines
-                vax_list = [v.replace('-unspecified', '*').replace(' unspecified', '*') for v in vax_list]
-                # translate to French if needed
-                if self.language == 'fr':
-                    disease_list = [self.vaccine_ref.get(d, d) for d in disease_list]
-                self.notices[client_id]["received"].append({"date_given": date_str, "vaccine": vax_list, "diseases": disease_list})
-                i += 1
-
-    def save_output(self, outdir: Path, filename: str):
-        outdir.mkdir(parents=True, exist_ok=True)
-        notices_dict = dict(self.notices)
-        # save client ids
-        client_ids_df = pd.DataFrame(list(notices_dict.keys()), columns=["Client_ID"])
-        client_ids_df.to_csv(outdir / f"{filename}_client_ids.csv", index=False, header=False)
-        # save JSON
-        with open(outdir / f"{filename}.json", 'w') as f:
-            json.dump(notices_dict, f, indent=4)
-        print(f"Structured data saved to {outdir / f'{filename}.json'}")
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Validate and normalize immunization data extracts into a single JSON artifact."
+    )
+    parser.add_argument("input_dir", type=Path, help="Directory containing the source extract.")
+    parser.add_argument("input_file", type=str, help="Filename of the extract (CSV or Excel).")
+    parser.add_argument("output_dir", type=Path, help="Directory where artifacts will be written.")
+    parser.add_argument(
+        "language",
+        nargs="?",
+        default="en",
+        choices=["en", "fr"],
+        help="Language code for downstream processing (default: en).",
+    )
+    parser.add_argument(
+        "--run-id",
+        dest="run_id",
+        help="Optional run identifier used when naming artifacts (defaults to current UTC timestamp).",
+    )
+    parser.add_argument(
+        "--no-legacy-output",
+        dest="legacy_output",
+        action="store_false",
+        help="Skip emitting the legacy json_<lang> artifacts (useful once the Python generator is in place).",
+    )
+    parser.set_defaults(legacy_output=True)
+    return parser.parse_args()
 
 
 def detect_file_type(file_path: Path) -> str:
@@ -160,167 +124,322 @@ def read_input(file_path: Path) -> pd.DataFrame:
         logging.error(f"Failed to read {file_path}: {e}")
         raise
 
-def separate_by_column(data: pd.DataFrame, col_name: str, out_path: Path):
-    """
-    Group a DataFrame by a column and save each group to a separate CSV
-    """
-    out_path.mkdir(parents=True, exist_ok=True)
-
-    if col_name not in data.columns:
-        raise ValueError(f"Column {col_name} not found in DataFrame")
-    
-    grouped = data.groupby(col_name)
-
-    for name, group in grouped:
-    
-        safe_name = str(name).replace(" ", "_").replace("/", "_").replace("-","_").replace(".","").upper()
-        output_file = f"{out_path}/{safe_name}.csv"  # Save as CSV
-        
-        print(f"Processing group: {safe_name}")
-        group.to_csv(output_file, index=False, sep=";")
-        logging.info(f"Saved group {safe_name} with {len(group)} rows to {output_file}")
-
-
-def split_batches(input_dir: Path, output_dir: Path, batch_size: int):
-    """
-    Split CSV files in input_dir into batches of size batch_size
-    and save them in output_dir
-    """
-
-    output_dir.mkdir(parents=True, exist_ok=True)
-
-    csv_files = list(input_dir.glob("*.csv"))
-
-    if not csv_files:
-        print(f"No CSV files found in {input_dir}")
-        return
-
-    for file in csv_files:
-        df = pd.read_csv(file, sep=";", engine="python", encoding="latin-1", quotechar='"')
-        filename_base = file.stem
-
-        # Split into batches
-        num_batches = (len(df) + batch_size - 1) // batch_size  # ceiling division
-        for i in range(num_batches):
-            start_idx = i * batch_size
-            end_idx = start_idx + batch_size
-            batch_df = df.iloc[start_idx:end_idx]
-
-            batch_file = output_dir / f"{filename_base}_{i+1:02d}.csv"
-            batch_df.to_csv(batch_file, index=False, sep=";")
-            print(f"Saved batch: {batch_file} ({len(batch_df)} rows)")
-
-def check_file_existence(file_path: Path) -> bool:
-    """Check if a file exists and is accessible."""
-    exists = file_path.exists() and file_path.is_file()
-    if exists:
-        logging.info(f"File exists: {file_path}")
-    else:
-        logging.warning(f"File does not exist: {file_path}")
-    return exists
-
-def load_data(input_file: str) -> pd.DataFrame:
-    """Load and clean data from input file."""
-    df = read_input(Path(input_file))
-
-    # Replace column names with uppercase 
+def ensure_required_columns(df: pd.DataFrame) -> pd.DataFrame:
+    df = df.copy()
     df.columns = [col.strip().upper() for col in df.columns]
-    logging.info(f"Columns after loading: {df.columns.tolist()}")
+    missing = [col for col in REQUIRED_COLUMNS if col not in df.columns]
+    if missing:
+        raise ValueError(f"Missing required columns: {missing}")
 
+    df.rename(columns=lambda x: x.replace(" ", "_"), inplace=True)
+    df.rename(columns={"PROVINCE/TERRITORY": "PROVINCE"}, inplace=True)
     return df
 
-def validate_transform_columns(df: pd.DataFrame, required_columns: list):
-    """Validate that required columns are present in the DataFrame."""
-    missing_cols = [col for col in required_columns if col not in df.columns]
-    if missing_cols:
-        raise ValueError(f"Missing required columns: {missing_cols} in DataFrame with columns {df.columns.tolist()}")
-    
-    # Rename columns to have underscores instead of spaces
-    df.rename(columns=lambda x: x.replace(" ", "_"), inplace=True)
-
-    # Rename PROVINCE/TERRITORY to PROVINCE
-    df.rename(columns={"PROVINCE/TERRITORY": "PROVINCE"}, inplace=True)
-
-    logging.info("All required columns are present.")
-
-def separate_by_school(df: pd.DataFrame, output_dir: str, school_column: str = "School Name"):
-    """
-    Separates the DataFrame by school/daycare and writes separate CSVs.
-
-    Args:
-        df (pd.DataFrame): Cleaned DataFrame.
-        output_dir (str): Path to directory where CSVs will be saved.
-        school_column (str): Column to separate by (default "School Name").
-    """
-    output_path = Path(output_dir)
-    output_path.mkdir(parents=True, exist_ok=True)
-
-    logging.info(f"Separating data by {school_column}...")
-    separate_by_column(df, school_column, output_path)
-    logging.info(f"Data separated by {school_column}. Files saved to {output_path}.")
-
-if __name__ == "__main__":
-    if len(sys.argv) < 4:
-        print("Usage: python preprocess.py <input_dir> <input_file> <output_dir> [language]")
-        sys.exit(1)
-    
-    required_columns = [
-        "SCHOOL NAME",
-        "CLIENT ID",
-        "FIRST NAME",
-        "LAST NAME",
-        "DATE OF BIRTH",
+def normalize_dataframe(df: pd.DataFrame) -> pd.DataFrame:
+    working = df.copy()
+    # Standardize string columns we care about.
+    string_columns = [
+        "SCHOOL_NAME",
+        "FIRST_NAME",
+        "LAST_NAME",
         "CITY",
-        "POSTAL CODE",
-        "PROVINCE/TERRITORY",
-        "POSTAL CODE",
-        "OVERDUE DISEASE",
-        "IMMS GIVEN",
-        "STREET ADDRESS LINE 1",
-        "STREET ADDRESS LINE 2",
+        "PROVINCE",
+        "POSTAL_CODE",
+        "STREET_ADDRESS_LINE_1",
+        "STREET_ADDRESS_LINE_2",
+        "SCHOOL_TYPE",
+        "BOARD_NAME",
+        "BOARD_ID",
+        "SCHOOL_ID",
+        "UNIQUE_ID",
     ]
 
-    input_dir = sys.argv[1]
-    input_file = sys.argv[2]
-    output_dir = sys.argv[3]
-    language = sys.argv[4] if len(sys.argv) > 4 else "en"
+    for column in string_columns:
+        if column not in working.columns:
+            working[column] = ""
+        working[column] = working[column].fillna(" ").astype(str).str.strip()
 
-    if language not in ["en", "fr"]:
-        print("Error: Language must be 'en' or 'fr'")
-        sys.exit(1)
+    working["DATE_OF_BIRTH"] = pd.to_datetime(working["DATE_OF_BIRTH"], errors="coerce")
+    if "AGE" in working.columns:
+        working["AGE"] = pd.to_numeric(working["AGE"], errors="coerce")
+    else:
+        working["AGE"] = pd.NA
 
-    output_dir_school = output_dir + "/by_school"
-    output_dir_batch = output_dir + "/batches"
-    output_dir_final = output_dir + "/json_" + language
+    if "BOARD_NAME" not in working.columns:
+        working["BOARD_NAME"] = ""
+    if "BOARD_ID" not in working.columns:
+        working["BOARD_ID"] = ""
+    if "SCHOOL_TYPE" not in working.columns:
+        working["SCHOOL_TYPE"] = ""
 
-    df = load_data(input_dir + '/' + input_file)
-    validate_transform_columns(df, required_columns) #FIXME make required_columns come from a config file
-    separate_by_school(df, output_dir_school, "SCHOOL_NAME")
+    return working
 
-    # Step 3: Split by batch size
-    batch_size = 100  # FIXME make this come from a config file
-    batch_dir = Path(output_dir + "/batches")
-    split_batches(Path(output_dir_school), Path(batch_dir), batch_size)
-    logging.info("Completed splitting into batches.")
 
-    all_batch_files = sorted(batch_dir.glob("*.csv"))
+def synthesize_identifier(existing: str, source: str, prefix: str) -> str:
+    existing = (existing or "").strip()
+    if existing:
+        return existing
 
-    for batch_file in all_batch_files:
-        print(f"Processing batch file: {batch_file}")
-        df_batch = pd.read_csv(batch_file, sep=";", engine="python", encoding="latin-1", quotechar='"')
+    base = (source or "").strip().lower() or "unknown"
+    digest = sha1(base.encode("utf-8")).hexdigest()[:10]
+    return f"{prefix}_{digest}"
 
-        if 'STREET_ADDRESS_LINE_2' in df_batch.columns:
-            df_batch['STREET_ADDRESS'] = df_batch['STREET_ADDRESS_LINE_1'].fillna('') + ' ' + df_batch['STREET_ADDRESS_LINE_2'].fillna('')
-            df_batch.drop(columns=['STREET_ADDRESS_LINE_1', 'STREET_ADDRESS_LINE_2'], inplace=True)
 
-        processor = ClientDataProcessor(
-            df=df_batch,
-            disease_map=json.load(open("../config/disease_map.json")),
-            vaccine_ref=json.load(open("../config/vaccine_reference.json")),
-            ignore_agents=["-unspecified", "unspecified", "Not Specified", "Not specified", "Not Specified-unspecified"],
-            delivery_date="2024-06-01",
-            language=language  # or 'fr'
+def process_vaccines_due(vaccines_due: Any, language: str, disease_map: Dict[str, str]) -> str:
+    """Map diseases to vaccines using disease_map and handle language-specific cases."""
+    if not isinstance(vaccines_due, str) or not vaccines_due.strip():
+        return ""
+
+    replacements = {
+        "en": {
+            "Haemophilus influenzae infection, invasive": "Invasive Haemophilus influenzae infection (Hib)",
+        },
+        "fr": {
+            "infection à Haemophilus influenzae, invasive": "Haemophilus influenzae de type b (Hib)",
+        },
+    }
+
+    normalised = vaccines_due
+    for original, replacement in replacements.get(language, {}).items():
+        normalised = normalised.replace(original, replacement)
+
+    items: List[str] = []
+    for token in normalised.split(","):
+        cleaned = token.strip()
+        mapped = disease_map.get(cleaned, cleaned)
+        items.append(mapped)
+
+    return ", ".join(item.replace("'", "").replace('"', "") for item in items if item)
+
+
+def process_received_agents(received_agents: Any, ignore_agents: List[str]) -> List[Dict[str, Any]]:
+    if not isinstance(received_agents, str) or not received_agents.strip():
+        return []
+
+    pattern = re.compile(r"\w{3} \d{1,2}, \d{4} - [^,]+")
+    matches = pattern.findall(received_agents)
+    rows: List[Dict[str, Any]] = []
+
+    for match in matches:
+        date_str, vaccine = match.split(" - ", maxsplit=1)
+        vaccine = vaccine.strip()
+        if vaccine in ignore_agents:
+            continue
+        date_iso = convert_date_iso(date_str.strip())
+        rows.append({"date_given": date_iso, "vaccine": vaccine})
+
+    rows.sort(key=lambda item: item["date_given"])
+    grouped: List[Dict[str, Any]] = []
+    for entry in rows:
+        if not grouped or grouped[-1]["date_given"] != entry["date_given"]:
+            grouped.append({
+                "date_given": entry["date_given"],
+                "vaccine": [entry["vaccine"]],
+            })
+        else:
+            grouped[-1]["vaccine"].append(entry["vaccine"])
+
+    return grouped
+
+
+def enrich_grouped_records(
+    grouped: List[Dict[str, Any]],
+    vaccine_reference: Dict[str, Any],
+    language: str,
+) -> List[Dict[str, Any]]:
+    enriched: List[Dict[str, Any]] = []
+    for item in grouped:
+        vaccines = [v.replace("-unspecified", "*").replace(" unspecified", "*") for v in item["vaccine"]]
+        diseases = []
+        for vaccine in vaccines:
+            ref = vaccine_reference.get(vaccine, vaccine)
+            if isinstance(ref, list):
+                diseases.extend(ref)
+            else:
+                diseases.append(ref)
+        enriched.append(
+            {
+                "date_given": item["date_given"],
+                "vaccine": vaccines,
+                "diseases": diseases,
+            }
         )
-        processor.build_notices()
-        processor.save_output(Path(output_dir_final), batch_file.stem)
-        logging.info("Preprocessing completed successfully.")
+    return enriched
+
+
+def build_preprocess_result(
+    df: pd.DataFrame,
+    language: str,
+    disease_map: Dict[str, str],
+    vaccine_reference: Dict[str, Any],
+    ignore_agents: List[str],
+) -> PreprocessResult:
+    warnings: set[str] = set()
+    working = normalize_dataframe(df)
+
+    working["SCHOOL_ID"] = working.apply(
+        lambda row: synthesize_identifier(row.get("SCHOOL_ID", ""), row["SCHOOL_NAME"], "sch"), axis=1
+    )
+    working["BOARD_ID"] = working.apply(
+        lambda row: synthesize_identifier(row.get("BOARD_ID", ""), row.get("BOARD_NAME", ""), "brd"), axis=1
+    )
+
+    if (working["BOARD_NAME"] == "").any():
+        affected = working.loc[working["BOARD_NAME"] == "", "SCHOOL_NAME"].unique().tolist()
+        warnings.add(
+            "Missing board name for: " + ", ".join(sorted(filter(None, affected)))
+            if affected
+            else "Missing board name for one or more schools."
+        )
+
+    sorted_df = working.sort_values(
+        by=["SCHOOL_NAME", "LAST_NAME", "FIRST_NAME", "CLIENT_ID"],
+        kind="stable",
+    ).reset_index(drop=True)
+    sorted_df["SEQUENCE"] = [f"{idx + 1:05d}" for idx in range(len(sorted_df))]
+
+    clients: List[Dict[str, Any]] = []
+    legacy_payload: Dict[str, Dict[str, Any]] = {}
+    client_ids: List[str] = []
+
+    for row in sorted_df.itertuples(index=False):
+        client_id = str(row.CLIENT_ID)
+        client_ids.append(client_id)
+        sequence = row.SEQUENCE
+        dob_iso = row.DATE_OF_BIRTH.strftime("%Y-%m-%d") if pd.notna(row.DATE_OF_BIRTH) else None
+        if dob_iso is None:
+            warnings.add(f"Missing date of birth for client {client_id}")
+
+        formatted_dob = (
+            convert_date_string_french(dob_iso) if language == "fr" and dob_iso else convert_date_string(dob_iso)
+        )
+        vaccines_due = process_vaccines_due(row.OVERDUE_DISEASE, language, disease_map)
+        vaccines_due_list = [item.strip() for item in vaccines_due.split(",") if item.strip()]
+        received_grouped = process_received_agents(row.IMMS_GIVEN, ignore_agents)
+        received = enrich_grouped_records(received_grouped, vaccine_reference, language)
+
+        postal_code = row.POSTAL_CODE if row.POSTAL_CODE else "Not provided"
+        over_16 = bool(row.AGE >= 16) if not pd.isna(row.AGE) else False
+        address_line = " ".join(filter(None, [row.STREET_ADDRESS_LINE_1, row.STREET_ADDRESS_LINE_2])).strip()
+
+        client_entry = {
+            "sequence": sequence,
+            "client_id": client_id,
+            "language": language,
+            "school": {
+                "id": row.SCHOOL_ID,
+                "name": row.SCHOOL_NAME,
+                "type": row.SCHOOL_TYPE or None,
+            },
+            "board": {
+                "id": row.BOARD_ID,
+                "name": row.BOARD_NAME or None,
+            },
+            "person": {
+                "first_name": row.FIRST_NAME,
+                "last_name": row.LAST_NAME,
+                "full_name": " ".join(filter(None, [row.FIRST_NAME, row.LAST_NAME])).strip(),
+                "date_of_birth_iso": dob_iso,
+                "date_of_birth_display": formatted_dob,
+                "age": None if pd.isna(row.AGE) else int(row.AGE),
+                "over_16": over_16,
+            },
+            "contact": {
+                "street": address_line,
+                "city": row.CITY,
+                "province": row.PROVINCE,
+                "postal_code": postal_code,
+            },
+            "vaccines_due": vaccines_due,
+            "vaccines_due_list": vaccines_due_list,
+            "received": received,
+            "metadata": {
+                "unique_id": row.UNIQUE_ID or None,
+            },
+        }
+        clients.append(client_entry)
+
+        legacy_payload[client_id] = {
+            "name": client_entry["person"]["full_name"],
+            "school": row.SCHOOL_NAME,
+            "school_id": row.SCHOOL_ID,
+            "school_type": row.SCHOOL_TYPE or None,
+            "board": row.BOARD_NAME or None,
+            "board_id": row.BOARD_ID,
+            "date_of_birth": formatted_dob,
+            "age": client_entry["person"]["age"],
+            "over_16": over_16,
+            "address": address_line,
+            "city": row.CITY,
+            "postal_code": postal_code,
+            "province": row.PROVINCE,
+            "vaccines_due": vaccines_due,
+            "vaccines_due_list": vaccines_due_list,
+            "received": received,
+            "sequence": sequence,
+            "language": language,
+        }
+
+    return PreprocessResult(
+        clients=clients,
+        legacy_payload=legacy_payload,
+        client_ids=client_ids,
+        warnings=sorted(warnings),
+    )
+
+
+def write_artifact(output_dir: Path, language: str, run_id: str, result: PreprocessResult) -> Path:
+    output_dir.mkdir(parents=True, exist_ok=True)
+    payload = {
+        "run_id": run_id,
+        "language": language,
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "total_clients": len(result.clients),
+        "clients": result.clients,
+        "warnings": result.warnings,
+    }
+    artifact_path = output_dir / f"preprocessed_clients_{run_id}.json"
+    artifact_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    logging.info("Wrote normalized artifact to %s", artifact_path)
+    return artifact_path
+
+
+def write_legacy_outputs(output_dir: Path, base_name: str, result: PreprocessResult) -> None:
+    output_dir.mkdir(parents=True, exist_ok=True)
+    json_path = output_dir / f"{base_name}.json"
+    csv_path = output_dir / f"{base_name}_client_ids.csv"
+
+    json_path.write_text(json.dumps(result.legacy_payload, indent=4), encoding="utf-8")
+    csv_path.write_text("\n".join(result.client_ids) + "\n", encoding="utf-8")
+    logging.info("Wrote legacy payload to %s and %s", json_path, csv_path)
+
+
+def main() -> None:
+    args = parse_args()
+    run_id = args.run_id or datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S")
+
+    input_path = args.input_dir / args.input_file
+    df_raw = read_input(input_path)
+    df = ensure_required_columns(df_raw)
+
+    disease_map = json.loads(DISEASE_MAP_PATH.read_text(encoding="utf-8"))
+    vaccine_reference = json.loads(VACCINE_REFERENCE_PATH.read_text(encoding="utf-8"))
+
+    result = build_preprocess_result(df, args.language, disease_map, vaccine_reference, IGNORE_AGENTS)
+
+    artifact_path = write_artifact(args.output_dir / "artifacts", args.language, run_id, result)
+
+    if args.legacy_output:
+        legacy_dir = args.output_dir / f"json_{args.language}"
+        legacy_base = f"{args.language}_clients_{run_id}"
+        write_legacy_outputs(legacy_dir, legacy_base, result)
+
+    print(f"Structured data saved to {artifact_path}")
+    if result.warnings:
+        print("Warnings detected during preprocessing:")
+        for warning in result.warnings:
+            print(f" - {warning}")
+
+
+if __name__ == "__main__":
+    main()
