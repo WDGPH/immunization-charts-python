@@ -1,6 +1,3 @@
-import shutil
-from pathlib import Path
-import pytest
 from scripts.cleanup import safe_delete, remove_files_with_ext, cleanup
 
 def test_safe_delete(tmp_path):
@@ -41,7 +38,7 @@ def test_remove_files_with_ext(tmp_path):
 def test_cleanup(tmp_path):
     # Setup the directory structure
     outdir_path = tmp_path
-    language = "english"
+    language = "en"
     json_file_path = outdir_path / f'json_{language}'
     json_file_path.mkdir()
     (json_file_path / "file1.typ").touch()

@@ -3,17 +3,14 @@ Preprocessing pipeline for immunization-charts.
 Replaces run_pipeline with Python orchestrator
 """
 
-import os
 import sys
 import logging
 import pandas as pd
 from pathlib import Path
-import yaml 
-import glob
 import json
 import re
 from collections import defaultdict
-from utils import convert_date_string_french, over_16_check, convert_date_iso, convert_date_string
+from utils import convert_date_string_french, convert_date_iso, convert_date_string
 
 logging.basicConfig(
     filename = "preprocess.log",
@@ -47,9 +44,9 @@ class ClientDataProcessor:
         for v in vaccines_due.split(', '):
             v_clean = v.strip()
             # language-specific replacements
-            if self.language == 'english' and v_clean == 'Haemophilus influenzae infection, invasive':
+            if self.language == 'en' and v_clean == 'Haemophilus influenzae infection, invasive':
                 v_clean = 'Invasive Haemophilus influenzae infection (Hib)'
-            elif self.language == 'french' and v_clean == 'infection à Haemophilus influenzae, invasive':
+            elif self.language == 'fr' and v_clean == 'infection à Haemophilus influenzae, invasive':
                 v_clean = 'Haemophilus influenzae de type b (Hib)'
             mapped = self.disease_map.get(v_clean, v_clean)
             vaccines_updated.append(mapped)
@@ -74,7 +71,7 @@ class ClientDataProcessor:
             row.SCHOOL_NAME = row.SCHOOL_NAME.replace("_", " ")
             self.notices[client_id]["school"] = row.SCHOOL_NAME
             self.notices[client_id]["date_of_birth"] = (
-                convert_date_string_french(row.DATE_OF_BIRTH) if self.language == 'french' else convert_date_string(row.DATE_OF_BIRTH)
+                convert_date_string_french(row.DATE_OF_BIRTH) if self.language == 'fr' else convert_date_string(row.DATE_OF_BIRTH)
             )
             self.notices[client_id]["address"] = row.STREET_ADDRESS
             self.notices[client_id]["city"] = row.CITY
@@ -110,7 +107,7 @@ class ClientDataProcessor:
                 # replace 'unspecified' vaccines
                 vax_list = [v.replace('-unspecified', '*').replace(' unspecified', '*') for v in vax_list]
                 # translate to French if needed
-                if self.language == 'french':
+                if self.language == 'fr':
                     disease_list = [self.vaccine_ref.get(d, d) for d in disease_list]
                 self.notices[client_id]["received"].append({"date_given": date_str, "vaccine": vax_list, "diseases": disease_list})
                 i += 1
@@ -286,10 +283,10 @@ if __name__ == "__main__":
     input_dir = sys.argv[1]
     input_file = sys.argv[2]
     output_dir = sys.argv[3]
-    language = sys.argv[4] if len(sys.argv) > 4 else "english"
+    language = sys.argv[4] if len(sys.argv) > 4 else "en"
 
-    if language not in ["english", "french"]:
-        print("Error: Language must be 'english' or 'french'")
+    if language not in ["en", "fr"]:
+        print("Error: Language must be 'en' or 'fr'")
         sys.exit(1)
 
     output_dir_school = output_dir + "/by_school"
@@ -322,7 +319,7 @@ if __name__ == "__main__":
             vaccine_ref=json.load(open("../config/vaccine_reference.json")),
             ignore_agents=["-unspecified", "unspecified", "Not Specified", "Not specified", "Not Specified-unspecified"],
             delivery_date="2024-06-01",
-            language=language  # or 'french'
+            language=language  # or 'fr'
         )
         processor.build_notices()
         processor.save_output(Path(output_dir_final), batch_file.stem)
