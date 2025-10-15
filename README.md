@@ -1,5 +1,7 @@
 # 🩺 Immunization Charts (python Version)
 
+**Current version:** v0.1.0  
+
 ## 📘 Introduction
 
 This project provides a Python and Bash-based workflow for generating **personalized immunization history charts** and **notice letters** for children overdue for mandated vaccinations under the **Child Care and Early Years Act (CCEYA)** and ISPA.
@@ -14,12 +16,14 @@ Reports are generated in PDF format using [Typst](https://typst.app) and a custo
 
 ### Virtual Environment
 
-To create and activate the virtual environment:
+Install all dependencies (and create the `.venv` if it doesn't yet exist) before doing anything else:
 
 ```bash
-uv venv
+uv sync
 source .venv/bin/activate
 ```
+
+> ℹ️ `uv sync` only installs the core runtime packages by default. If you're planning to run tests or other dev tools, include the development group once via `uv sync --group dev` (or `uv sync --all-groups` if you prefer everything).
 
 ## 🛠️ Pipeline Overview
 
@@ -51,14 +55,29 @@ The main pipeline script automates the end-to-end workflow for generating immuni
 **Usage Example:**
 ```bash
 cd scripts
-./run_pipeline.sh <input_file> <language>
+./run_pipeline.sh <input_file> <language> [--no-cleanup]
 ```
 - `<input_file>`: Name of the input file (e.g., `students.xlsx`)
 - `<language>`: Language code (`english` or `french`)
+- `--no-cleanup` (optional): Skip deleting intermediate Typst artifacts.
+
+> ℹ️ **Typst preview note:** The WDGPH code-server development environments render Typst files via Tinymist. The shared template at `scripts/conf.typ` only defines helper functions, colour tokens, and table layouts that the generated notice `.typ` files import; it doesn't emit any pages on its own, so Tinymist has nothing to preview if attempted on this file. To examine the actual markup that uses these helpers, run the pipeline with `--no-cleanup` so the generated notice `.typ` files stay in `output/json_<lang>/` for manual inspection.
 
 **Outputs:**
 - Processed notices and charts in the `output/` directory
 - Log and summary information in the terminal
+
+## 🧪 Running Tests
+
+We're expanding automated checks to ensure feature additions do not impact existing functionality, and to improve the overall quality of the project. After syncing the virtual environment once with `uv sync`, you can run the current test suite using:
+
+```bash
+uv run pytest
+```
+
+You'll see a quick summary of which checks ran (right now that’s the clean-up helpers, with more on the way). A final line ending in `passed` means the suite finished successfully.
+
+> ✅ Before running the command above, make sure you've installed the `dev` group at least once (`uv sync --group dev`) so that the testing dependencies are available.
 
 ## 📂 Input Data
 
@@ -161,3 +180,6 @@ qr_payload_template:
 ```
 
 Update the configuration file, rerun the pipeline, and regenerated notices will reflect the new QR payload.
+## Changelog
+
+See [CHANGELOG.md](./CHANGELOG.md) for details of each release.
