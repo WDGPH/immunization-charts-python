@@ -57,6 +57,8 @@ echo "
 
 #v(0.2cm)
 
+#let contact = data.contact_actions
+
 #align(center)[
 #table(
   columns: (0.5fr, 0.5fr),
@@ -90,17 +92,17 @@ As of *#date* our files show that your child has not received the following immu
 
 Please review the Immunization Record on page 2 and update your child's record by using one of the following options:
 
-1. By visiting #text(fill:conf.linkcolor)[#link(\"https://www.test-immunization.ca\")]
-2. By emailing #text(fill:conf.linkcolor)[#link(\"records@test-immunization.ca\")]
-3. By mailing a photocopy of your child’s immunization record to Test Health, 123 Placeholder Street, Sample City, ON A1A 1A1
-4. By Phone: 555-555-5555 ext. 1234
+1. By visiting #text(fill:conf.linkcolor)[#link(contact.portal_url)[contact.portal_label]]
+2. By emailing #text(fill:conf.linkcolor)[#link(contact.email_link)[contact.email_display]]
+3. By mailing a photocopy of your child’s immunization record to #contact.mail_recipient, #contact.mail_address
+4. By Phone: #contact.phone_display
 
 Please update Public Health and your childcare centre every time your child receives a vaccine. By keeping your child's vaccinations up to date, you are not only protecting their health but also the health of other children and staff at the childcare centre.  
 
 #grid(
   columns: (1fr, auto),
   gutter: 10pt,
-  [*If you are choosing not to immunize your child*, a valid medical exemption or statement of conscience or religious belief must be completed and submitted to Public Health. Links to these forms can be located at #text(fill:conf.wdgteal)[#link(\"https://www.test-immunization.ca/exemptions\")]. Please note this exemption is for childcare only and a new exemption will be required upon enrollment in elementary school.],
+  [*If you are choosing not to immunize your child*, a valid medical exemption or statement of conscience or religious belief must be completed and submitted to Public Health. Links to these forms can be located at #text(fill:conf.wdgteal)[#link(contact.exemption_url)]. Please note this exemption is for childcare only and a new exemption will be required upon enrollment in elementary school.],
   [#if \"qr_code\" in data [
     #image(data.qr_code, width: 2cm)
   ]]
@@ -108,7 +110,7 @@ Please update Public Health and your childcare centre every time your child rece
 
 If there is an outbreak of a vaccine-preventable disease, Public Health may require that children who are not adequately immunized (including those with exemptions) be excluded from the childcare centre until the outbreak is over. 
 
-If you have any questions about your child’s vaccines, please call 555-555-5555 ext. 1234 to speak with a Public Health Nurse.
+If you have any questions about your child’s vaccines, please call #contact.phone_display to speak with a Public Health Nurse.
 Sincerely, 
 #v(0.2cm)
 #conf.signature(\"${SIGNATURE}\", \"Dr. Jane Smith, MPH\", \"Associate Medical Officer of Health\")
