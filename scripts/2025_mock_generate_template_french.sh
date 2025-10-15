@@ -66,6 +66,8 @@ echo "
 
 #v(0.2cm)
 
+#let contact = data.contact_actions
+
 #align(center)[
 #table(
   columns: (0.5fr, 0.5fr),
@@ -99,23 +101,23 @@ En date du *#date*, nos dossiers indiquent que votre enfant n'a pas reçu les im
 
 Veuillez examiner le dossier d'immunisation à la page 2 et mettre à jour le dossier de votre enfant en utilisant l'une des options suivantes :
 
-1. En visitant #text(fill:conf.linkcolor)[#link(\"https://www.test-immunization.ca\")]
-2. En envoyant un courriel à #text(fill:conf.linkcolor)[#link(\"records@test-immunization.ca\")]
-3. En envoyant par la poste une photocopie du dossier d'immunisation de votre enfant à Test Health, 123 Placeholder Street, Sample City, ON A1A 1A1
-4. Par téléphone : 555-555-5555 poste 1234
+1. En visitant #text(fill:conf.linkcolor)[#link(contact.portal_url)[contact.portal_label]]
+2. En envoyant un courriel à #text(fill:conf.linkcolor)[#link(contact.email_link)[contact.email_display]]
+3. En envoyant par la poste une photocopie du dossier d'immunisation de votre enfant à #contact.mail_recipient, #contact.mail_address
+4. Par téléphone : #contact.phone_display
 
 Veuillez informer la Santé publique et votre centre de garde d'enfants chaque fois que votre enfant reçoit un vaccin. En gardant les vaccinations de votre enfant à jour, vous protégez non seulement sa santé, mais aussi la santé des autres enfants et du personnel du centre de garde d'enfants.  
 #grid(
   columns: (1fr, auto),
   gutter: 10pt,
-  [*Si vous choisissez de ne pas immuniser votre enfant*, une exemption médicale valide ou une déclaration de conscience ou de croyance religieuse doit être remplie et soumise à la Santé publique. Les liens vers ces formulaires se trouvent à #text(fill:conf.wdgteal)[#link(\"https://www.test-immunization.ca/exemptions\")]. Veuillez noter que cette exemption est uniquement pour la garde d'enfants et qu'une nouvelle exemption sera requise lors de l'inscription à l'école primaire.],
+  [*Si vous choisissez de ne pas immuniser votre enfant*, une exemption médicale valide ou une déclaration de conscience ou de croyance religieuse doit être remplie et soumise à la Santé publique. Les liens vers ces formulaires se trouvent à #text(fill:conf.wdgteal)[#link(contact.exemption_url)]. Veuillez noter que cette exemption est uniquement pour la garde d'enfants et qu'une nouvelle exemption sera requise lors de l'inscription à l'école primaire.],
   [#if \"qr_code\" in data [
     #image(data.qr_code, width: 2cm)
   ]]
 )
 En cas d'éclosion d'une maladie évitable par la vaccination, la Santé publique peut exiger que les enfants qui ne sont pas adéquatement immunisés (y compris ceux avec exemptions) soient exclus du centre de garde d'enfants jusqu'à la fin de l'éclosion. 
 
-Si vous avez des questions sur les vaccins de votre enfant, veuillez appeler le 555-555-5555 poste 1234 pour parler à une infirmière de la Santé publique.
+Si vous avez des questions sur les vaccins de votre enfant, veuillez appeler le #contact.phone_display pour parler à une infirmière de la Santé publique.
 Sincères salutations, 
 #v(0.2cm)
 #conf.signature(\"${SIGNATURE}\", \"Dr. Jane Smith, MPH\", \"Médecin hygiéniste adjoint\")
