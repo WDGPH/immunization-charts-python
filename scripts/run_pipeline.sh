@@ -3,6 +3,7 @@ set -e
 
 if [ $# -lt 2 ]; then
     echo "Usage: $0 <input_file> <language> [--no-cleanup]"
+    echo "       <language>: en | fr"
     exit 1
 fi
 
@@ -18,6 +19,7 @@ if [ $# -ge 3 ]; then
         *)
             echo "Unknown option: $3"
             echo "Usage: $0 <input_file> <language> [--no-cleanup]"
+            echo "       <language>: en | fr"
             exit 1
             ;;
     esac
@@ -27,8 +29,8 @@ INDIR="../input"
 OUTDIR="../output"
 BATCH_SIZE=100
 
-if [ "$LANG" != "english" ] && [ "$LANG" != "french" ]; then
-    echo "Error: Language must be 'english' or 'french'"
+if [ "$LANG" != "en" ] && [ "$LANG" != "fr" ]; then
+    echo "Error: Language must be 'en' or 'fr'"
     exit 1
 fi
 

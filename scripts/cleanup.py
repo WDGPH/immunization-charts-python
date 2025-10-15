@@ -7,7 +7,7 @@ def parse_args():
     """Parse command line arguments."""
     parser = argparse.ArgumentParser(description="Cleanup generated files in the specified directory.")
     parser.add_argument("outdir_path", type=str, help="Path to the output directory.")
-    parser.add_argument("language", type=str, help="Language (e.g., 'english', 'french').")
+    parser.add_argument("language", choices=["en", "fr"], help="Language code ('en' or 'fr').")
     return parser.parse_args()
 
 def safe_delete(path: Path):
