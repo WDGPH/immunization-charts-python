@@ -23,6 +23,8 @@ uv sync
 source .venv/bin/activate
 ```
 
+> ℹ️ `uv sync` only installs the core runtime packages by default. If you're planning to run tests or other dev tools, include the development group once via `uv sync --group dev` (or `uv sync --all-groups` if you prefer everything).
+
 ## 🛠️ Pipeline Overview
 
 ## 🚦 Pipeline Steps (`run_pipeline.sh`)
@@ -64,6 +66,18 @@ cd scripts
 **Outputs:**
 - Processed notices and charts in the `output/` directory
 - Log and summary information in the terminal
+
+## 🧪 Running Tests
+
+We're expanding automated checks to ensure feature additions do not impact existing functionality, and to improve the overall quality of the project. After syncing the virtual environment once with `uv sync`, you can run the current test suite using:
+
+```bash
+uv run pytest
+```
+
+You'll see a quick summary of which checks ran (right now that’s the clean-up helpers, with more on the way). A final line ending in `passed` means the suite finished successfully.
+
+> ✅ Before running the command above, make sure you've installed the `dev` group at least once (`uv sync --group dev`) so that the testing dependencies are available.
 
 ## 📂 Input Data
 
