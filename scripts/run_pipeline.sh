@@ -143,3 +143,7 @@ echo "  - Total Time:            ${TOTAL_DURATION}s"
 echo ""
 echo "📦 Batch size:             ${BATCH_SIZE}"
 echo "📊 Total records:          ${TOTAL_RECORDS}"
+
+if [ "$SKIP_CLEANUP" = true ]; then
+    echo "🧹 Cleanup:                Skipped"
+fi
