@@ -120,7 +120,7 @@ if [ "$SKIP_CLEANUP" = true ]; then
     echo "🧹 Step 5: Cleanup skipped (--no-cleanup flag)."
 else
     echo "🧹 Step 5: Cleanup started..."
-    bash ./cleanup.sh ${LANG}
+    python cleanup.py ${OUTDIR} ${LANG}
 fi
 
 ##########################################
