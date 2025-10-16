@@ -6,49 +6,29 @@ from pathlib import Path
 import logging
 import json
 import math
+import shutil
+
+TEST_LANG = "english"
+PROJECT_DIR = Path(__file__).resolve().parents[2]
+INPUT_DIR = PROJECT_DIR / "input"
+OUTPUT_DIR = PROJECT_DIR / f"output/json_{TEST_LANG}"
+BATCH_SIZE = 2
+TEST_DATASET = "test_dataset.xlsx"
+
 
 @pytest.fixture
 def sample_data(tmp_path):
     input_dir = tmp_path / "input"
     input_dir.mkdir()
 
-    school_names = ['Burrow Public School', 'Tunnel Academy', 'Tunnel Academy', 'Tunnel Academy']
-    client_ids = ['1009876543', '1009876544', '1009876546', '1009876547']
-    first_names = ['Squeak', 'Nibble', 'Scurry', 'Whiskers']
-    last_names = ['McCheese', 'Sharpcheddar', 'Nutcracker', 'Teetherson']
-    birth_dates = ['2013-06-15', '2014-04-22', '2012-11-30', '2013-09-10']
-    cities = ['Cheddarville', 'Fromage City', 'Burrowville', 'Hazelton']
-    postal_codes = ['M1C3E5', 'C3H3Z9', 'G9N8R2', 'H8Y6T5']
-    provinces = ['Ontario', 'Ontario', 'Ontario', 'Ontario']
-    overdue_diseases = [['Varicella',], ['Measles',], ['Hepatitis B',], ['Hepatitis B',]]
-    imms_given = [['Var', 'HPV-9', 'Men-C-ACYW-135',], ['MMR',], ['MMR',], ['Var', 'HPV-9', 'Men-C-ACYW-135',]]
-    street_address_line1 = ['14 Burrow Lane', '22 Gouda St', '3 Acorn Ave', '88 Haystack Drive']
-    street_address_line2 = [None, None,'Unit 2', 'Unit 10']
-    ages = [11, 12, 11, 10]
+    input_path = PROJECT_DIR / "test/test_data/input_preprocess"
+    filename = TEST_DATASET
 
-    data = {
-        "SCHOOL NAME": school_names,
-        "CLIENT ID": client_ids,
-        "FIRST NAME": first_names,
-        "LAST NAME": last_names,
-        "DATE OF BIRTH": birth_dates,
-        "CITY": cities,
-        "POSTAL CODE": postal_codes,
-        "PROVINCE/TERRITORY": provinces,
-        "OVERDUE DISEASE": overdue_diseases,
-        "IMMS GIVEN": imms_given,
-        "STREET ADDRESS LINE 1": street_address_line1,
-        "STREET ADDRESS LINE 2": street_address_line2,
-        "AGE": ages,
-    }
-
-    sample_dataset = pd.DataFrame(data)
-
-    os.makedirs(input_dir, exist_ok=True)
-
-    sample_dataset_path = input_dir / "sample_dataset.csv"
-
-    sample_dataset.to_csv(sample_dataset_path, index=False)
+    if not os.path.exists(input_dir / filename):
+        print(f"File {filename} not found at destination. Copying from test directory...")
+        shutil.copy(input_path / filename, input_dir / filename)
+    else:
+        print(f"File {filename} already exists at destination.")
 
     return tmp_path
 
@@ -59,7 +39,7 @@ def test_load_data(sample_data):
     tmp_dir = sample_data
 
     input_dir = tmp_dir / "input"
-    input_path = input_dir / "sample_dataset.csv"
+    input_path = input_dir / TEST_DATASET
 
     sample_files.append(input_path)
 
@@ -74,7 +54,7 @@ def test_validate_transform_columns(sample_data):
     tmp_dir = sample_data
 
     input_dir = tmp_dir / "input"
-    input_path = input_dir / "sample_dataset.csv"
+    input_path = input_dir / TEST_DATASET
 
     sample_files.append(input_path)
 
@@ -111,7 +91,7 @@ def test_separate_by_school(sample_data):
     tmp_dir = sample_data
 
     input_dir = tmp_dir / "input"
-    input_path = input_dir / "sample_dataset.csv"
+    input_path = input_dir / TEST_DATASET
 
     output_dir = tmp_dir / "output"
 
@@ -153,7 +133,7 @@ def test_split_batches(sample_data):
     tmp_dir = sample_data
 
     input_dir = tmp_dir / "input"
-    input_path = input_dir / "sample_dataset.csv"
+    input_path = input_dir / TEST_DATASET
 
     output_dir = tmp_dir / "output"
 
@@ -187,13 +167,12 @@ def test_split_batches(sample_data):
     separate_by_school(df, output_dir_school, "SCHOOL_NAME")
 
     # Test split_batches
-    batch_size = 2 
     batch_dir = Path(output_dir_batch)
-    split_batches(Path(output_dir_school), batch_dir, batch_size)
+    split_batches(Path(output_dir_school), batch_dir, BATCH_SIZE)
     logging.info("Completed splitting into batches.")
 
     for school_name in df["SCHOOL_NAME"].unique():
-        num_batches = math.ceil(len(df[df["SCHOOL_NAME"] == school_name]) / batch_size)
+        num_batches = math.ceil(len(df[df["SCHOOL_NAME"] == school_name]) / BATCH_SIZE)
         for num_batch in range(num_batches):
             assert os.path.exists(output_dir_batch / f"{school_name.replace(" ", "_").upper()}_{(num_batch + 1):0{2}d}.csv")
 
@@ -204,7 +183,7 @@ def test_batch_processing(sample_data):
     tmp_dir = sample_data
 
     input_dir = tmp_dir / "input"
-    input_path = input_dir / "sample_dataset.csv"
+    input_path = input_dir / TEST_DATASET
 
     output_dir = tmp_dir / "output"
     language = "english"
@@ -240,9 +219,8 @@ def test_batch_processing(sample_data):
     separate_by_school(df, output_dir_school, "SCHOOL_NAME")
 
     # Test split_batches
-    batch_size = 2 
     batch_dir = Path(output_dir_batch)
-    split_batches(Path(output_dir_school), batch_dir, batch_size)
+    split_batches(Path(output_dir_school), batch_dir, BATCH_SIZE)
     logging.info("Completed splitting into batches.")
 
     all_batch_files = sorted(batch_dir.glob("*.csv"))
@@ -278,7 +256,7 @@ def test_save_output(sample_data):
     tmp_dir = sample_data
 
     input_dir = tmp_dir / "input"
-    input_path = input_dir / "sample_dataset.csv"
+    input_path = input_dir / TEST_DATASET
 
     output_dir = tmp_dir / "output"
     language = "english"
@@ -315,9 +293,8 @@ def test_save_output(sample_data):
     separate_by_school(df, output_dir_school, "SCHOOL_NAME")
 
     # Test split_batches
-    batch_size = 2 
     batch_dir = Path(output_dir_batch)
-    split_batches(Path(output_dir_school), batch_dir, batch_size)
+    split_batches(Path(output_dir_school), batch_dir, BATCH_SIZE)
     logging.info("Completed splitting into batches.")
 
     all_batch_files = sorted(batch_dir.glob("*.csv"))
@@ -346,6 +323,6 @@ def test_save_output(sample_data):
 
     # Test save_output
     for school_name in df["SCHOOL_NAME"].unique():
-        num_batches = math.ceil(len(df[df["SCHOOL_NAME"] == school_name]) / batch_size)
+        num_batches = math.ceil(len(df[df["SCHOOL_NAME"] == school_name]) / BATCH_SIZE)
         for num_batch in range(num_batches):
             assert os.path.exists(output_dir_final / f"{school_name.replace(" ", "_").upper()}_{(num_batch + 1):0{2}d}.json")
