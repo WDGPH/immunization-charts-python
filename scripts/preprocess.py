@@ -186,7 +186,7 @@ class ClientDataProcessor:
             self.notices[client_id]["city"] = row.CITY
             self.notices[client_id]["postal_code"] = row.POSTAL_CODE if pd.notna(row.POSTAL_CODE) and row.POSTAL_CODE != "" else "Not provided"
             self.notices[client_id]["province"] = row.PROVINCE
-            age_value = row.AGE if "AGE" in row else row.get("AGE")
+            age_value = row.get("AGE")
             if age_value is not None and not pd.isna(age_value):
                 over_16 = age_value > 16
             else:
