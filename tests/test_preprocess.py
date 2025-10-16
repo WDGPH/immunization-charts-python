@@ -35,7 +35,8 @@ def test_build_preprocess_result_generates_sequences_and_ids():
     )
 
     assert len(result.clients) == 2
-    assert result.client_ids == ["C2", "C1"]
+    client_ids = [client["client_id"] for client in result.clients]
+    assert client_ids == ["C2", "C1"]
 
     first_client = result.clients[0]
     assert first_client["sequence"] == "00001"
@@ -50,6 +51,3 @@ def test_build_preprocess_result_generates_sequences_and_ids():
     assert second_client["received"][0]["diseases"] == ["Diphtheria", "Tetanus"]
 
     assert "Missing board name" in result.warnings[0]
-    assert result.legacy_payload["C1"]["sequence"] == "00002"
-    assert result.legacy_payload["C1"]["postal_code"] == "Not provided"
-    assert result.legacy_payload["C2"]["language"] == "en"

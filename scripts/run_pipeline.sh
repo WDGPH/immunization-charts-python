@@ -27,7 +27,10 @@ fi
 
 INDIR="../input"
 OUTDIR="../output"
+LOG_DIR="${OUTDIR}/logs"
 BATCH_SIZE=100
+RUN_ID=$(date +%Y%m%dT%H%M%S)
+mkdir -p "${OUTDIR}" "${LOG_DIR}"
 
 if [ "$LANG" != "en" ] && [ "$LANG" != "fr" ]; then
     echo "Error: Language must be 'en' or 'fr'"
@@ -48,7 +51,7 @@ TOTAL_START=$(date +%s)
 STEP1_START=$(date +%s)
 echo ""
 echo "🔍 Step 1: Preprocessing started..."
-python preprocess.py ${INDIR} ${INFILE} ${OUTDIR} ${LANG}
+python preprocess.py ${INDIR} ${INFILE} ${OUTDIR} ${LANG} --run-id ${RUN_ID}
 STEP1_END=$(date +%s)
 STEP1_DURATION=$((STEP1_END - STEP1_START))
 echo "✅ Step 1: Preprocessing complete in ${STEP1_DURATION} seconds."
@@ -70,7 +73,13 @@ fi
 STEP2_START=$(date +%s)
 echo ""
 echo "📝 Step 2: Generating Typst templates..."
-bash ./generate_notices.sh ${LANG}
+python generate_notices.py \
+    "${OUTDIR}/artifacts/preprocessed_clients_${RUN_ID}.json" \
+    "${OUTDIR}/artifacts" \
+    ${LANG} \
+    "../assets/logo.png" \
+    "../assets/signature.png" \
+    "../config/parameters.yaml"
 STEP2_END=$(date +%s)
 STEP2_DURATION=$((STEP2_END - STEP2_START))
 echo "✅ Step 2: Template generation complete in ${STEP2_DURATION} seconds."
@@ -79,15 +88,6 @@ echo "✅ Step 2: Template generation complete in ${STEP2_DURATION} seconds."
 # Step 3: Compiling Notices
 ##########################################
 STEP3_START=$(date +%s)
-
-# Check to see if the conf.typ file is in the json_ directory
-if [ -e "${OUTDIR}/json_${LANG}/conf.typ" ]; then
-    echo "Found conf.typ in ${OUTDIR}/json_${LANG}/"
-else
-    # Move conf.typ to the json_ directory
-    echo "Moving conf.typ to ${OUTDIR}/json_${LANG}/"
-    cp ./conf.typ "${OUTDIR}/json_${LANG}/conf.typ"
-fi
 
 echo ""
 echo "📄 Step 3: Compiling Typst templates..."
@@ -103,15 +103,11 @@ echo "✅ Step 3: Compilation complete in ${STEP3_DURATION} seconds."
 echo ""
 echo "📏 Step 4: Checking length of compiled files..."
 
-# Remove conf.pdf if it exists
-if [ -e "${OUTDIR}/json_${LANG}/conf.pdf" ]; then
-    echo "Removing existing conf.pdf..."
-    rm "${OUTDIR}/json_${LANG}/conf.pdf"
-fi
-
-for file in "${OUTDIR}/json_${LANG}/"*.pdf; do
+shopt -s nullglob
+for file in "${OUTDIR}/pdf/${LANG}_client_"*.pdf; do
     python count_pdfs.py ${file}
 done
+shopt -u nullglob
 
 ##########################################
 # Step 5: Cleanup
