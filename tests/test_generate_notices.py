@@ -76,7 +76,6 @@ def test_generate_typst_files_creates_expected_output(tmp_path: Path, sample_art
         logo,
         signature,
         parameters,
-        language="en",
     )
 
     assert len(generated) == 1
@@ -98,6 +97,13 @@ def test_read_artifact_mismatched_language(tmp_path: Path, sample_artifact: Path
         path.write_text("stub", encoding="utf-8")
 
     payload = generate_notices.read_artifact(sample_artifact)
+    payload = generate_notices.read_artifact(sample_artifact)
+    payload = generate_notices.ArtifactPayload(
+        run_id=payload.run_id,
+        language="fr",
+        clients=payload.clients,
+    )
+
     with pytest.raises(ValueError):
         generate_notices.generate_typst_files(
             payload,
@@ -105,5 +111,4 @@ def test_read_artifact_mismatched_language(tmp_path: Path, sample_artifact: Path
             logo,
             signature,
             parameters,
-            language="fr",
         )

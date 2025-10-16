@@ -76,7 +76,6 @@ echo "📝 Step 2: Generating Typst templates..."
 python generate_notices.py \
     "${OUTDIR}/artifacts/preprocessed_clients_${RUN_ID}.json" \
     "${OUTDIR}/artifacts" \
-    ${LANG} \
     "../assets/logo.png" \
     "../assets/signature.png" \
     "../config/parameters.yaml"
@@ -91,7 +90,9 @@ STEP3_START=$(date +%s)
 
 echo ""
 echo "📄 Step 3: Compiling Typst templates..."
-bash ./compile_notices.sh ${LANG}
+python compile_notices.py \
+    "${OUTDIR}/artifacts" \
+    "${OUTDIR}/pdf"
 STEP3_END=$(date +%s)
 STEP3_DURATION=$((STEP3_END - STEP3_START))
 echo "✅ Step 3: Compilation complete in ${STEP3_DURATION} seconds."
@@ -104,7 +105,7 @@ echo ""
 echo "📏 Step 4: Checking length of compiled files..."
 
 shopt -s nullglob
-for file in "${OUTDIR}/pdf/${LANG}_client_"*.pdf; do
+for file in "${OUTDIR}/pdf/"*.pdf; do
     python count_pdfs.py ${file}
 done
 shopt -u nullglob
@@ -118,7 +119,7 @@ if [ "$SKIP_CLEANUP" = true ]; then
     echo "🧹 Step 5: Cleanup skipped (--no-cleanup flag)."
 else
     echo "🧹 Step 5: Cleanup started..."
-    python cleanup.py ${OUTDIR} ${LANG}
+    python cleanup.py ${OUTDIR}
 fi
 
 ##########################################

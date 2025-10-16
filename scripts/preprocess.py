@@ -15,13 +15,6 @@ try:  # Allow both package and script style execution
 except ImportError:  # pragma: no cover - fallback for CLI execution
     from utils import convert_date_iso, convert_date_string, convert_date_string_french
 
-LOG_FILE = Path(__file__).with_name("preprocess.log")
-logging.basicConfig(
-    filename=str(LOG_FILE),
-    level=logging.INFO,
-    format="%(asctime)s %(levelname)s %(message)s",
-)
-
 SCRIPT_DIR = Path(__file__).resolve().parent
 CONFIG_DIR = SCRIPT_DIR.parent / "config"
 DISEASE_MAP_PATH = CONFIG_DIR / "disease_map.json"
@@ -77,6 +70,23 @@ def parse_args() -> argparse.Namespace:
         help="Optional run identifier used when naming artifacts (defaults to current UTC timestamp).",
     )
     return parser.parse_args()
+
+
+def configure_logging(output_dir: Path, run_id: str) -> Path:
+    log_dir = output_dir / "logs"
+    log_dir.mkdir(parents=True, exist_ok=True)
+    log_path = log_dir / f"preprocess_{run_id}.log"
+
+    handler = logging.FileHandler(log_path, encoding="utf-8")
+    formatter = logging.Formatter("%(asctime)s %(levelname)s %(message)s")
+    handler.setFormatter(formatter)
+
+    root_logger = logging.getLogger()
+    root_logger.handlers.clear()
+    root_logger.setLevel(logging.INFO)
+    root_logger.addHandler(handler)
+
+    return log_path
 
 
 def detect_file_type(file_path: Path) -> str:
@@ -373,6 +383,8 @@ def main() -> None:
     args = parse_args()
     run_id = args.run_id or datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S")
 
+    log_path = configure_logging(args.output_dir, run_id)
+
     input_path = args.input_dir / args.input_file
     df_raw = read_input(input_path)
     df = ensure_required_columns(df_raw)
@@ -385,6 +397,7 @@ def main() -> None:
     artifact_path = write_artifact(args.output_dir / "artifacts", args.language, run_id, result)
 
     print(f"Structured data saved to {artifact_path}")
+    print(f"Preprocess log written to {log_path}")
     if result.warnings:
         print("Warnings detected during preprocessing:")
         for warning in result.warnings:
