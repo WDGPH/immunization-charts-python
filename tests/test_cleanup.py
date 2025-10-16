@@ -44,22 +44,29 @@ def test_cleanup(tmp_path):
     (json_file_path / "file1.typ").touch()
     (json_file_path / "file2.json").touch()
     (json_file_path / "conf.pdf").touch()
+    artifacts_path = outdir_path / "artifacts"
+    artifacts_path.mkdir()
+    (artifacts_path / "sample.typ").touch()
     (outdir_path / "by_school").mkdir()
     (outdir_path / "batches").mkdir()
+    logs_path = outdir_path / "logs"
+    logs_path.mkdir()
 
     # Ensure everything exists before cleanup
     assert (json_file_path / "file1.typ").exists()
     assert (json_file_path / "file2.json").exists()
     assert (json_file_path / "conf.pdf").exists()
+    assert artifacts_path.exists()
     assert (outdir_path / "by_school").exists()
     assert (outdir_path / "batches").exists()
+    assert logs_path.exists()
 
     # Perform cleanup
     cleanup(outdir_path, language)
 
     # Check that the correct files and directories were deleted
-    assert not (json_file_path / "file1.typ").exists()
-    assert not (json_file_path / "file2.json").exists()
-    assert not (json_file_path / "conf.pdf").exists()
+    assert not json_file_path.exists()
+    assert not artifacts_path.exists()
     assert not (outdir_path / "by_school").exists()
     assert not (outdir_path / "batches").exists()
+    assert logs_path.exists()

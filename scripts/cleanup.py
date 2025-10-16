@@ -20,17 +20,20 @@ def safe_delete(path: Path):
 
 def remove_files_with_ext(base_dir: Path, extensions=('typ', 'json', 'csv')):
     """Remove files with specified extensions in the given directory."""
+    if not base_dir.exists():
+        return
     for ext in extensions:
         for file in base_dir.glob(f'*.{ext}'):
             safe_delete(file)
 
 def cleanup(outdir_path: Path, language: str):
     """Perform cleanup of generated files and directories."""
-    json_file_path = outdir_path / f'json_{language}'
-    for folder in ['by_school', 'batches']:
+    legacy_dir = outdir_path / f'json_{language}'
+    remove_files_with_ext(legacy_dir)
+    safe_delete(legacy_dir)
+
+    for folder in ['artifacts', 'by_school', 'batches']:
         safe_delete(outdir_path / folder)
-    remove_files_with_ext(json_file_path)
-    safe_delete(json_file_path / 'conf.pdf')
         
 def main():
     args = parse_args()

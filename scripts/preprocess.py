@@ -54,8 +54,6 @@ REQUIRED_COLUMNS = [
 @dataclass
 class PreprocessResult:
     clients: List[Dict[str, Any]]
-    legacy_payload: Dict[str, Dict[str, Any]]
-    client_ids: List[str]
     warnings: List[str]
 
 
@@ -78,13 +76,6 @@ def parse_args() -> argparse.Namespace:
         dest="run_id",
         help="Optional run identifier used when naming artifacts (defaults to current UTC timestamp).",
     )
-    parser.add_argument(
-        "--no-legacy-output",
-        dest="legacy_output",
-        action="store_false",
-        help="Skip emitting the legacy json_<lang> artifacts (useful once the Python generator is in place).",
-    )
-    parser.set_defaults(legacy_output=True)
     return parser.parse_args()
 
 
@@ -299,12 +290,8 @@ def build_preprocess_result(
     sorted_df["SEQUENCE"] = [f"{idx + 1:05d}" for idx in range(len(sorted_df))]
 
     clients: List[Dict[str, Any]] = []
-    legacy_payload: Dict[str, Dict[str, Any]] = {}
-    client_ids: List[str] = []
-
     for row in sorted_df.itertuples(index=False):
         client_id = str(row.CLIENT_ID)
-        client_ids.append(client_id)
         sequence = row.SEQUENCE
         dob_iso = row.DATE_OF_BIRTH.strftime("%Y-%m-%d") if pd.notna(row.DATE_OF_BIRTH) else None
         if dob_iso is None:
@@ -359,31 +346,9 @@ def build_preprocess_result(
         }
         clients.append(client_entry)
 
-        legacy_payload[client_id] = {
-            "name": client_entry["person"]["full_name"],
-            "school": row.SCHOOL_NAME,
-            "school_id": row.SCHOOL_ID,
-            "school_type": row.SCHOOL_TYPE or None,
-            "board": row.BOARD_NAME or None,
-            "board_id": row.BOARD_ID,
-            "date_of_birth": formatted_dob,
-            "age": client_entry["person"]["age"],
-            "over_16": over_16,
-            "address": address_line,
-            "city": row.CITY,
-            "postal_code": postal_code,
-            "province": row.PROVINCE,
-            "vaccines_due": vaccines_due,
-            "vaccines_due_list": vaccines_due_list,
-            "received": received,
-            "sequence": sequence,
-            "language": language,
-        }
 
     return PreprocessResult(
         clients=clients,
-        legacy_payload=legacy_payload,
-        client_ids=client_ids,
         warnings=sorted(warnings),
     )
 
@@ -404,16 +369,6 @@ def write_artifact(output_dir: Path, language: str, run_id: str, result: Preproc
     return artifact_path
 
 
-def write_legacy_outputs(output_dir: Path, base_name: str, result: PreprocessResult) -> None:
-    output_dir.mkdir(parents=True, exist_ok=True)
-    json_path = output_dir / f"{base_name}.json"
-    csv_path = output_dir / f"{base_name}_client_ids.csv"
-
-    json_path.write_text(json.dumps(result.legacy_payload, indent=4), encoding="utf-8")
-    csv_path.write_text("\n".join(result.client_ids) + "\n", encoding="utf-8")
-    logging.info("Wrote legacy payload to %s and %s", json_path, csv_path)
-
-
 def main() -> None:
     args = parse_args()
     run_id = args.run_id or datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S")
@@ -428,11 +383,6 @@ def main() -> None:
     result = build_preprocess_result(df, args.language, disease_map, vaccine_reference, IGNORE_AGENTS)
 
     artifact_path = write_artifact(args.output_dir / "artifacts", args.language, run_id, result)
-
-    if args.legacy_output:
-        legacy_dir = args.output_dir / f"json_{args.language}"
-        legacy_base = f"{args.language}_clients_{run_id}"
-        write_legacy_outputs(legacy_dir, legacy_base, result)
 
     print(f"Structured data saved to {artifact_path}")
     if result.warnings:
