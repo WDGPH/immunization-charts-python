@@ -6,7 +6,7 @@ import shutil
 import re
 
 TEST_LANG = "english"
-PROJECT_DIR = Path(__file__).resolve().parents[2]
+PROJECT_DIR = Path(__file__).resolve().parents[1]
 # Directory where generate_notices.sh will look for inputs and create outputs
 OUTPUT_DIR = PROJECT_DIR / f"output/json_{TEST_LANG}"
 
@@ -20,7 +20,7 @@ def test_school_batch_names():
 def test_move_inputs():
     os.makedirs(OUTPUT_DIR, exist_ok=True)
     
-    input_path = PROJECT_DIR / "test/test_data/input_generate_notices"
+    input_path = PROJECT_DIR / "tests/test_data/input_generate_notices"
     for filename in os.listdir(input_path):
         if not os.path.exists(OUTPUT_DIR / filename):
             print(f"File {filename} not found at destination. Copying from test directory...")
