@@ -12,5 +12,5 @@ dependencies = [
 
 [dependency-groups]
 dev = [
-    "ipykernel",
+    "pytest",
 ]
