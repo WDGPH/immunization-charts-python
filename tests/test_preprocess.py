@@ -1,5 +1,5 @@
 import pytest
-from preprocess import ClientDataProcessor, split_batches, load_data, validate_transform_columns, separate_by_school
+from scripts.preprocess import ClientDataProcessor, split_batches, load_data, validate_transform_columns, separate_by_school
 import pandas as pd
 import os
 from pathlib import Path
@@ -9,7 +9,7 @@ import math
 import shutil
 
 TEST_LANG = "english"
-PROJECT_DIR = Path(__file__).resolve().parents[2]
+PROJECT_DIR = Path(__file__).resolve().parents[1]
 INPUT_DIR = PROJECT_DIR / "input"
 OUTPUT_DIR = PROJECT_DIR / f"output/json_{TEST_LANG}"
 BATCH_SIZE = 2
@@ -21,7 +21,7 @@ def sample_data(tmp_path):
     input_dir = tmp_path / "input"
     input_dir.mkdir()
 
-    input_path = PROJECT_DIR / "test/test_data/input_preprocess"
+    input_path = PROJECT_DIR / "tests/test_data/input_preprocess"
     filename = TEST_DATASET
 
     if not os.path.exists(input_dir / filename):

@@ -1,38 +1,37 @@
 import subprocess
 import pytest
 from pathlib import Path
+import shutil
 import os
-from PyPDF2 import PdfReader
+from pypdf import PdfReader
 import re
 import pandas as pd
-import math
-import shutil
 
 TEST_LANG = "english"
-PROJECT_DIR = Path(__file__).resolve().parents[2]
-INPUT_DIR = PROJECT_DIR / "input"
+PROJECT_DIR = Path(__file__).resolve().parents[1]
 OUTPUT_DIR = PROJECT_DIR / f"output/json_{TEST_LANG}"
-BATCH_SIZE = 100 # Make sure this matches preprocess.py value
-
-@pytest.fixture
-def test_input_path():
-    return INPUT_DIR / "test_dataset.xlsx"
 
 
 @pytest.fixture
 def test_move_inputs():
-    input_path = PROJECT_DIR / "test/test_data/input_run_pipeline"
-    filename = "test_dataset.xlsx"
+    os.makedirs(OUTPUT_DIR, exist_ok=True)
+    
+    input_path = PROJECT_DIR / "tests/test_data/input_compile_notices"
+    for filename in os.listdir(input_path):
+        if not os.path.exists(OUTPUT_DIR / filename):
+            print(f"File {filename} not found at destination. Copying from test directory...")
+            shutil.copy(input_path / filename, OUTPUT_DIR / filename)
+        else:
+            print(f"File {filename} already exists at destination.")
 
-    if not os.path.exists(INPUT_DIR / filename):
-        print(f"File {filename} not found at destination. Copying from test directory...")
-        shutil.copy(input_path / filename, INPUT_DIR / filename)
-    else:
-        print(f"File {filename} already exists at destination.")
+
+@pytest.fixture
+def test_school_batch_names():
+    return ["TEST_SCHOOL_01",]
 
 
 @pytest.fixture(autouse=True)
-def clean_output_files(test_input_path):
+def clean_output_files():
     input_exts = ["*.typ", "*.csv", "*.json", "*.pdf"]
     # Delete confounding files before the test
     for ext in input_exts:
@@ -46,45 +45,23 @@ def clean_output_files(test_input_path):
         if OUTPUT_DIR.exists():
             for typ_file in OUTPUT_DIR.glob(ext):
                 typ_file.unlink()
-    # Delete directories generated during script
-    gen_dirs = ['batches', 'by_school', f'json_{TEST_LANG}']
-    for gen_dir in gen_dirs:
-        dir_path = PROJECT_DIR / f"output/{gen_dir}"
-        if os.path.exists(dir_path):
-            shutil.rmtree(dir_path)
-            print(f"Directory '{dir_path}' and all its contents deleted successfully.")
-        else:
-            print(f"Directory '{dir_path}' does not exist.")
-
-    # Delete copied input file
-    if os.path.exists(test_input_path):
-        test_input_path.unlink()
 
 
 def extract_client_id(text):
     match = re.search(r"Client ID:\s*(\d+)", text)
     return match.group(1) if match else None
 
-def test_run_pipeline_with_real_data(test_input_path, test_move_inputs, clean_output_files):
 
-    test_df = pd.read_excel(test_input_path)
-
-    test_school_batch_names = []
-
-    for school_name in test_df["School Name"].unique():
-        num_batches = math.ceil(len(test_df[test_df["School Name"] == school_name]) / BATCH_SIZE)
-        for num_batch in range(num_batches):
-            test_school_batch_name = f"{school_name.replace(" ", "_").upper()}_{(num_batch + 1):0{2}d}"
-            test_school_batch_names.append(test_school_batch_name)
+def test_compile_notices_with_real_data(test_school_batch_names, test_move_inputs):
     
-    script_path = PROJECT_DIR / "scripts" / "run_pipeline.sh"
+    script_path = PROJECT_DIR / "scripts" / "compile_notices.sh"
 
     # Set working directory to project root (two levels up from test file)
     working_dir = PROJECT_DIR / "scripts"
 
     # Run the script
     result = subprocess.run(
-        [script_path, test_input_path.name, TEST_LANG, "--no-cleanup"],
+        [script_path, TEST_LANG],
         cwd=working_dir,
         capture_output=True,
         text=True
@@ -126,6 +103,7 @@ def test_run_pipeline_with_real_data(test_input_path, test_move_inputs, clean_ou
 
         # Validate each client's section
         for client_id, page_indices in client_sections.items():
+            print(len(page_indices))
             assert len(page_indices) <= 2, f"{client_id} has more than 2 pages"
             assert page_indices == sorted(page_indices), f"{client_id}'s pages are not consecutive"
 
