@@ -11,7 +11,7 @@ import argparse
 import logging
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Iterable, List, Mapping, Sequence
+from typing import Dict, List, Mapping, Sequence
 
 try:  # Allow both package and script-style invocation
     from .generate_mock_template_en import render_notice as render_notice_en
@@ -58,7 +58,6 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Generate Typst notices from preprocessed JSON.")
     parser.add_argument("artifact_path", type=Path, help="Path to the preprocessed JSON artifact.")
     parser.add_argument("output_dir", type=Path, help="Directory to write Typst files.")
-    parser.add_argument("language", choices=LANGUAGE_RENDERERS.keys(), help="Language code (en/fr).")
     parser.add_argument("logo_path", type=Path, help="Path to the logo image.")
     parser.add_argument("signature_path", type=Path, help="Path to the signature image.")
     parser.add_argument("parameters_path", type=Path, help="Path to the YAML parameters file.")
@@ -146,32 +145,21 @@ def render_notice(
         signature_path=_to_root_relative(signature),
         parameters_path=_to_root_relative(parameters),
     )
-
-
-def yield_clients(clients: Iterable[ClientRecord], language: str) -> Iterable[ClientRecord]:
-    for client in clients:
-        if client.language != language:
-            continue
-        yield client
-
-
 def generate_typst_files(
     payload: ArtifactPayload,
     output_dir: Path,
     logo_path: Path,
     signature_path: Path,
     parameters_path: Path,
-    *,
-    language: str,
 ) -> List[Path]:
-    if payload.language != language:
-        raise ValueError(
-            f"Artifact language {payload.language!r} does not match requested language {language!r}."
-        )
-
     output_dir.mkdir(parents=True, exist_ok=True)
     files: List[Path] = []
-    for client in yield_clients(payload.clients, language):
+    language = payload.language
+    for client in payload.clients:
+        if client.language != language:
+            raise ValueError(
+                f"Client {client.client_id} language {client.language!r} does not match artifact language {language!r}."
+            )
         typst_content = render_notice(
             client,
             output_dir=output_dir,
@@ -197,9 +185,10 @@ def main() -> None:
         args.logo_path,
         args.signature_path,
         args.parameters_path,
-        language=args.language,
     )
-    print(f"Generated {len(generated)} Typst files in {args.output_dir}")
+    print(
+        f"Generated {len(generated)} Typst files in {args.output_dir} for language {payload.language}"
+    )
 
 
 if __name__ == "__main__":

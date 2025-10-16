@@ -38,16 +38,16 @@ The main pipeline script automates the end-to-end workflow for generating immuni
    Counts the number of records in the input CSV (excluding the header).
 
 3. **Generating Notices**  
-   Calls `generate_notices.sh` to create Typst templates for each client.
+   Calls `generate_notices.py` to create Typst templates for each client.
 
 4. **Compiling Notices**  
-   Ensures the `conf.typ` template is present, then runs `compile_notices.sh` to generate PDF notices.
+   Ensures the `conf.typ` template is present, then runs `compile_notices.py` to generate PDF notices.
 
 5. **PDF Length Check**  
    Uses `count_pdfs.py` to check the length of each compiled PDF notice for quality control.
 
 6. **Cleanup**  
-   Runs `cleanup.sh` to remove temporary files and tidy up the output directory.
+   Runs `cleanup.py` to remove temporary files and tidy up the output directory.
 
 7. **Summary**  
    Prints a summary of timings for each step, batch size, and total record count.
