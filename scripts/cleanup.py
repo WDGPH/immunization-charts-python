@@ -43,7 +43,7 @@ def main():
         sys.exit(1)
     
     cleanup(outdir_path)
-    print("Cleanup completed successfully.")
+    print("✅ Cleanup completed successfully.")
 
 if __name__ == "__main__":
     main()

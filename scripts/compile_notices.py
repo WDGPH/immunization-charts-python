@@ -30,6 +30,7 @@ def compile_file(
     typst_bin: str,
     font_path: Path | None,
     root_dir: Path,
+    verbose: bool,
 ) -> None:
     pdf_path = pdf_dir / f"{typ_path.stem}.pdf"
     command = [typst_bin, "compile"]
@@ -37,7 +38,8 @@ def compile_file(
         command.extend(["--font-path", str(font_path)])
     command.extend(["--root", str(root_dir), str(typ_path), str(pdf_path)])
     subprocess.run(command, check=True)
-    print(f"Compiled {typ_path.name} -> {pdf_path.name}")
+    if verbose:
+        print(f"Compiled {typ_path.name} -> {pdf_path.name}")
 
 
 def compile_typst_files(
@@ -47,6 +49,7 @@ def compile_typst_files(
     typst_bin: str,
     font_path: Path | None,
     root_dir: Path,
+    verbose: bool,
 ) -> int:
     pdf_dir.mkdir(parents=True, exist_ok=True)
     typ_files = discover_typst_files(artifact_dir)
@@ -61,6 +64,7 @@ def compile_typst_files(
             typst_bin=typst_bin,
             font_path=font_path,
             root_dir=root_dir,
+            verbose=verbose,
         )
     return len(typ_files)
 
@@ -86,6 +90,11 @@ def parse_args() -> argparse.Namespace:
         default=DEFAULT_TYPST_BIN,
         help="Typst executable to invoke (defaults to $TYPST_BIN or 'typst').",
     )
+    parser.add_argument(
+        "--quiet",
+        action="store_true",
+        help="Suppress per-file compile output and only print the final summary.",
+    )
     return parser.parse_args()
 
 
@@ -97,9 +106,10 @@ def main() -> None:
         typst_bin=args.typst_bin,
         font_path=args.font_path,
         root_dir=args.root,
+        verbose=not args.quiet,
     )
     if compiled:
-        print(f"Compiled {compiled} Typst files to PDFs.")
+        print(f"Compiled {compiled} Typst file(s) to PDFs in {args.output_dir}.")
 
 
 if __name__ == "__main__":
