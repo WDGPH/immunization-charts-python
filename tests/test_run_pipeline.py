@@ -74,7 +74,7 @@ def test_run_pipeline_with_real_data(test_input_path, test_move_inputs, clean_ou
     for school_name in test_df["School Name"].unique():
         num_batches = math.ceil(len(test_df[test_df["School Name"] == school_name]) / BATCH_SIZE)
         for num_batch in range(num_batches):
-            test_school_batch_name = f"{school_name.replace(" ", "_").upper()}_{(num_batch + 1):0{2}d}"
+            test_school_batch_name = f"{school_name.replace(' ', '_').upper()}_{(num_batch + 1):0{2}d}"
             test_school_batch_names.append(test_school_batch_name)
     
     script_path = PROJECT_DIR / "scripts" / "run_pipeline.sh"

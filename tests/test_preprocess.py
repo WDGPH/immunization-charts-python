@@ -80,7 +80,7 @@ def test_validate_transform_columns(sample_data):
     validate_transform_columns(df, required_columns) #FIXME make required_columns come from a config file
     
     for column in required_columns:
-        column = column.replace(" ", "_")
+        column = column.replace(' ', '_')
         column = column.replace("PROVINCE/TERRITORY", "PROVINCE")
         assert column in df.columns
     
@@ -124,7 +124,7 @@ def test_separate_by_school(sample_data):
     separate_by_school(df, output_dir_school, "SCHOOL_NAME")
 
     for school_name in df["SCHOOL_NAME"].unique():
-        assert os.path.exists(output_dir_school / f"{school_name.replace(" ", "_").upper()}.csv")
+        assert os.path.exists(output_dir_school / f"{school_name.replace(' ', '_').upper()}.csv")
 
 
 def test_split_batches(sample_data):
@@ -174,7 +174,7 @@ def test_split_batches(sample_data):
     for school_name in df["SCHOOL_NAME"].unique():
         num_batches = math.ceil(len(df[df["SCHOOL_NAME"] == school_name]) / BATCH_SIZE)
         for num_batch in range(num_batches):
-            assert os.path.exists(output_dir_batch / f"{school_name.replace(" ", "_").upper()}_{(num_batch + 1):0{2}d}.csv")
+            assert os.path.exists(output_dir_batch / f"{school_name.replace(' ', '_').upper()}_{(num_batch + 1):0{2}d}.csv")
 
 
 def test_batch_processing(sample_data):
@@ -325,4 +325,4 @@ def test_save_output(sample_data):
     for school_name in df["SCHOOL_NAME"].unique():
         num_batches = math.ceil(len(df[df["SCHOOL_NAME"] == school_name]) / BATCH_SIZE)
         for num_batch in range(num_batches):
-            assert os.path.exists(output_dir_final / f"{school_name.replace(" ", "_").upper()}_{(num_batch + 1):0{2}d}.json")
+            assert os.path.exists(output_dir_final / f"{school_name.replace(' ', '_').upper()}_{(num_batch + 1):0{2}d}.json")
