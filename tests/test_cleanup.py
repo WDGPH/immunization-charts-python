@@ -1,5 +1,3 @@
-import shutil
-from pathlib import Path
 import pytest
 from scripts.cleanup import safe_delete, remove_files_with_ext, cleanup
 
