@@ -1,5 +1,7 @@
 # 🩺 Immunization Charts (python Version)
 
+**Current version:** v0.1.0  
+
 ## 📘 Introduction
 
 This project provides a Python and Bash-based workflow for generating **personalized immunization history charts** and **notice letters** for children overdue for mandated vaccinations under the **Child Care and Early Years Act (CCEYA)** and ISPA.
@@ -14,10 +16,10 @@ Reports are generated in PDF format using [Typst](https://typst.app) and a custo
 
 ### Virtual Environment
 
-To create and activate the virtual environment:
+Install all dependencies (and create the `.venv` if it doesn't yet exist) before doing anything else:
 
 ```bash
-uv venv
+uv sync
 source .venv/bin/activate
 ```
 
@@ -51,10 +53,13 @@ The main pipeline script automates the end-to-end workflow for generating immuni
 **Usage Example:**
 ```bash
 cd scripts
-./run_pipeline.sh <input_file> <language>
+./run_pipeline.sh <input_file> <language> [--no-cleanup]
 ```
 - `<input_file>`: Name of the input file (e.g., `students.xlsx`)
 - `<language>`: Language code (`english` or `french`)
+- `--no-cleanup` (optional): Skip deleting intermediate Typst artifacts.
+
+> ℹ️ **Typst preview note:** The WDGPH code-server development environments render Typst files via Tinymist. The shared template at `scripts/conf.typ` only defines helper functions, colour tokens, and table layouts that the generated notice `.typ` files import; it doesn't emit any pages on its own, so Tinymist has nothing to preview if attempted on this file. To examine the actual markup that uses these helpers, run the pipeline with `--no-cleanup` so the generated notice `.typ` files stay in `output/json_<lang>/` for manual inspection.
 
 **Outputs:**
 - Processed notices and charts in the `output/` directory
@@ -135,3 +140,6 @@ Steps performed:
     - Save JSON + client IDs
 
 
+## Changelog
+
+See [CHANGELOG.md](./CHANGELOG.md) for details of each release.
