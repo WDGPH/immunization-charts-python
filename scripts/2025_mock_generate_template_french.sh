@@ -6,15 +6,6 @@ LOGO=${3}
 SIGNATURE=${4}
 PARAMETERS=${5}
 
-#v(0.2cm)
-
-#conf.header_info_cim("${LOGO}")
-
-#v(0.2cm)
-
-#conf.client_info_tbl_fr(equal_split: false, vline: false, client, font_size)4}
-PARAMETERS=${5}
-
 CLIENTIDFILE=${FILENAME}_client_ids.csv
 JSONFILE=${FILENAME}.json
 OUTFILE=${INDIR}/${FILENAME}_immunization_notice.typ
