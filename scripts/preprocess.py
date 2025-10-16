@@ -107,7 +107,7 @@ class ClientDataProcessor:
         return str(value).strip()
 
     def _build_template_context(self, row: pd.Series, client_id: str, dob_label: str) -> Dict[str, Any]:
-        dob_iso = self._safe_str(row.DATE_OF_BIRTH if "DATE_OF_BIRTH" in row else row.get("DATE_OF_BIRTH"))
+        dob_iso = self._safe_str(row.get("DATE_OF_BIRTH"))
         context = {
             "client_id": str(client_id),
             "first_name": self._safe_str(row.FIRST_NAME),
