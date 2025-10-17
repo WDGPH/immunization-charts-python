@@ -38,16 +38,16 @@ The main pipeline script automates the end-to-end workflow for generating immuni
    Counts the number of records in the input CSV (excluding the header).
 
 3. **Generating Notices**  
-   Calls `generate_notices.sh` to create Typst templates for each client.
+   Calls `generate_notices.py` to create Typst templates for each client.
 
 4. **Compiling Notices**  
-   Ensures the `conf.typ` template is present, then runs `compile_notices.sh` to generate PDF notices.
+   Ensures the `conf.typ` template is present, then runs `compile_notices.py` to generate PDF notices.
 
 5. **PDF Length Check**  
    Uses `count_pdfs.py` to check the length of each compiled PDF notice for quality control.
 
 6. **Cleanup**  
-   Runs `cleanup.sh` to remove temporary files and tidy up the output directory.
+   Runs `cleanup.py` to remove temporary files and tidy up the output directory.
 
 7. **Summary**  
    Prints a summary of timings for each step, batch size, and total record count.
@@ -58,7 +58,7 @@ cd scripts
 ./run_pipeline.sh <input_file> <language> [--no-cleanup]
 ```
 - `<input_file>`: Name of the input file (e.g., `students.xlsx`)
-- `<language>`: Language code (`english` or `french`)
+- `<language>`: Language code (`en` or `fr`)
 - `--no-cleanup` (optional): Skip deleting intermediate Typst artifacts.
 
 > ℹ️ **Typst preview note:** The WDGPH code-server development environments render Typst files via Tinymist. The shared template at `scripts/conf.typ` only defines helper functions, colour tokens, and table layouts that the generated notice `.typ` files import; it doesn't emit any pages on its own, so Tinymist has nothing to preview if attempted on this file. To examine the actual markup that uses these helpers, run the pipeline with `--no-cleanup` so the generated notice `.typ` files stay in `output/json_<lang>/` for manual inspection.
@@ -87,13 +87,13 @@ You'll see a quick summary of which checks ran (right now that’s the clean-up 
 
 ## Preprocessing
 
-The Python-based pipeline `preprocess.py` orchestrates immunization record preparation and structuring. It replaces the previous Bash script and provides:
+The Python-based pipeline `preprocess.py` orchestrates immunization record preparation and structuring. It replaces the previous Bash script and now provides:
 
-- Reading and validating input files (CSV/Excel)
-- Separating data by school
-- Splitting files into batch chunks
-- Cleaning and transforming client data
-- Building structured notices (JSON + client ID list)
+- Reading and validating input files (CSV/Excel) with schema enforcement
+- Cleaning and transforming client data (dates, addresses, vaccine history)
+- Synthesizing stable school/board identifiers when they are missing in the extract
+- Assigning deterministic per-client sequence numbers sorted by school → last name → first name
+- Emitting a normalized run artifact at `output/artifacts/preprocessed_clients_<run_id>.json` (while still keeping the legacy `output/json_<language>/` payloads during the transition to the Python generator)
 
 Logging is written to `preprocess.log` for traceability.
 
@@ -139,8 +139,10 @@ ClientDataProcessor(
 Command-line usage:
 
 ```bash
-python preprocess.py <input_dir> <input_file> <output_dir>
+python preprocess.py <input_dir> <input_file> <output_dir> [language]
 ```
+
+- `language` (optional): Use `en` or `fr`. Defaults to `en` when omitted.
 
 Steps performed:
 

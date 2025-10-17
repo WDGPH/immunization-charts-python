@@ -7,7 +7,6 @@ def parse_args():
     """Parse command line arguments."""
     parser = argparse.ArgumentParser(description="Cleanup generated files in the specified directory.")
     parser.add_argument("outdir_path", type=str, help="Path to the output directory.")
-    parser.add_argument("language", type=str, help="Language (e.g., 'english', 'french').")
     return parser.parse_args()
 
 def safe_delete(path: Path):
@@ -20,17 +19,20 @@ def safe_delete(path: Path):
 
 def remove_files_with_ext(base_dir: Path, extensions=('typ', 'json', 'csv')):
     """Remove files with specified extensions in the given directory."""
+    if not base_dir.exists():
+        return
     for ext in extensions:
         for file in base_dir.glob(f'*.{ext}'):
             safe_delete(file)
 
-def cleanup(outdir_path: Path, language: str):
+def cleanup(outdir_path: Path):
     """Perform cleanup of generated files and directories."""
-    json_file_path = outdir_path / f'json_{language}'
-    for folder in ['by_school', 'batches']:
+    for legacy_dir in outdir_path.glob('json_*'):
+        remove_files_with_ext(legacy_dir)
+        safe_delete(legacy_dir)
+
+    for folder in ['artifacts', 'by_school', 'batches']:
         safe_delete(outdir_path / folder)
-    remove_files_with_ext(json_file_path)
-    safe_delete(json_file_path / 'conf.pdf')
         
 def main():
     args = parse_args()
@@ -40,8 +42,8 @@ def main():
         print(f"Error: The path {outdir_path} is not a valid directory.")
         sys.exit(1)
     
-    cleanup(outdir_path, args.language)
-    print("Cleanup completed successfully.")
+    cleanup(outdir_path)
+    print("✅ Cleanup completed successfully.")
 
 if __name__ == "__main__":
     main()
