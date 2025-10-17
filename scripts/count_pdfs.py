@@ -1,5 +1,9 @@
 import sys
-from PyPDF2 import PdfReader
+
+try:
+    from pypdf import PdfReader
+except ImportError:  # pragma: no cover - fallback for legacy environments
+    from PyPDF2 import PdfReader  # type: ignore
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:

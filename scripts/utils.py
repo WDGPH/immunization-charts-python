@@ -1,63 +1,91 @@
 import typst
+import locale
 from datetime import datetime
 import pandas as pd
+from typing import Optional
 
-def convert_date_string_french(date_str):
+try:
+    from pypdf import PdfReader, PdfWriter
+except ImportError:  # pragma: no cover - fallback for legacy environments
+    from PyPDF2 import PdfReader, PdfWriter  # type: ignore
+
+def convert_date(date_str: str, to_format: str = 'display', lang: str = 'en') -> Optional[str]:
     """
-    Convert a date string from "YYYY-MM-DD" to "8 mai 2025" (in French), without using locale.
-    """
-    MONTHS_FR = [
-        "janvier", "février", "mars", "avril", "mai", "juin",
-        "juillet", "août", "septembre", "octobre", "novembre", "décembre"
-    ]
-
-    date_obj = datetime.strptime(date_str, "%Y-%m-%d")
-    day = date_obj.day
-    month = MONTHS_FR[date_obj.month - 1]
-    year = date_obj.year
-
-    return f"{day} {month} {year}"
-
-def convert_date_string(date_str):
-    """
-    Convert a date (string or Timestamp) from 'YYYY-MM-DD' to 'Mon DD, YYYY'.
+    Convert dates between ISO and localized display formats.
     
     Parameters:
-        date_str (str | datetime | pd.Timestamp): 
-            Date string in 'YYYY-MM-DD' format or datetime-like object.
+        date_str (str | datetime | pd.Timestamp): Date string to convert
+        to_format (str): Target format - 'iso' or 'display' (default: 'display')
+        lang (str): Language code ('en', 'fr', etc.) (default: 'en')
     
     Returns:
-        str: Date in the format 'Mon DD, YYYY'.
+        str: Formatted date string according to specified format
+    
+    Examples:
+        convert_date('2025-05-08', 'display', 'en') -> 'May 8, 2025'
+        convert_date('2025-05-08', 'display', 'fr') -> '8 mai 2025'
+        convert_date('May 8, 2025', 'iso', 'en') -> '2025-05-08'
+        convert_date('8 mai 2025', 'iso', 'fr') -> '2025-05-08'
     """
     if pd.isna(date_str):
         return None
+
+    # Month mappings for fallback
+    FRENCH_MONTHS = {
+        1: 'janvier', 2: 'février', 3: 'mars', 4: 'avril',
+        5: 'mai', 6: 'juin', 7: 'juillet', 8: 'août',
+        9: 'septembre', 10: 'octobre', 11: 'novembre', 12: 'décembre'
+    }
+    FRENCH_MONTHS_REV = {v: k for k, v in FRENCH_MONTHS.items()}
     
-    # If it's already a datetime or Timestamp
-    if isinstance(date_str, (pd.Timestamp, datetime)):
-        return date_str.strftime("%b %d, %Y")
+    ENGLISH_MONTHS = {
+        1: 'Jan', 2: 'Feb', 3: 'Mar', 4: 'Apr',
+        5: 'May', 6: 'Jun', 7: 'Jul', 8: 'Aug',
+        9: 'Sep', 10: 'Oct', 11: 'Nov', 12: 'Dec'
+    }
+    ENGLISH_MONTHS_REV = {v: k for k, v in ENGLISH_MONTHS.items()}
 
-    # Otherwise assume string input
     try:
-        date_obj = datetime.strptime(str(date_str).strip(), "%Y-%m-%d")
-        return date_obj.strftime("%b %d, %Y")
-    except ValueError:
-        raise ValueError(f"Unrecognized date format: {date_str}")
+        # Convert input to datetime object
+        if isinstance(date_str, (pd.Timestamp, datetime)):
+            date_obj = date_str
+        elif isinstance(date_str, str):
+            if '-' in date_str:  # ISO format
+                date_obj = datetime.strptime(date_str.strip(), "%Y-%m-%d")
+            else:  # Localized format
+                try:
+                    if lang == 'fr':
+                        day, month, year = date_str.split()
+                        month_num = FRENCH_MONTHS_REV.get(month.lower())
+                        if not month_num:
+                            raise ValueError(f"Invalid French month: {month}")
+                        date_obj = datetime(int(year), month_num, int(day))
+                    else:
+                        month, rest = date_str.split(maxsplit=1)
+                        day, year = rest.rstrip(',').split(',')
+                        month_num = ENGLISH_MONTHS_REV.get(month.strip())
+                        if not month_num:
+                            raise ValueError(f"Invalid English month: {month}")
+                        date_obj = datetime(int(year), month_num, int(day.strip()))
+                except (ValueError, KeyError) as e:
+                    raise ValueError(f"Unable to parse date string: {date_str}") from e
+        else:
+            raise ValueError(f"Unsupported date type: {type(date_str)}")
 
-def convert_date_iso(date_str):
-    """
-    Convert a date string from "Mon DD, YYYY" format to "YYYY-MM-DD".
+        # Convert to target format
+        if to_format == 'iso':
+            return date_obj.strftime("%Y-%m-%d")
+        else:  # display format
+            if lang == 'fr':
+                month_name = FRENCH_MONTHS[date_obj.month]
+                return f"{date_obj.day} {month_name} {date_obj.year}"
+            else:
+                month_name = ENGLISH_MONTHS[date_obj.month]
+                return f"{month_name} {date_obj.day}, {date_obj.year}"
 
-    Parameters:
-        date_str (str): Date in the format "Mon DD, YYYY" (e.g., "May 8, 2025").
+    except Exception as e:
+        raise ValueError(f"Date conversion failed: {str(e)}") from e
 
-    Returns:
-        str: Date in the format "YYYY-MM-DD".
-
-    Example:
-        convert_date("May 8, 2025") -> "2025-05-08"
-    """
-    date_obj = datetime.strptime(date_str, "%b %d, %Y")
-    return date_obj.strftime("%Y-%m-%d")
 
 def over_16_check(date_of_birth, delivery_date):
     """
@@ -109,3 +137,61 @@ def calculate_age(DOB, DOV):
 def compile_typst(immunization_record, outpath):
 
     typst.compile(immunization_record, output = outpath)
+
+def build_pdf_password(oen_partial: str, dob: str) -> str:
+    """
+    Construct the password for PDF access by combining the client identifier
+    with the date of birth (YYYYMMDD).
+    """
+    dob_digits = dob.replace("-", "")
+    return f"{oen_partial}{dob_digits}"
+
+
+def encrypt_pdf(file_path: str, oen_partial: str, dob: str) -> str:
+    """
+    Encrypt a PDF with a password derived from the client identifier and DOB.
+
+    Returns the path to the encrypted PDF (<file>_encrypted.pdf).
+    """
+    password = build_pdf_password(str(oen_partial), str(dob))
+    reader = PdfReader(file_path)
+    writer = PdfWriter()
+
+    for page in reader.pages:
+        writer.add_page(page)
+
+    if reader.metadata:
+        writer.add_metadata(reader.metadata)
+
+    writer.encrypt(user_password=password, owner_password=password)
+
+    encrypted_file_path = file_path.replace(".pdf", "_encrypted.pdf")
+    with open(encrypted_file_path, "wb") as f:
+        writer.write(f)
+
+    return encrypted_file_path
+
+
+def decrypt_pdf(encrypted_file_path: str, oen_partial: str, dob: str) -> str:
+    """
+    Decrypt a password-protected PDF generated by encrypt_pdf and write an
+    unencrypted copy alongside it (for internal workflows/tests).
+    """
+    password = build_pdf_password(str(oen_partial), str(dob))
+    reader = PdfReader(encrypted_file_path)
+    if reader.is_encrypted:
+        if reader.decrypt(password) == 0:
+            raise ValueError("Failed to decrypt PDF with derived password.")
+
+    writer = PdfWriter()
+    for page in reader.pages:
+        writer.add_page(page)
+
+    if reader.metadata:
+        writer.add_metadata(reader.metadata)
+
+    decrypted_file_path = encrypted_file_path.replace("_encrypted.pdf", "_decrypted.pdf")
+    with open(decrypted_file_path, "wb") as f:
+        writer.write(f)
+
+    return decrypted_file_path
