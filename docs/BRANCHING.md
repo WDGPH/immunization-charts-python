@@ -28,18 +28,18 @@ This is what this looks like:
 
 ```mermaid
 gitGraph
-    commit(id: "v1.0", tag: "main")
-    branch("phu-wdgph/main")
-    checkout("phu-wdgph/main")
-    commit(id: "Custom WDGPH charts")
-    checkout("main")
-    branch("phu-mslu/main")
-    checkout("phu-mslu/main/feat/qr-code")
-    commit(id: "MSLU QR notice feature")
-    checkout("main")
-    commit(id: "Bug fix")
-    commit(id: "Cherry-pick: WDGPH charts")
-    commit(id: "Cherry-pick: MSLU QR feature")
+    commit id: "v1.0" tag: "main"
+    branch phu-wdgph/main
+    checkout phu-wdgph/main
+    commit id: "Custom WDGPH charts"
+    checkout main
+    branch phu-mslu/main
+    checkout phu-mslu/main/feat/qr-code
+    commit id: "London QR notice feature"
+    checkout main
+    commit id: "Bug fix"
+    commit id: "Cherry-pick: WDGPH charts"
+    commit id: "Cherry-pick: London QR feature"
 ```
 
 ### Key aspects of PHU branches: 
