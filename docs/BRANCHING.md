@@ -18,7 +18,7 @@ A full list of characteristics for this branch are provided below:
 
 * **Stable and Tested:** Changes are merged into main only after they have been reviewed and verified (via testing) on an isolated branch. This keeps main in a deployable state. Continuous integration (CI) pipelines run on main to catch any integration issues immediately. By keeping the main branch stable and integrating changes frequently, we avoid long-lived divergence that could lead to difficult merges. The main branch is the integration point for all work, so it’s critical to keep it healthy and up-to-date. 
 
-NOTE: unit tests are currently in production; our first full stable release will incorporate CI pipelines to run on main and catch all integration issues immediately.  
+NOTE: unit tests are currently being used to verify code before release; our first full stable release will incorporate CI pipelines to run on main and catch all integration issues immediately.  
 
 ## Public Health Unit (PHU) Branches 
 
