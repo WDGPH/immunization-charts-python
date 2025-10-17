@@ -6,7 +6,7 @@ It also describes how changes flow between these branches and provides best-prac
 
 ## Main Branch (VIPER Pipeline) 
 
-**TLDR**; The main branch is the central, versioned branch of the repository. It contains the official codebase for the VIPER Pipline and serves as the foundation from which all other branches are created.
+**TLDR**; The main branch is the central, versioned branch of the repository. It contains the official codebase for the VIPER Pipeline and serves as the foundation from which all other branches are created.
 
 A full list of characteristics for this branch are provided below: 
 
@@ -22,7 +22,7 @@ NOTE: unit tests are currently in development; our first full stable release wil
 
 ## Public Health Unit (PHU) Branches 
 
-In addition to the main branch and short-lived issue branches (**the issue branch information is currently in the contribution guide. Should this be moved?**), we maintain long-running Public Health Unit (PHU) branches, i.e. a dedicated branch for each Public Health Unit client. Each PHU branch contains customizations or configuration specific to that public health unit’s needs. This approach allows each PHU to have code tailored to its requirements without immediately affecting other PHUs or the main branch. 
+In addition to the main branch and short-lived issue branches, we maintain long-running Public Health Unit (PHU) branches, i.e. a dedicated branch for each Public Health Unit client. Each PHU branch contains customizations or configuration specific to that public health unit’s needs. This approach allows each PHU to have code tailored to its requirements without immediately affecting other PHUs or the main branch. 
 
 This is what this looks like:
 
