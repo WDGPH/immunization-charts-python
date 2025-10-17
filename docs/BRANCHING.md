@@ -34,6 +34,8 @@ gitGraph
     commit id: "Custom WDGPH charts"
     checkout main
     branch phu-mslu/main
+    checkout phu-mslu/main
+    branch phu-mslu/main/feat/qr-code
     checkout phu-mslu/main/feat/qr-code
     commit id: "London QR notice feature"
     checkout main
