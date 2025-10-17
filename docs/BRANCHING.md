@@ -22,7 +22,7 @@ NOTE: unit tests are currently being used to verify code before release; our fir
 
 ## Public Health Unit (PHU) Branches 
 
-In addition to the main branch and short-lived issue branches (**the issue branch information is currently in the contribution guide. Should this be moved?**), we maintain long-running Public Health Unit (PHU) branches, i.e. a dedicated branch for each Public Health Unit client. Each PHU branch contains customizations or configuration specific to that public health unit’s needs. This approach allows each PHU to have code tailored to its requirements without immediately affecting other PHUs or the main branch. 
+In addition to the main branch and short-lived issue branches, we maintain long-running Public Health Unit (PHU) branches, i.e. a dedicated branch for each Public Health Unit client. Each PHU branch contains customizations or configuration specific to that public health unit’s needs. This approach allows each PHU to have code tailored to its requirements without immediately affecting other PHUs or the main branch. 
 
 This is what this looks like:
 
