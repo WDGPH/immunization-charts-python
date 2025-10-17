@@ -6,7 +6,7 @@ It also describes how changes flow between these branches and provides best-prac
 
 ## Main Branch (VIPER Pipeline) 
 
-**TLDR**; The main branch is the central, versioned branch of the repository. It contains the official codebase for the VIPER Pipline and serves as the foundation from which all other branches are created.
+**TLDR**; The main branch is the central, versioned branch of the repository. It contains the official codebase for the VIPER Pipeline and serves as the foundation from which all other branches are created.
 
 A full list of characteristics for this branch are provided below: 
 
