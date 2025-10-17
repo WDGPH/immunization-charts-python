@@ -18,7 +18,7 @@ A full list of characteristics for this branch are provided below:
 
 * **Stable and Tested:** Changes are merged into main only after they have been reviewed and verified (via testing) on an isolated branch. This keeps main in a deployable state. Continuous integration (CI) pipelines run on main to catch any integration issues immediately. By keeping the main branch stable and integrating changes frequently, we avoid long-lived divergence that could lead to difficult merges. The main branch is the integration point for all work, so it’s critical to keep it healthy and up-to-date. 
 
-NOTE: unit tests are currently in production; our first full stable release will incorporate CI pipelines to run on main and catch all integration issues immediately.  
+NOTE: unit tests are currently in development; our first full stable release will incorporate CI pipelines to run on main and catch all integration issues immediately.  
 
 ## Public Health Unit (PHU) Branches 
 
@@ -29,12 +29,12 @@ This is what this looks like:
 ```mermaid
 gitGraph
     commit id: "v1.0" tag: "main"
-    branch phu/wdgph
-    checkout phu/wdgph
+    branch phu-wdgph/main
+    checkout phu-wdgph/main
     commit id: "Custom WDGPH charts"
     checkout main
-    branch phu/halton
-    checkout phu/halton
+    branch phu-mslu/main
+    checkout phu-mslu/main/feat/qr-code
     commit id: "Halton QR notice feature"
     checkout main
     commit id: "Bug fix"
@@ -44,11 +44,13 @@ gitGraph
 
 ### Key aspects of PHU branches: 
 
-One branch per PHU: We will have one persistent branch for each Public Health Unit (named accordingly, e.g. phu/phu-acronym). 
+One branch per PHU: We will have one persistent branch for each Public Health Unit. 
+
+The naming convention of these branches follows the naming convention articulated in the contribution guide with a branch prefix, allowing short lived-phu specific branches as necessary. For instance: `phu-acronym/main` and `phu-acronym/feat/feature` for specific features.
 
 These branches are initially created from the main branch (ensuring they start with the core VIPER pipeline code). 
 
-* Customized Features: PHU branches are used to develop and maintain features or changes that are specific to that particular PHU. For example, if PHU-A needs a custom reporting module that others don’t, that code can reside in PHU-A’s branch. 
+* Customized Features: PHU branches are used to develop and maintain features or changes that are specific to that particular PHU. For example, if phu-wdgph needs a custom reporting module that others don’t, that code can reside in phu-wdgph’s branch. 
 
 * Tightly Aligned with Main: It is crucial that PHU branches stay as closely aligned with the main branch as possible. We want to avoid them drifting too far from main over time, because large divergences become difficult to merge later. To maintain alignment, we will regularly merge updates from main into each PHU branch. Ideally, whenever the main branch has new releases or important fixes, those changes should be propagated into all active PHU branches in a timely manner. This practice ensures each PHU branch benefits from the latest core improvements and security patches, and it minimizes the risk of merge conflicts down the line. 
 
