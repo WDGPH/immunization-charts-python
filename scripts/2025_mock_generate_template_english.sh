@@ -49,7 +49,7 @@ echo "
 #let date = date(yaml(\"${PARAMETERS}\"))
 
 // Immunization Notice Section
-#let immunization_notice(client, client_id, immunizations_due, date, font_size) = block[
+#let immunization_notice(data, value, immunizations_due, date, font_size) = block[
 
 #v(0.2cm)
 
@@ -57,9 +57,31 @@ echo "
 
 #v(0.2cm)
 
-#conf.client_info_tbl_en(equal_split: false, vline: false, client, client_id, font_size)
+#align(center)[
+#table(
+  columns: (0.5fr, 0.5fr),
+  inset: 11pt,
+  [#align(left)[
+    To Parent/Guardian of: \
+    #linebreak()
+*#data.name* \
+#linebreak()
 
-#v(0.3cm)
+*#data.address*  \
+#linebreak()
+*#data.city*, *Ontario* *#data.postal_code*  ]],
+table.vline(stroke: {1pt + black} ),
+  [#align(left)[
+    Client ID: #smallcaps[*#value*]\
+    #v(0.02cm)
+    Date of Birth: *#data.date_of_birth*\
+    #v(0.02cm)
+    Childcare Centre: #smallcaps[*#data.school*]
+  ]],
+)
+]
+
+#v(0.1cm)
 
 // Notice for immunizations
 As of *#date* our files show that your child has not received the following immunization(s):  
@@ -68,23 +90,30 @@ As of *#date* our files show that your child has not received the following immu
 
 Please review the Immunization Record on page 2 and update your child's record by using one of the following options:
 
-1. By visiting #text(fill:conf.linkcolor)[#link(\"https://www.test-immunization.ca\")]
-2. By emailing #text(fill:conf.linkcolor)[#link(\"records@test-immunization.ca\")]
+1. By visiting #text(fill:conf.linkcolor)[#link(\"https://www.test-immunization.ca\")[https://www.test-immunization.ca]]
+2. By emailing #text(fill:conf.linkcolor)[#link(\"mailto:records@test-immunization.ca\")[#text(\"records@test-immunization.ca\")]]
 3. By mailing a photocopy of your child’s immunization record to Test Health, 123 Placeholder Street, Sample City, ON A1A 1A1
 4. By Phone: 555-555-5555 ext. 1234
 
 Please update Public Health and your childcare centre every time your child receives a vaccine. By keeping your child's vaccinations up to date, you are not only protecting their health but also the health of other children and staff at the childcare centre.  
 
-*If you are choosing not to immunize your child*, a valid medical exemption or statement of conscience or religious belief must be completed and submitted to Public Health. Links to these forms can be located at #text(fill:conf.wdgteal)[#link(\"https://www.test-immunization.ca/exemptions\")]. Please note this exemption is for childcare only and a new exemption will be required upon enrollment in elementary school.
+#grid(
+  columns: (1fr, auto),
+  gutter: 10pt,
+  [*If you are choosing not to immunize your child*, a valid medical exemption or statement of conscience or religious belief must be completed and submitted to Public Health. Links to these forms can be located at #text(fill:conf.wdgteal)[#link(\"https://www.test-immunization.ca/exemptions\")[https://www.test-immunization.ca/exemptions]]. Please note this exemption is for childcare only and a new exemption will be required upon enrollment in elementary school.],
+  [#if \"qr_code\" in data [
+    #image(data.qr_code, width: 2cm)
+  ]]
+)
 
 If there is an outbreak of a vaccine-preventable disease, Public Health may require that children who are not adequately immunized (including those with exemptions) be excluded from the childcare centre until the outbreak is over. 
 
 If you have any questions about your child’s vaccines, please call 555-555-5555 ext. 1234 to speak with a Public Health Nurse.
-
-  Sincerely, 
-
+Sincerely, 
+#v(0.2cm)
 #conf.signature(\"${SIGNATURE}\", \"Dr. Jane Smith, MPH\", \"Associate Medical Officer of Health\")
-  
+
+
 ]
 
 #let vaccine_table_page(client_id) = block[
@@ -151,7 +180,7 @@ If you have any questions about your child’s vaccines, please call 555-555-555
     pagebreak(weak: true)
     counter(page).update(1) // Reset page counter for this section
     pagebreak(weak: true)
-    immunization_notice(data, row, vaccines_due_array, date, 11pt)
+    immunization_notice(data, value, vaccines_due_array, date, 11pt)
     pagebreak()
     vaccine_table_page(value)
     conf.immunization-table(5, num_rows, received, diseases, 11pt)

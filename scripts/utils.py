@@ -1,6 +1,11 @@
 import typst
 from datetime import datetime
 import pandas as pd
+import qrcode
+import base64
+from io import BytesIO
+from PIL import Image
+import os
 
 def convert_date_string_french(date_str):
     """
@@ -106,6 +111,51 @@ def calculate_age(DOB, DOV):
 
     return f"{years}Y {months}M"
 
-def compile_typst(immunization_record, outpath):
 
+
+def generate_qr_code(data: str, client_id: str = None) -> str:
+    """
+    Generate a 1-bit black and white QR code and save it as a PNG file.
+    
+    Args:
+        data (str): Data to encode in QR code
+        client_id (str): Client ID for unique filename
+        
+    Returns:
+        str: Path to the generated QR code image file
+    """
+    qr = qrcode.QRCode(
+        version=1,
+        error_correction=qrcode.constants.ERROR_CORRECT_L,
+        box_size=10,
+        border=4,
+    )
+    qr.add_data(data)
+    qr.make(fit=True)
+    
+    # Create QR image
+    img = qr.make_image(fill_color="black", back_color="white")
+
+    
+    try:
+        pil_img = img.get_image()  # qrcode.image.pil.PilImage
+    except AttributeError:
+        pil_img = img
+
+    # Convert to 1-bit B/W without dithering to keep sharp edges
+    pil_img = pil_img.convert('1', dither=Image.NONE)
+
+    # File path setup
+    os.makedirs("../output/qr_codes", exist_ok=True)
+    filename = f"qr_{client_id}.png" if client_id else "qr_code.png"
+    save_path = os.path.join("../output/qr_codes", filename)
+
+    # Save as 1-bit PNG
+    pil_img.save(save_path, format='PNG', bits=1)
+
+    # Return path relative to the Typst .typ files in ../output/json_*/
+    return f"../qr_codes/{filename}"
+
+
+def compile_typst(immunization_record, outpath):
     typst.compile(immunization_record, output = outpath)
