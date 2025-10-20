@@ -3,6 +3,7 @@ import locale
 from datetime import datetime
 import pandas as pd
 from typing import Optional
+from pathlib import Path
 
 FRENCH_MONTHS = {
     1: 'janvier', 2: 'février', 3: 'mars', 4: 'avril',
@@ -164,11 +165,12 @@ def encrypt_pdf(file_path: str, oen_partial: str, dob: str) -> str:
 
     writer.encrypt(user_password=password, owner_password=password)
 
-    encrypted_file_path = file_path.replace(".pdf", "_encrypted.pdf")
-    with open(encrypted_file_path, "wb") as f:
+    src = Path(file_path)
+    encrypted_path = src.with_name(f"{src.stem}_encrypted{src.suffix}")
+    with open(encrypted_path, "wb") as f:
         writer.write(f)
 
-    return encrypted_file_path
+    return str(encrypted_path)
 
 
 def decrypt_pdf(encrypted_file_path: str, oen_partial: str, dob: str) -> str:
@@ -189,8 +191,14 @@ def decrypt_pdf(encrypted_file_path: str, oen_partial: str, dob: str) -> str:
     if reader.metadata:
         writer.add_metadata(reader.metadata)
 
-    decrypted_file_path = encrypted_file_path.replace("_encrypted.pdf", "_decrypted.pdf")
-    with open(decrypted_file_path, "wb") as f:
+    enc = Path(encrypted_file_path)
+    stem = enc.stem
+    if stem.endswith("_encrypted"):
+        base = stem[:-len("_encrypted")]
+    else:
+        base = stem
+    decrypted_path = enc.with_name(f"{base}_decrypted{enc.suffix}")
+    with open(decrypted_path, "wb") as f:
         writer.write(f)
 
-    return decrypted_file_path
+    return str(decrypted_path)
