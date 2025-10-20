@@ -15,18 +15,15 @@ for typfile in ${OUTDIR}/json_${LANG}/*.typ; do
 
     typst compile --font-path /usr/share/fonts/truetype/freefont/ --root ../ \
         "${OUTDIR}/json_${LANG}/$filename.typ"
-
-    base_name="$filename"
-    if [[ "$filename" == *_immunization_notice ]]; then
-        base_name="${filename%_immunization_notice}"
-    fi
-
-    PDF_PATH="${OUTDIR}/json_${LANG}/$filename.pdf"
-    JSON_PATH="${OUTDIR}/json_${LANG}/${base_name}.json"
-
-    if [ -f "${PDF_PATH}" ] && [ -f "${JSON_PATH}" ]; then
-        "${PYTHON:-python3}" encrypt_notice.py "${JSON_PATH}" "${PDF_PATH}" "${LANG}"
-    else
-        echo "WARNING: Skipping encryption for ${filename}: missing PDF or JSON."
-    fi
 done
+
+echo "Encrypting compiled notices..."
+ENCRYPT_ARGS=(--directory "${OUTDIR}/json_${LANG}" --language "${LANG}")
+if [ -n "${ENCRYPTION_WORKERS:-}" ]; then
+    ENCRYPT_ARGS+=(--workers "${ENCRYPTION_WORKERS}")
+fi
+if [ -n "${ENCRYPTION_CHUNK_SIZE:-}" ]; then
+    ENCRYPT_ARGS+=(--chunk-size "${ENCRYPTION_CHUNK_SIZE}")
+fi
+
+"${PYTHON:-python3}" encrypt_notice.py "${ENCRYPT_ARGS[@]}"
