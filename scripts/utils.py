@@ -154,11 +154,49 @@ def encrypt_pdf(file_path: str, oen_partial: str, dob: str) -> str:
     Returns the path to the encrypted PDF (<file>_encrypted.pdf).
     """
     password = build_pdf_password(str(oen_partial), str(dob))
-    reader = PdfReader(file_path)
+    reader = PdfReader(file_path, strict=False)
     writer = PdfWriter()
 
-    for page in reader.pages:
-        writer.add_page(page)
+    copied = False
+
+    # Prefer optimized cloning/append operations when available to avoid page-by-page copies.
+    append = getattr(writer, "append", None)
+    if append:
+        try:
+            append(reader)
+            copied = True
+        except TypeError:
+            try:
+                append(file_path)
+                copied = True
+            except Exception:
+                copied = False
+        except Exception:
+            copied = False
+
+    if not copied:
+        for attr in ("clone_reader_document_root", "cloneReaderDocumentRoot"):
+            clone_fn = getattr(writer, attr, None)
+            if clone_fn:
+                try:
+                    clone_fn(reader)
+                    copied = True
+                    break
+                except Exception:
+                    copied = False
+
+    if not copied:
+        append_from_reader = getattr(writer, "appendPagesFromReader", None)
+        if append_from_reader:
+            try:
+                append_from_reader(reader)
+                copied = True
+            except Exception:
+                copied = False
+
+    if not copied:
+        for page in reader.pages:
+            writer.add_page(page)
 
     if reader.metadata:
         writer.add_metadata(reader.metadata)
