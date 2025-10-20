@@ -4,9 +4,23 @@ from datetime import datetime
 import pandas as pd
 from typing import Optional
 
+FRENCH_MONTHS = {
+    1: 'janvier', 2: 'février', 3: 'mars', 4: 'avril',
+    5: 'mai', 6: 'juin', 7: 'juillet', 8: 'août',
+    9: 'septembre', 10: 'octobre', 11: 'novembre', 12: 'décembre'
+}
+FRENCH_MONTHS_REV = {v.lower(): k for k, v in FRENCH_MONTHS.items()}
+
+ENGLISH_MONTHS = {
+    1: 'Jan', 2: 'Feb', 3: 'Mar', 4: 'Apr',
+    5: 'May', 6: 'Jun', 7: 'Jul', 8: 'Aug',
+    9: 'Sep', 10: 'Oct', 11: 'Nov', 12: 'Dec'
+}
+ENGLISH_MONTHS_REV = {v.lower(): k for k, v in ENGLISH_MONTHS.items()}
+
 try:
     from pypdf import PdfReader, PdfWriter
-except ImportError:  # pragma: no cover - fallback for legacy environments
+except ImportError:  
     from PyPDF2 import PdfReader, PdfWriter  # type: ignore
 
 def convert_date(date_str: str, to_format: str = 'display', lang: str = 'en') -> Optional[str]:
@@ -30,21 +44,6 @@ def convert_date(date_str: str, to_format: str = 'display', lang: str = 'en') ->
     if pd.isna(date_str):
         return None
 
-    # Month mappings for fallback
-    FRENCH_MONTHS = {
-        1: 'janvier', 2: 'février', 3: 'mars', 4: 'avril',
-        5: 'mai', 6: 'juin', 7: 'juillet', 8: 'août',
-        9: 'septembre', 10: 'octobre', 11: 'novembre', 12: 'décembre'
-    }
-    FRENCH_MONTHS_REV = {v: k for k, v in FRENCH_MONTHS.items()}
-    
-    ENGLISH_MONTHS = {
-        1: 'Jan', 2: 'Feb', 3: 'Mar', 4: 'Apr',
-        5: 'May', 6: 'Jun', 7: 'Jul', 8: 'Aug',
-        9: 'Sep', 10: 'Oct', 11: 'Nov', 12: 'Dec'
-    }
-    ENGLISH_MONTHS_REV = {v: k for k, v in ENGLISH_MONTHS.items()}
-
     try:
         # Convert input to datetime object
         if isinstance(date_str, (pd.Timestamp, datetime)):
@@ -63,7 +62,7 @@ def convert_date(date_str: str, to_format: str = 'display', lang: str = 'en') ->
                     else:
                         month, rest = date_str.split(maxsplit=1)
                         day, year = rest.rstrip(',').split(',')
-                        month_num = ENGLISH_MONTHS_REV.get(month.strip())
+                        month_num = ENGLISH_MONTHS_REV.get(month.strip().lower())
                         if not month_num:
                             raise ValueError(f"Invalid English month: {month}")
                         date_obj = datetime(int(year), month_num, int(day.strip()))
