@@ -25,7 +25,7 @@ for typfile in ${OUTDIR}/json_${LANG}/*.typ; do
     JSON_PATH="${OUTDIR}/json_${LANG}/${base_name}.json"
 
     if [ -f "${PDF_PATH}" ] && [ -f "${JSON_PATH}" ]; then
-        python3 encrypt_notice.py "${JSON_PATH}" "${PDF_PATH}" "${LANG}"
+        "${PYTHON:-python3}" encrypt_notice.py "${JSON_PATH}" "${PDF_PATH}" "${LANG}"
     else
         echo "WARNING: Skipping encryption for ${filename}: missing PDF or JSON."
     fi
