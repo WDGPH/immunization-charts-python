@@ -5,7 +5,7 @@ import sys
 import time
 from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
-from typing import Iterable, List, Optional, Tuple
+from typing import Iterator, List, Optional, Tuple
 
 from utils import encrypt_pdf, convert_date
 
@@ -93,6 +93,32 @@ def _discover_notice_pairs(directory: Path) -> Tuple[List[Tuple[Path, Path]], Li
     return pairs, missing_json
 
 
+def _resolve_worker_count(requested: Optional[int], job_count: int) -> int:
+    if job_count <= 0:
+        return 0
+    if requested is not None:
+        if requested <= 0:
+            raise ValueError("Number of workers must be a positive integer.")
+        return max(1, min(requested, job_count))
+    cpu_default = os.cpu_count() or 1
+    return max(1, min(cpu_default, job_count))
+
+
+def _run_jobs(
+    jobs: List[Tuple[str, str, str]],
+    worker_count: int,
+    chunk_size: int,
+) -> Iterator[Tuple[str, str, str]]:
+    if worker_count <= 1:
+        for job in jobs:
+            yield _job(job)
+        return
+
+    with ProcessPoolExecutor(max_workers=worker_count) as executor:
+        for result in executor.map(_job, jobs, chunksize=chunk_size):
+            yield result
+
+
 def _job(args: Tuple[str, str, str]) -> Tuple[str, str, str]:
     json_path_str, pdf_path_str, language = args
     try:
@@ -126,14 +152,15 @@ def batch_encrypt(
         print("No notices found for encryption.")
         return
 
-    jobs: Iterable[Tuple[str, str, str]] = [
+    jobs: List[Tuple[str, str, str]] = [
         (str(json_path), str(pdf_path), language) for json_path, pdf_path in pairs
     ]
+    worker_count = _resolve_worker_count(workers, len(jobs))
+    chunk_size = max(1, chunk_size)
 
-    max_workers = workers or os.cpu_count() or 1
-    start = time.time()
+    start = time.perf_counter()
     print(
-        f"🔐 Encrypting {len(pairs)} notices using {max_workers} worker(s)...",
+        f"🔐 Encrypting {len(jobs)} notices using {worker_count} worker(s)...",
         flush=True,
     )
 
@@ -141,17 +168,16 @@ def batch_encrypt(
     skipped: List[Tuple[str, str]] = []
     failures: List[Tuple[str, str]] = []
 
-    with ProcessPoolExecutor(max_workers=max_workers) as executor:
-        for status, pdf_path_str, message in executor.map(_job, jobs, chunksize=max(1, chunk_size)):
-            pdf_name = Path(pdf_path_str).name
-            if status == "ok":
-                successes += 1
-            elif status == "skipped":
-                skipped.append((pdf_name, message))
-            else:
-                failures.append((pdf_name, message))
+    for status, pdf_path_str, message in _run_jobs(jobs, worker_count, chunk_size):
+        pdf_name = Path(pdf_path_str).name
+        if status == "ok":
+            successes += 1
+        elif status == "skipped":
+            skipped.append((pdf_name, message))
+        else:
+            failures.append((pdf_name, message))
 
-    duration = time.time() - start
+    duration = time.perf_counter() - start
     print(
         f"✅ Encryption complete in {duration:.2f}s "
         f"(success: {successes}, skipped: {len(skipped)}, failed: {len(failures)})"
