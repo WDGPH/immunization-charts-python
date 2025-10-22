@@ -27,41 +27,63 @@ source .venv/bin/activate
 
 ## 🛠️ Pipeline Overview
 
-## 🚦 Pipeline Steps (`run_pipeline.sh`)
+## 🚦 Pipeline Steps
 
-The main pipeline script automates the end-to-end workflow for generating immunization notices and charts. Below are the key steps:
+The main pipeline orchestrator (`run_pipeline.py`) automates the end-to-end workflow for generating immunization notices and charts. Below are the key steps:
 
-1. **Preprocessing**  
-   Runs `preprocess.py` to clean, validate, and structure input data.
+1. **Output Preparation**  
+   Prepares the output directory, optionally removing existing contents while preserving logs.
 
-2. **Record Count**  
-   Counts the number of records in the input CSV (excluding the header).
+2. **Preprocessing**  
+   Runs `preprocess.py` to clean, validate, and structure input data into a normalized JSON artifact.
 
 3. **Generating Notices**  
-   Calls `generate_notices.py` to create Typst templates for each client.
+   Calls `generate_notices.py` to create Typst templates for each client from the preprocessed artifact.
 
 4. **Compiling Notices**  
-   Ensures the `conf.typ` template is present, then runs `compile_notices.py` to generate PDF notices.
+   Runs `compile_notices.py` to compile Typst templates into individual PDF notices.
 
-5. **PDF Length Check**  
-   Uses `count_pdfs.py` to check the length of each compiled PDF notice for quality control.
+5. **PDF Validation**  
+   Uses `count_pdfs.py` to validate the page count of each compiled PDF for quality control.
 
-6. **Cleanup**  
-   Runs `cleanup.py` to remove temporary files and tidy up the output directory.
+6. **Batching PDFs** (optional)  
+   When enabled, combines individual PDFs into batches using `batch_pdfs.py` with optional grouping by school or board.
 
-7. **Summary**  
-   Prints a summary of timings for each step, batch size, and total record count.
+7. **Cleanup**  
+   Removes intermediate files (.typ, .json) to tidy up the output directory.
 
 **Usage Example:**
 ```bash
 cd scripts
-./run_pipeline.sh <input_file> <language> [--no-cleanup]
+python3 run_pipeline.py <input_file> <language> [options]
 ```
+
+**Required Arguments:**
 - `<input_file>`: Name of the input file (e.g., `students.xlsx`)
 - `<language>`: Language code (`en` or `fr`)
-- `--no-cleanup` (optional): Skip deleting intermediate Typst artifacts.
 
-> ℹ️ **Typst preview note:** The WDGPH code-server development environments render Typst files via Tinymist. The shared template at `scripts/conf.typ` only defines helper functions, colour tokens, and table layouts that the generated notice `.typ` files import; it doesn't emit any pages on its own, so Tinymist has nothing to preview if attempted on this file. To examine the actual markup that uses these helpers, run the pipeline with `--no-cleanup` so the generated notice `.typ` files stay in `output/json_<lang>/` for manual inspection.
+**Optional Arguments:**
+- `--keep-intermediate-files`: Preserve .typ, .json, and per-client .pdf files
+- `--remove-existing-output`: Automatically remove existing output directory without prompt
+- `--batch-size N`: Enable batching with at most N clients per batch (0 disables batching)
+- `--batch-by-school`: Group batches by school identifier
+- `--batch-by-board`: Group batches by board identifier
+- `--input-dir PATH`: Input directory (default: ../input)
+- `--output-dir PATH`: Output directory (default: ../output)
+
+**Examples:**
+```bash
+# Basic usage
+python3 run_pipeline.py students.xlsx en
+
+# With batching by school
+python3 run_pipeline.py students.xlsx en --batch-size 50 --batch-by-school
+
+# Keep intermediate files for debugging
+python3 run_pipeline.py students.xlsx fr --keep-intermediate-files
+```
+
+> ℹ️ **Typst preview note:** The WDGPH code-server development environments render Typst files via Tinymist. The shared template at `scripts/conf.typ` only defines helper functions, colour tokens, and table layouts that the generated notice `.typ` files import; it doesn't emit any pages on its own, so Tinymist has nothing to preview if attempted on this file. To examine the actual markup that uses these helpers, run the pipeline with `--keep-intermediate-files` so the generated notice `.typ` files stay in `output/artifacts/` for manual inspection.
 
 **Outputs:**
 - Processed notices and charts in the `output/` directory

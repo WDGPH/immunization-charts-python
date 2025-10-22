@@ -50,7 +50,7 @@ class PreprocessResult:
     warnings: List[str]
 
 
-def parse_args() -> argparse.Namespace:
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Validate and normalize immunization data extracts into a single JSON artifact."
     )
@@ -69,7 +69,7 @@ def parse_args() -> argparse.Namespace:
         dest="run_id",
         help="Optional run identifier used when naming artifacts (defaults to current UTC timestamp).",
     )
-    return parser.parse_args()
+    return parser.parse_args(argv)
 
 
 def configure_logging(output_dir: Path, run_id: str) -> Path:
@@ -379,8 +379,8 @@ def write_artifact(output_dir: Path, language: str, run_id: str, result: Preproc
     return artifact_path
 
 
-def main() -> None:
-    args = parse_args()
+def main(argv: list[str] | None = None) -> int:
+    args = parse_args(argv)
     run_id = args.run_id or datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S")
 
     log_path = configure_logging(args.output_dir, run_id)
@@ -402,6 +402,8 @@ def main() -> None:
         print("Warnings detected during preprocessing:")
         for warning in result.warnings:
             print(f" - {warning}")
+    
+    return 0
 
 
 if __name__ == "__main__":

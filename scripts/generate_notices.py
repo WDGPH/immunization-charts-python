@@ -54,14 +54,14 @@ class ArtifactPayload:
     clients: List[ClientRecord]
 
 
-def parse_args() -> argparse.Namespace:
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Generate Typst notices from preprocessed JSON.")
     parser.add_argument("artifact_path", type=Path, help="Path to the preprocessed JSON artifact.")
     parser.add_argument("output_dir", type=Path, help="Directory to write Typst files.")
     parser.add_argument("logo_path", type=Path, help="Path to the logo image.")
     parser.add_argument("signature_path", type=Path, help="Path to the signature image.")
     parser.add_argument("parameters_path", type=Path, help="Path to the YAML parameters file.")
-    return parser.parse_args()
+    return parser.parse_args(argv)
 
 
 def read_artifact(path: Path) -> ArtifactPayload:
@@ -175,8 +175,8 @@ def generate_typst_files(
     return files
 
 
-def main() -> None:
-    args = parse_args()
+def main(argv: list[str] | None = None) -> None:
+    args = parse_args(argv)
     payload = read_artifact(args.artifact_path)
 
     generated = generate_typst_files(

@@ -3,11 +3,11 @@ import shutil
 import argparse
 from pathlib import Path
 
-def parse_args():
+def parse_args(argv: list[str] | None = None):
     """Parse command line arguments."""
     parser = argparse.ArgumentParser(description="Cleanup generated files in the specified directory.")
     parser.add_argument("outdir_path", type=str, help="Path to the output directory.")
-    return parser.parse_args()
+    return parser.parse_args(argv)
 
 def safe_delete(path: Path):
     """Safely delete a file or directory if it exists."""
@@ -34,8 +34,8 @@ def cleanup(outdir_path: Path):
     for folder in ['artifacts', 'by_school', 'batches']:
         safe_delete(outdir_path / folder)
         
-def main():
-    args = parse_args()
+def main(argv: list[str] | None = None):
+    args = parse_args(argv)
     outdir_path = Path(args.outdir_path)
 
     if not outdir_path.is_dir():
