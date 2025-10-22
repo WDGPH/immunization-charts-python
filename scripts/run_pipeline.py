@@ -168,31 +168,42 @@ def run_step_2_preprocess(
     """
     print_step(2, "Preprocessing")
     
-    # Build the command-line arguments for preprocess.py
-    argv = [
-        str(input_dir),
-        input_file,
-        str(output_dir),
-        language,
-        "--run-id",
-        run_id,
-    ]
+    # Configure logging
+    log_path = preprocess.configure_logging(output_dir, run_id)
     
-    # Call preprocess.main() with the arguments
-    exit_code = preprocess.main(argv)
-    if exit_code != 0:
-        raise RuntimeError(f"Preprocessing failed with exit code {exit_code}")
+    # Load and process input data
+    input_path = input_dir / input_file
+    df_raw = preprocess.read_input(input_path)
+    df = preprocess.ensure_required_columns(df_raw)
+    
+    # Load configuration
+    import json
+    disease_map_path = preprocess.DISEASE_MAP_PATH
+    vaccine_reference_path = preprocess.VACCINE_REFERENCE_PATH
+    disease_map = json.loads(disease_map_path.read_text(encoding="utf-8"))
+    vaccine_reference = json.loads(vaccine_reference_path.read_text(encoding="utf-8"))
+    
+    # Build preprocessing result
+    result = preprocess.build_preprocess_result(
+        df, language, disease_map, vaccine_reference, preprocess.IGNORE_AGENTS
+    )
+    
+    # Write artifact
+    artifact_path = preprocess.write_artifact(
+        output_dir / "artifacts", language, run_id, result
+    )
+    
+    print(f"📄 Preprocessed artifact: {artifact_path}")
+    print(f"Preprocess log written to {log_path}")
+    if result.warnings:
+        print("Warnings detected during preprocessing:")
+        for warning in result.warnings:
+            print(f" - {warning}")
     
     # Summarize the preprocessed clients
-    artifact_path = output_dir / "artifacts" / f"preprocessed_clients_{run_id}.json"
-    if artifact_path.exists():
-        total_clients = summarize_preprocessed_clients.extract_total_clients(artifact_path)
-        print(f"📄 Preprocessed artifact: {artifact_path}")
-        print(f"👥 Clients normalized: {total_clients}")
-        return total_clients
-    else:
-        print(f"⚠️ Preprocessed artifact not found at {artifact_path}")
-        return 0
+    total_clients = len(result.clients)
+    print(f"👥 Clients normalized: {total_clients}")
+    return total_clients
 
 
 def run_step_3_generate_notices(
@@ -210,15 +221,16 @@ def run_step_3_generate_notices(
     signature_path = assets_dir / "signature.png"
     parameters_path = config_dir / "parameters.yaml"
     
-    argv = [
-        str(artifact_path),
-        str(artifacts_dir),
-        str(logo_path),
-        str(signature_path),
-        str(parameters_path),
-    ]
-    
-    generate_notices.main(argv)
+    # Read artifact and generate Typst files
+    payload = generate_notices.read_artifact(artifact_path)
+    generated = generate_notices.generate_typst_files(
+        payload,
+        artifacts_dir,
+        logo_path,
+        signature_path,
+        parameters_path,
+    )
+    print(f"Generated {len(generated)} Typst files in {artifacts_dir} for language {payload.language}")
 
 
 def run_step_4_compile_notices(
@@ -230,13 +242,17 @@ def run_step_4_compile_notices(
     artifacts_dir = output_dir / "artifacts"
     pdf_dir = output_dir / "pdf_individual"
     
-    argv = [
-        str(artifacts_dir),
-        str(pdf_dir),
-        "--quiet",
-    ]
-    
-    compile_notices.main(argv)
+    # Compile Typst files
+    compiled = compile_notices.compile_typst_files(
+        artifacts_dir,
+        pdf_dir,
+        typst_bin=compile_notices.DEFAULT_TYPST_BIN,
+        font_path=compile_notices.DEFAULT_FONT_PATH,
+        root_dir=compile_notices.ROOT_DIR,
+        verbose=False,  # quiet mode
+    )
+    if compiled:
+        print(f"Compiled {compiled} Typst file(s) to PDFs in {pdf_dir}.")
 
 
 def run_step_5_validate_pdfs(
@@ -251,15 +267,12 @@ def run_step_5_validate_pdfs(
     metadata_dir = output_dir / "metadata"
     count_json = metadata_dir / f"{language}_page_counts_{run_id}.json"
     
-    argv = [
-        str(pdf_dir),
-        "--language",
-        language,
-        "--json",
-        str(count_json),
-    ]
-    
-    count_pdfs.main(argv)
+    # Discover and count PDFs
+    files = count_pdfs.discover_pdfs(pdf_dir)
+    filtered = count_pdfs.filter_by_language(files, language)
+    results, buckets = count_pdfs.summarize_pdfs(filtered)
+    count_pdfs.print_summary(results, buckets, language=language, verbose=False)
+    count_pdfs.write_json(results, buckets, target=count_json, language=language)
 
 
 def run_step_6_batch_pdfs(
@@ -277,21 +290,22 @@ def run_step_6_batch_pdfs(
         print("📦 Step 6: Batching skipped (batch size <= 0).")
         return
     
-    argv = [
-        str(output_dir),
-        language,
-        "--run-id",
-        run_id,
-        "--batch-size",
-        str(batch_size),
-    ]
+    # Create batch configuration
+    config = batch_pdfs.BatchConfig(
+        output_dir=output_dir.resolve(),
+        language=language,
+        batch_size=batch_size,
+        batch_by_school=batch_by_school,
+        batch_by_board=batch_by_board,
+        run_id=run_id,
+    )
     
-    if batch_by_school:
-        argv.append("--batch-by-school")
-    if batch_by_board:
-        argv.append("--batch-by-board")
-    
-    batch_pdfs.main(argv)
+    # Execute batching
+    results = batch_pdfs.batch_pdfs(config)
+    if results:
+        print(f"Created {len(results)} batches in {config.output_dir / 'pdf_combined'}")
+    else:
+        print("No batches created.")
 
 
 def run_step_7_cleanup(
@@ -305,8 +319,8 @@ def run_step_7_cleanup(
         print("🧹 Step 7: Cleanup skipped (--keep-intermediate-files flag).")
     else:
         print("🧹 Step 7: Cleanup started...")
-        argv = [str(output_dir)]
-        cleanup.main(argv)
+        cleanup.cleanup(output_dir)
+        print("✅ Cleanup completed successfully.")
 
 
 def print_summary(
