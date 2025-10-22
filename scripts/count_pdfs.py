@@ -11,7 +11,7 @@ from typing import Iterable, List, Tuple
 from pypdf import PdfReader
 
 
-def parse_args() -> argparse.Namespace:
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Summarize page counts for PDFs.")
     parser.add_argument(
         "target",
@@ -33,7 +33,7 @@ def parse_args() -> argparse.Namespace:
         type=Path,
         help="Optional path to write the summary as JSON.",
     )
-    return parser.parse_args()
+    return parser.parse_args(argv)
 
 
 def discover_pdfs(target: Path) -> List[Path]:
@@ -114,8 +114,8 @@ def write_json(
     target.write_text(json.dumps(payload, indent=2), encoding="utf-8")
 
 
-def main() -> None:
-    args = parse_args()
+def main(argv: list[str] | None = None) -> None:
+    args = parse_args(argv)
     files = discover_pdfs(args.target)
     filtered = filter_by_language(files, args.language)
     results, buckets = summarize_pdfs(filtered)

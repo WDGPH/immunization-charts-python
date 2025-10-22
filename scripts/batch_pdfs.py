@@ -85,7 +85,7 @@ class BatchResult:
 PDF_PATTERN = re.compile(r"^(?P<lang>[a-z]{2})_client_(?P<sequence>\d{5})_(?P<client_id>.+)\.pdf$")
 
 
-def parse_args() -> argparse.Namespace:
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Batch per-client PDFs into combined outputs.")
     parser.add_argument("output_dir", type=Path, help="Root output directory containing pipeline artifacts.")
     parser.add_argument("language", choices=["en", "fr"], help="Language prefix to batch (en or fr).")
@@ -114,7 +114,7 @@ def parse_args() -> argparse.Namespace:
         required=True,
         help="Pipeline run identifier to locate preprocessing artifacts and logs.",
     )
-    return parser.parse_args()
+    return parser.parse_args(argv)
 
 
 def chunked(iterable: Sequence[PdfRecord], size: int) -> Iterator[List[PdfRecord]]:
@@ -385,8 +385,8 @@ def batch_pdfs(config: BatchConfig) -> List[BatchResult]:
     return results
 
 
-def main() -> None:
-    args = parse_args()
+def main(argv: list[str] | None = None) -> None:
+    args = parse_args(argv)
     config = BatchConfig(
         output_dir=args.output_dir.resolve(),
         language=args.language,
