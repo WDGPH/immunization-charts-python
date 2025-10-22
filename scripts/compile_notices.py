@@ -69,7 +69,7 @@ def compile_typst_files(
     return len(typ_files)
 
 
-def parse_args() -> argparse.Namespace:
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Compile Typst notices into PDFs.")
     parser.add_argument("artifact_dir", type=Path, help="Directory containing Typst artifacts.")
     parser.add_argument("output_dir", type=Path, help="Directory to write compiled PDFs.")
@@ -95,11 +95,11 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Suppress per-file compile output and only print the final summary.",
     )
-    return parser.parse_args()
+    return parser.parse_args(argv)
 
 
-def main() -> None:
-    args = parse_args()
+def main(argv: list[str] | None = None) -> None:
+    args = parse_args(argv)
     compiled = compile_typst_files(
         args.artifact_dir,
         args.output_dir,
