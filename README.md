@@ -47,16 +47,17 @@ This design ensures:
 
 The pipeline produces a single **normalized JSON artifact** (`preprocessed_clients_<run_id>.json`) during preprocessing. This artifact serves as the canonical source of truth:
 
-- **Created by:** `preprocess.py` (Step 2) - contains sorted clients with enriched metadata
-- **Consumed by:** `generate_notices.py` (Step 3) and `batch_pdfs.py` (Step 7)
+- **Created by:** `preprocess.py` (Step 2) - contains sorted clients with normalized metadata
+- **Consumed by:** `generate_qr_codes.py` (Step 3), `generate_notices.py` (Step 4), and `batch_pdfs.py` (Step 8)
 - **Format:** Single JSON file with run metadata, total client count, warnings, and per-client details
 
 Client data flows through specialized handlers during generation:
 
 | Stage | Input | Processing | Output |
 |-------|-------|-----------|--------|
-| **QR Generation** | In-memory `ClientRecord` objects | `build_template_context()` → `generate_qr_code()` | PNG images in `artifacts/qr_codes/` |
-| **Typst Template** | In-memory `ClientRecord` objects | `render_notice()` → template rendering | `.typ` files in `artifacts/typst/` |
+| **Preprocessing** | Excel file | Data normalization, sorting, age calculation | `preprocessed_clients_<run_id>.json` |
+| **QR Generation** | Preprocessed JSON | Payload formatting → PNG generation | PNG images in `artifacts/qr_codes/` |
+| **Typst Template** | Preprocessed JSON | Template rendering with QR reference | `.typ` files in `artifacts/typst/` |
 | **PDF Compilation** | Filesystem glob of `.typ` files | Typst subprocess | PDF files in `pdf_individual/` |
 | **PDF Batching** | In-memory `ClientArtifact` objects | Grouping and manifest generation | Batch PDFs in `pdf_combined/` |
 
@@ -68,28 +69,34 @@ Clients are deterministically ordered during preprocessing by: **school name →
 
 ## 🚦 Pipeline Steps
 
-The main pipeline orchestrator (`run_pipeline.py`) automates the end-to-end workflow for generating immunization notices and charts. Below are the key steps:
+The main pipeline orchestrator (`run_pipeline.py`) automates the end-to-end workflow for generating immunization notices and charts. Below are the nine sequential steps:
 
-1. **Output Preparation**  
+1. **Output Preparation** (`prepare_output.py`)  
    Prepares the output directory, optionally removing existing contents while preserving logs.
 
-2. **Preprocessing**  
-   Runs `preprocess.py` to clean, validate, and structure input data into a normalized JSON artifact.
+2. **Preprocessing** (`preprocess.py`)  
+   Cleans, validates, and structures input data into a normalized JSON artifact (`preprocessed_clients_<run_id>.json`).
 
-3. **Generating Notices**  
-   Calls `generate_notices.py` to create Typst templates for each client from the preprocessed artifact.
+3. **Generating QR Codes** (`generate_qr_codes.py`, optional)  
+   Generates QR code PNG files from templated payloads. Skipped if `qr.enabled: false` in `parameters.yaml`.
 
-4. **Compiling Notices**  
-   Runs `compile_notices.py` to compile Typst templates into individual PDF notices.
+4. **Generating Notices** (`generate_notices.py`)  
+   Renders Typst templates (`.typ` files) for each client from the preprocessed artifact, with QR code references.
 
-5. **PDF Validation**  
-   Uses `count_pdfs.py` to validate the page count of each compiled PDF for quality control.
+5. **Compiling Notices** (`compile_notices.py`)  
+   Compiles Typst templates into individual PDF notices using the `typst` command-line tool.
 
-6. **Batching PDFs** (optional)  
-   When enabled, combines individual PDFs into batches using `batch_pdfs.py` with optional grouping by school or board.
+6. **Validating PDFs** (`count_pdfs.py`)  
+   Validates the page count of each compiled PDF and generates a page count manifest for quality control.
 
-7. **Cleanup**  
-   Removes intermediate files (.typ, .json) to tidy up the output directory.
+7. **Encrypting PDFs** (`encrypt_notice.py`, optional)  
+   When `encryption.enabled: true`, encrypts individual PDFs using client metadata as password.
+
+8. **Batching PDFs** (`batch_pdfs.py`, optional)  
+   When `batching.batch_size > 0`, combines individual PDFs into batches with optional grouping by school or board. Skipped if encryption is enabled.
+
+9. **Cleanup** (`cleanup.py`)  
+   Removes intermediate files (.typ, .json, per-client PDFs) if `pipeline.keep_intermediate_files: false`.
 
 **Usage Example:**
 ```bash
@@ -107,10 +114,12 @@ uv run viper <input_file> <language> [--output-dir PATH]
 
 **Configuration:**
 All pipeline behavior is controlled via `config/parameters.yaml`:
-- `pipeline.auto_remove_output`: Automatically remove existing output (true/false)
-- `pipeline.keep_intermediate_files`: Preserve .typ, .json, and per-client .pdf files (true/false)
-- `batching.batch_size`: Enable batching with at most N clients per batch (0 disables)
-- `batching.group_by`: Batch grouping strategy (null, "school", or "board")
+- `pipeline.auto_remove_output`: Automatically remove existing output before processing (true/false)
+- `pipeline.keep_intermediate_files`: Preserve intermediate .typ, .json, and per-client .pdf files (true/false)
+- `qr.enabled`: Enable or disable QR code generation (true/false)
+- `encryption.enabled`: Enable or disable PDF encryption (true/false, disables batching if true)
+- `batching.batch_size`: Enable batching with at most N clients per batch (0 disables batching)
+- `batching.group_by`: Batch grouping strategy (null for sequential, "school", or "board")
 
 **Examples:**
 ```bash
@@ -147,73 +156,46 @@ You'll see a quick summary of which checks ran (right now that’s the clean-up 
 
 ## Preprocessing
 
-The `preprocess.py` module orchestrates immunization record preparation and structuring. It provides:
+The `preprocess.py` (Step 2) module reads raw input data and produces a normalized JSON artifact.
 
-- Reading and validating input files (CSV/Excel) with schema enforcement
-- Cleaning and transforming client data (dates, addresses, vaccine history)
-- Synthesizing stable school/board identifiers when they are missing in the extract
-- Assigning deterministic per-client sequence numbers sorted by school → last name → first name
-- Emitting a normalized run artifact at `output/artifacts/preprocessed_clients_<run_id>.json`
+### Processing Workflow
+
+- **Input:** Excel file with raw client vaccination records
+- **Processing:**
+  - Validates schema (required columns, data types)
+  - Cleans and transforms client data (dates, addresses, vaccine history)
+  - Determines over/under 16 years old for recipient determination (uses `delivery_date` from `parameters.yaml`)
+  - Assigns deterministic per-client sequence numbers sorted by: school → last name → first name → client ID
+  - Maps vaccine history against disease reference data
+  - Synthesizes stable school/board identifiers when missing
+- **Output:** Single JSON artifact at `output/artifacts/preprocessed_clients_<run_id>.json`
 
 Logging is written to `output/logs/preprocess_<run_id>.log` for traceability.
 
-### Main Class: `ClientDataProcessor`
+### Artifact Structure
 
-Handles per-client transformation of vaccination and demographic data into structured notices.
+The preprocessed artifact contains:
 
-#### Initialization
-
-```python
-ClientDataProcessor(
-    df, disease_map, vaccine_ref, ignore_agents, delivery_date, language="en"
-)
+```json
+{
+  "run_id": "20251023T200355",
+  "language": "en",
+  "total_clients": 5,
+  "warnings": [],
+  "clients": [
+    {
+      "sequence": 1,
+      "client_id": "1009876545",
+      "person": {"first_name": "...", "last_name": "...", "date_of_birth": "..."},
+      "school": {"name": "...", "board": "..."},
+      "contact": {"street_address": "...", "city": "...", "postal_code": "...", "province": "..."},
+      "vaccines": {"due": "...", "received": [...]},
+      "metadata": {"recipient": "...", "over_16": false}
+    },
+    ...
+  ]
+}
 ```
-
-- `df (pd.DataFrame)`: Raw client data
-- `disease_map (dict)`: Maps disease descriptions to vaccine names
-- `vaccine_ref (dict)`: Maps vaccines to diseases
-- `ignore_agents (list)`: Agents to skip
-- `delivery_date (str)`: Processing run date (e.g., "2024-06-01")
-- `language (str)`: "en" or "fr"
-
-#### Key Methods
-
-- `process_vaccines_due(vaccines_due: str) -> str`: Maps overdue diseases to vaccine names
-- `process_received_agents(received_agents: str) -> list`: Extracts and normalizes vaccination history
-- `build_notices()`: Populates the notices dictionary with structured client data
-- `save_output(outdir: Path, filename: str)`: Writes results to disk
-
-### Utility Functions
-
-- `detect_file_type(file_path: Path) -> str`: Returns file extension
-- `read_input(file_path: Path) -> pd.DataFrame`: Reads CSV/Excel into DataFrame
-- `separate_by_column(data: pd.DataFrame, col_name: str, out_path: Path)`: Splits DataFrame by column value
-- `split_batches(input_dir: Path, output_dir: Path, batch_size: int)`: Splits CSV files into batches
-- `check_file_existence(file_path: Path) -> bool`: Checks if file exists
-- `load_data(input_file: str) -> pd.DataFrame`: Loads and normalizes data
-- `validate_transform_columns(df: pd.DataFrame, required_columns: list)`: Validates required columns
-- `separate_by_school(df: pd.DataFrame, output_dir: str, school_column: str = "School Name")`: Splits dataset by school
-
-### Script Entry Point
-
-Command-line usage:
-
-```bash
-python preprocess.py <input_dir> <input_file> <output_dir> [language]
-```
-
-- `language` (optional): Use `en` or `fr`. Defaults to `en` when omitted.
-
-Steps performed:
-
-1. Load data
-2. Validate schema
-3. Separate by school
-4. Split into batches
-5. For each batch:
-    - Clean address fields
-    - Build notices with `ClientDataProcessor`
-    - Save JSON + client IDs
 
 ## QR Code Configuration
 

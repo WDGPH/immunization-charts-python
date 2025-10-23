@@ -19,7 +19,7 @@ from typing import Optional
 
 # Import pipeline steps
 from . import batch_pdfs, cleanup, compile_notices, count_pdfs
-from . import encrypt_notice, generate_notices, prepare_output, preprocess
+from . import encrypt_notice, generate_notices, generate_qr_codes, prepare_output, preprocess
 from .config_loader import load_config
 
 SCRIPT_DIR = Path(__file__).resolve().parent
@@ -175,14 +175,49 @@ def run_step_2_preprocess(
     return total_clients
 
 
-def run_step_3_generate_notices(
+def run_step_3_generate_qr_codes(
+    output_dir: Path,
+    run_id: str,
+    config_dir: Path,
+) -> int:
+    """Step 3: Generating QR code PNG files (optional).
+
+    Returns:
+        Number of QR codes generated (0 if disabled or no clients).
+    """
+    print_step(3, "Generating QR codes")
+
+    config = load_config(config_dir / "parameters.yaml")
+    qr_config = config.get("qr", {})
+    qr_enabled = qr_config.get("enabled", True)
+
+    if not qr_enabled:
+        print("QR code generation disabled in configuration")
+        return 0
+
+    artifact_path = output_dir / "artifacts" / f"preprocessed_clients_{run_id}.json"
+    artifacts_dir = output_dir / "artifacts"
+    parameters_path = config_dir / "parameters.yaml"
+
+    # Generate QR codes
+    generated = generate_qr_codes.generate_qr_codes(
+        artifact_path,
+        artifacts_dir,
+        parameters_path,
+    )
+    if generated:
+        print(f"Generated {len(generated)} QR code PNG file(s) in {artifacts_dir}/qr_codes/")
+    return len(generated)
+
+
+def run_step_4_generate_notices(
     output_dir: Path,
     run_id: str,
     assets_dir: Path,
     config_dir: Path,
 ) -> None:
-    """Step 3: Generating Typst templates."""
-    print_step(3, "Generating Typst templates")
+    """Step 4: Generating Typst templates."""
+    print_step(4, "Generating Typst templates")
 
     artifact_path = output_dir / "artifacts" / f"preprocessed_clients_{run_id}.json"
     artifacts_dir = output_dir / "artifacts"
@@ -201,12 +236,12 @@ def run_step_3_generate_notices(
     print(f"Generated {len(generated)} Typst files in {artifacts_dir}")
 
 
-def run_step_4_compile_notices(
+def run_step_5_compile_notices(
     output_dir: Path,
     config_dir: Path,
 ) -> None:
-    """Step 4: Compiling Typst templates to PDFs."""
-    print_step(4, "Compiling Typst templates")
+    """Step 5: Compiling Typst templates to PDFs."""
+    print_step(5, "Compiling Typst templates")
 
     artifacts_dir = output_dir / "artifacts"
     pdf_dir = output_dir / "pdf_individual"
@@ -222,13 +257,13 @@ def run_step_4_compile_notices(
         print(f"Compiled {compiled} Typst file(s) to PDFs in {pdf_dir}.")
 
 
-def run_step_5_validate_pdfs(
+def run_step_6_validate_pdfs(
     output_dir: Path,
     language: str,
     run_id: str,
 ) -> None:
-    """Step 5: Validating compiled PDF lengths."""
-    print_step(5, "Validating compiled PDF lengths")
+    """Step 6: Validating compiled PDF lengths."""
+    print_step(6, "Validating compiled PDF lengths")
 
     pdf_dir = output_dir / "pdf_individual"
     metadata_dir = output_dir / "metadata"
@@ -243,13 +278,13 @@ def run_step_5_validate_pdfs(
     )
 
 
-def run_step_6_encrypt_pdfs(
+def run_step_7_encrypt_pdfs(
     output_dir: Path,
     language: str,
     run_id: str,
 ) -> None:
-    """Step 6: Encrypting PDF notices (optional)."""
-    print_step(6, "Encrypting PDF notices")
+    """Step 7: Encrypting PDF notices (optional)."""
+    print_step(7, "Encrypting PDF notices")
 
     pdf_dir = output_dir / "pdf_individual"
     artifacts_dir = output_dir / "artifacts"
@@ -267,14 +302,14 @@ def run_step_6_encrypt_pdfs(
     )
 
 
-def run_step_7_batch_pdfs(
+def run_step_8_batch_pdfs(
     output_dir: Path,
     language: str,
     run_id: str,
     config_dir: Path,
 ) -> None:
-    """Step 7: Batching PDFs (optional)."""
-    print_step(7, "Batching PDFs")
+    """Step 8: Batching PDFs (optional)."""
+    print_step(8, "Batching PDFs")
 
     parameters_path = config_dir / "parameters.yaml"
 
@@ -289,13 +324,13 @@ def run_step_7_batch_pdfs(
         print(f"Created {len(results)} batches in {output_dir / 'pdf_combined'}")
 
 
-def run_step_8_cleanup(
+def run_step_9_cleanup(
     output_dir: Path,
     skip_cleanup: bool,
     config_dir: Path,
 ) -> None:
-    """Step 8: Cleanup intermediate files."""
-    print_step(8, "Cleanup")
+    """Step 9: Cleanup intermediate files."""
+    print_step(9, "Cleanup")
 
     if skip_cleanup:
         print("Cleanup skipped (keep_intermediate_files enabled).")
@@ -396,9 +431,23 @@ def main(argv: Optional[list[str]] = None) -> int:
         step_times.append(("Preprocessing", step_duration))
         print_step_complete(2, "Preprocessing", step_duration)
 
-        # Step 3: Generating Notices
+        # Step 3: Generating QR Codes (optional)
         step_start = time.time()
-        run_step_3_generate_notices(
+        qr_count = run_step_3_generate_qr_codes(
+            output_dir,
+            run_id,
+            config_dir,
+        )
+        step_duration = time.time() - step_start
+        if qr_count > 0:
+            step_times.append(("QR Code Generation", step_duration))
+            print_step_complete(3, "QR code generation", step_duration)
+        else:
+            print("QR code generation skipped (disabled or no clients).")
+
+        # Step 4: Generating Notices
+        step_start = time.time()
+        run_step_4_generate_notices(
             output_dir,
             run_id,
             DEFAULT_ASSETS_DIR,
@@ -406,31 +455,31 @@ def main(argv: Optional[list[str]] = None) -> int:
         )
         step_duration = time.time() - step_start
         step_times.append(("Template Generation", step_duration))
-        print_step_complete(3, "Template generation", step_duration)
+        print_step_complete(4, "Template generation", step_duration)
 
-        # Step 4: Compiling Notices
+        # Step 5: Compiling Notices
         step_start = time.time()
-        run_step_4_compile_notices(output_dir, config_dir)
+        run_step_5_compile_notices(output_dir, config_dir)
         step_duration = time.time() - step_start
         step_times.append(("Template Compilation", step_duration))
-        print_step_complete(4, "Compilation", step_duration)
+        print_step_complete(5, "Compilation", step_duration)
 
-        # Step 5: Validating PDFs
+        # Step 6: Validating PDFs
         step_start = time.time()
-        run_step_5_validate_pdfs(output_dir, args.language, run_id)
+        run_step_6_validate_pdfs(output_dir, args.language, run_id)
         step_duration = time.time() - step_start
         step_times.append(("PDF Validation", step_duration))
-        print_step_complete(5, "Length validation", step_duration)
+        print_step_complete(6, "Length validation", step_duration)
 
-        # Step 6: Encrypting PDFs (optional)
+        # Step 7: Encrypting PDFs (optional)
         if encryption_enabled:
             step_start = time.time()
-            run_step_6_encrypt_pdfs(output_dir, args.language, run_id)
+            run_step_7_encrypt_pdfs(output_dir, args.language, run_id)
             step_duration = time.time() - step_start
             step_times.append(("PDF Encryption", step_duration))
-            print_step_complete(6, "Encryption", step_duration)
+            print_step_complete(7, "Encryption", step_duration)
 
-        # Step 7: Batching PDFs (optional, skipped if encryption enabled)
+        # Step 8: Batching PDFs (optional, skipped if encryption enabled)
         batching_was_run = False
         if not encryption_enabled:
             batching_config = config.get("batching", {})
@@ -438,7 +487,7 @@ def main(argv: Optional[list[str]] = None) -> int:
 
             if batch_size > 0:
                 step_start = time.time()
-                run_step_7_batch_pdfs(
+                run_step_8_batch_pdfs(
                     output_dir,
                     args.language,
                     run_id,
@@ -446,17 +495,17 @@ def main(argv: Optional[list[str]] = None) -> int:
                 )
                 step_duration = time.time() - step_start
                 step_times.append(("PDF Batching", step_duration))
-                print_step_complete(7, "Batching", step_duration)
+                print_step_complete(8, "Batching", step_duration)
                 batching_was_run = True
             else:
-                print_step(7, "Batching")
+                print_step(8, "Batching")
                 print("Batching skipped (batch_size set to 0).")
         else:
-            print_step(7, "Batching")
+            print_step(8, "Batching")
             print("Batching skipped (encryption enabled).")
 
-        # Step 8: Cleanup
-        run_step_8_cleanup(output_dir, keep_intermediate, config_dir)
+        # Step 9: Cleanup
+        run_step_9_cleanup(output_dir, keep_intermediate, config_dir)
 
         # Print summary
         total_duration = time.time() - total_start

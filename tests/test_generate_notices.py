@@ -82,7 +82,7 @@ def test_generate_typst_files_creates_expected_output(
 
     assert len(generated) == 1
     typst_file = generated[0]
-    assert typst_file.name == "en_client_00001_12345.typ"
+    assert typst_file.name == "en_notice_00001_12345.typ"
     content = typst_file.read_text(encoding="utf-8")
     assert "Alice Mouse" in content
     assert "Burrow Public School" in content

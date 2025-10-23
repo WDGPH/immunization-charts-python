@@ -14,7 +14,6 @@ from typing import Dict, List, Mapping, Sequence
 
 from .generate_mock_template_en import render_notice as render_notice_en
 from .generate_mock_template_fr import render_notice as render_notice_fr
-from .utils import generate_qr_code
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 ROOT_DIR = SCRIPT_DIR.parent
@@ -41,7 +40,6 @@ class ClientRecord:
     vaccines_due_list: List[str]
     received: List[Dict[str, object]]
     metadata: Dict[str, object]
-    qr: Dict[str, object] = None
 
 
 @dataclass(frozen=True)
@@ -97,23 +95,12 @@ def build_template_context(
         "school": client.school["name"],
     }
 
-    # Generate QR code if payload is available
-    if client.qr and qr_output_dir:
-        payload = client.qr.get("payload", "")
-        if payload:
-            try:
-                qr_path = generate_qr_code(
-                    payload,
-                    qr_output_dir,
-                    filename=f"qr_code_{client.sequence}_{client.client_id}.png",
-                )
-                client_data["qr_code"] = _to_root_relative(qr_path)
-            except RuntimeError as exc:  # pragma: no cover - optional QR generation
-                LOG.warning(
-                    "Could not generate QR code for client %s: %s",
-                    client.client_id,
-                    exc,
-                )
+    # Check if QR code PNG exists from prior generation step
+    if qr_output_dir:
+        qr_filename = f"qr_code_{client.sequence}_{client.client_id}.png"
+        qr_path = qr_output_dir / qr_filename
+        if qr_path.exists():
+            client_data["qr_code"] = _to_root_relative(qr_path)
 
     return {
         "client_row": _to_typ_value([client.client_id]),
@@ -179,7 +166,7 @@ def generate_typst_files(
             logo=logo_path,
             signature=signature_path,
             parameters=parameters_path,
-            qr_output_dir=qr_output_dir if client.qr else None,
+            qr_output_dir=qr_output_dir,
         )
         filename = f"{language}_notice_{client.sequence}_{client.client_id}.typ"
         file_path = typst_output_dir / filename

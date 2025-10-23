@@ -1,47 +1,8 @@
 """Preprocessing pipeline for immunization-charts.
 
 Normalizes and structures input data into a single JSON artifact for downstream
-pipeline steps. Handles data validation, client sorting, vaccine processing, and
-optional QR payload formatting.
-
-Supported Template Placeholders
---------------------------------
-The following placeholders are supported in QR payload_template and encryption
-password_template configurations. Attempting to use any other placeholder will
-raise a ValueError at runtime.
-
-QR Payload Template Placeholders:
-    - client_id: Client identifier
-    - first_name: Client first name
-    - last_name: Client last name
-    - name: Combined first and last name
-    - date_of_birth: Formatted date (e.g., "May 8, 2025")
-    - date_of_birth_iso: ISO format date (e.g., "2025-05-08")
-    - school: School name
-    - city: City
-    - postal_code: Postal code
-    - province: Province/territory
-    - street_address: Street address
-    - language: Language label (e.g., "english", "french")
-    - language_code: Language code (e.g., "en", "fr")
-    - delivery_date: Delivery date
-
-Encryption Password Template Placeholders:
-    - client_id: Client identifier
-    - first_name: Client first name
-    - last_name: Client last name
-    - name: Combined first and last name
-    - date_of_birth: Formatted date
-    - date_of_birth_iso: ISO format date (e.g., "2025-05-08")
-    - date_of_birth_iso_compact: Compact ISO format (e.g., "20250508")
-    - school: School name
-    - city: City
-    - postal_code: Postal code
-    - province: Province/territory
-    - street_address: Street address
-    - language: Language label
-    - language_code: Language code
-    - delivery_date: Delivery date
+pipeline steps. Handles data validation, client sorting, and vaccine processing.
+QR code generation is handled by a separate step after preprocessing.
 """
 
 import json
@@ -52,7 +13,7 @@ from datetime import datetime, timezone
 from hashlib import sha1
 from pathlib import Path
 from string import Formatter
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Dict, List, Optional
 
 import pandas as pd
 import yaml
@@ -75,28 +36,6 @@ LOG = logging.getLogger(__name__)
 LANGUAGE_LABELS = {
     "en": "english",
     "fr": "french",
-}
-
-SUPPORTED_QR_TEMPLATE_FIELDS: Set[str] = {
-    "client_id",
-    "first_name",
-    "last_name",
-    "name",
-    "date_of_birth",
-    "date_of_birth_iso",
-    "school",
-    "city",
-    "postal_code",
-    "province",
-    "street_address",
-    "language",
-    "language_code",
-    "delivery_date",
-}
-
-DEFAULT_QR_PAYLOAD_TEMPLATE = {
-    "en": "https://www.test-immunization.ca/update?client_id={client_id}&dob={date_of_birth_iso}",
-    "fr": "https://www.test-immunization.ca/update?client_id={client_id}&dob={date_of_birth_iso}",
 }
 
 _FORMATTER = Formatter()
@@ -129,13 +68,6 @@ REQUIRED_COLUMNS = [
 class PreprocessResult:
     clients: List[Dict[str, Any]]
     warnings: List[str]
-    qr: Optional[Dict[str, Any]] = None
-
-
-@dataclass(frozen=True)
-class QrSettings:
-    payload_template: Optional[str]
-    delivery_date: Optional[str]
 
 
 def configure_logging(output_dir: Path, run_id: str) -> Path:
@@ -358,144 +290,26 @@ def _string_or_empty(value: Any) -> str:
     return str(value).strip()
 
 
-def _extract_template_fields(template: str) -> Set[str]:
-    """Extract placeholder names from a format string."""
-    try:
-        return {
-            field_name
-            for _, field_name, _, _ in _FORMATTER.parse(template)
-            if field_name
-        }
-    except ValueError as exc:
-        raise ValueError(f"Invalid QR payload template: {exc}") from exc
-
-
-def _format_qr_payload(template: str, context: Dict[str, str]) -> str:
-    """Format and validate QR payload template against allowed placeholders.
-
-    Validates that all placeholders in the template exist in the provided context
-    and are part of SUPPORTED_QR_TEMPLATE_FIELDS. Raises ValueError if unsupported
-    placeholders are used.
-    """
-    placeholders = _extract_template_fields(template)
-    unknown_fields = placeholders - context.keys()
-    if unknown_fields:
-        raise KeyError(
-            f"Unknown placeholder(s) {sorted(unknown_fields)} in qr_payload_template. "
-            f"Available placeholders: {sorted(context.keys())}"
-        )
-
-    disallowed = placeholders - SUPPORTED_QR_TEMPLATE_FIELDS
-    if disallowed:
-        raise ValueError(
-            f"Disallowed placeholder(s) {sorted(disallowed)} in qr_payload_template. "
-            f"Allowed placeholders: {sorted(SUPPORTED_QR_TEMPLATE_FIELDS)}"
-        )
-
-    return template.format(**context)
-
-
-def _default_qr_payload(context: Dict[str, str]) -> str:
-    """Generate default QR payload as JSON."""
-    payload = {
-        "id": context.get("client_id"),
-        "name": context.get("name"),
-        "dob": context.get("date_of_birth_iso"),
-        "school": context.get("school"),
-    }
-    return json.dumps(payload, sort_keys=True)
-
-
-def _build_qr_context(
-    *,
-    client_id: str,
-    first_name: str,
-    last_name: str,
-    dob_display: str,
-    dob_iso: Optional[str],
-    school: str,
-    city: str,
-    postal_code: str,
-    province: str,
-    street_address: str,
-    language_code: str,
-    delivery_date: Optional[str],
-) -> Dict[str, str]:
-    """Build template context for QR payload formatting."""
-    language_label = LANGUAGE_LABELS.get(language_code, language_code)
-    return {
-        "client_id": _string_or_empty(client_id),
-        "first_name": _string_or_empty(first_name),
-        "last_name": _string_or_empty(last_name),
-        "name": " ".join(
-            filter(None, [_string_or_empty(first_name), _string_or_empty(last_name)])
-        ).strip(),
-        "date_of_birth": _string_or_empty(dob_display),
-        "date_of_birth_iso": _string_or_empty(dob_iso),
-        "school": _string_or_empty(school),
-        "city": _string_or_empty(city),
-        "postal_code": _string_or_empty(postal_code),
-        "province": _string_or_empty(province),
-        "street_address": _string_or_empty(street_address),
-        "language": language_label,
-        "language_code": _string_or_empty(language_code),
-        "delivery_date": _string_or_empty(delivery_date),
-    }
-
-
-def load_qr_settings(language: str, *, config_path: Path = None) -> QrSettings:
-    """Load QR configuration from parameters.yaml file.
-
-    Reads the QR configuration section from the unified parameters.yaml file.
-    If config_path is not provided, uses the default PARAMETERS_PATH.
-
-    Supported placeholders for payload_template are defined in SUPPORTED_QR_TEMPLATE_FIELDS.
-    Attempts to use any other placeholder will raise a ValueError during validation.
-    """
-    if config_path is None:
-        config_path = PARAMETERS_PATH
-
-    payload_template = DEFAULT_QR_PAYLOAD_TEMPLATE.get(language)
-    delivery_date: Optional[str] = None
-
-    if not config_path.exists():
-        LOG.info("Parameters file not found at %s; using defaults.", config_path)
-        return QrSettings(payload_template, delivery_date)
-
-    params = yaml.safe_load(config_path.read_text(encoding="utf-8")) or {}
-    config_data = params.get("qr", {})
-
-    template_config = config_data.get("payload_template")
-    if isinstance(template_config, dict):
-        for key in (language, LANGUAGE_LABELS.get(language)):
-            if key and template_config.get(key):
-                payload_template = template_config[key]
-                break
-    elif isinstance(template_config, str):
-        payload_template = template_config
-    elif template_config is not None:
-        LOG.warning(
-            "Ignoring qr.payload_template with unsupported type %s; expected str or mapping.",
-            type(template_config).__name__,
-        )
-
-    delivery_date = config_data.get("delivery_date") or delivery_date
-
-    return QrSettings(payload_template, delivery_date)
-
-
 def build_preprocess_result(
     df: pd.DataFrame,
     language: str,
     disease_map: Dict[str, str],
     vaccine_reference: Dict[str, Any],
     ignore_agents: List[str],
-    qr_settings: Optional[QrSettings] = None,
 ) -> PreprocessResult:
-    """Process and normalize client data into structured artifact."""
-    qr_settings = qr_settings or load_qr_settings(language)
+    """Process and normalize client data into structured artifact.
+    
+    Calculates per-client age at time of delivery for determining
+    communication recipient (parent vs. student).
+    """
     warnings: set[str] = set()
     working = normalize_dataframe(df)
+    
+    # Load delivery_date from parameters.yaml for age calculations only
+    params = {}
+    if PARAMETERS_PATH.exists():
+        params = yaml.safe_load(PARAMETERS_PATH.read_text(encoding="utf-8")) or {}
+    delivery_date: Optional[str] = params.get("delivery_date")
 
     working["SCHOOL_ID"] = working.apply(
         lambda row: synthesize_identifier(
@@ -557,8 +371,8 @@ def build_preprocess_result(
 
         if not pd.isna(row.AGE):
             over_16 = bool(row.AGE >= 16)
-        elif dob_iso and qr_settings.delivery_date:
-            over_16 = over_16_check(dob_iso, qr_settings.delivery_date)
+        elif dob_iso and delivery_date:
+            over_16 = over_16_check(dob_iso, delivery_date)
         else:
             over_16 = False
 
@@ -597,52 +411,14 @@ def build_preprocess_result(
             "received": received,
             "metadata": {
                 "unique_id": row.UNIQUE_ID or None,
-                "delivery_date": qr_settings.delivery_date,
             },
-        }
-
-        qr_context = _build_qr_context(
-            client_id=client_id,
-            first_name=row.FIRST_NAME,
-            last_name=row.LAST_NAME,
-            dob_display=formatted_dob or "",
-            dob_iso=dob_iso,
-            school=row.SCHOOL_NAME,
-            city=row.CITY,
-            postal_code=postal_code,
-            province=row.PROVINCE,
-            street_address=address_line,
-            language_code=language,
-            delivery_date=qr_settings.delivery_date,
-        )
-
-        qr_payload = _default_qr_payload(qr_context)
-        if qr_settings.payload_template:
-            try:
-                qr_payload = _format_qr_payload(
-                    qr_settings.payload_template,
-                    qr_context,
-                )
-            except (KeyError, ValueError) as exc:
-                raise ValueError(
-                    f"Failed to format QR payload for client {client_id}: {exc}"
-                ) from exc
-
-        client_entry["qr"] = {
-            "payload": qr_payload,
         }
 
         clients.append(client_entry)
 
-    qr_summary = {
-        "payload_template": qr_settings.payload_template,
-        "delivery_date": qr_settings.delivery_date,
-    }
-
     return PreprocessResult(
         clients=clients,
         warnings=sorted(warnings),
-        qr=qr_summary,
     )
 
 
@@ -659,8 +435,6 @@ def write_artifact(
         "clients": result.clients,
         "warnings": result.warnings,
     }
-    if result.qr is not None:
-        payload["qr"] = result.qr
     artifact_path = output_dir / f"preprocessed_clients_{run_id}.json"
     artifact_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
     LOG.info("Wrote normalized artifact to %s", artifact_path)
