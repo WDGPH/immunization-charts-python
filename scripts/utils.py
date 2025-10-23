@@ -6,22 +6,60 @@ from typing import Optional
 
 import pandas as pd
 import typst
+import yaml
+from pypdf import PdfReader, PdfWriter
+
+FRENCH_MONTHS = {
+    1: 'janvier', 2: 'février', 3: 'mars', 4: 'avril',
+    5: 'mai', 6: 'juin', 7: 'juillet', 8: 'août',
+    9: 'septembre', 10: 'octobre', 11: 'novembre', 12: 'décembre'
+}
+FRENCH_MONTHS_REV = {v.lower(): k for k, v in FRENCH_MONTHS.items()}
+
+ENGLISH_MONTHS = {
+    1: 'Jan', 2: 'Feb', 3: 'Mar', 4: 'Apr',
+    5: 'May', 6: 'Jun', 7: 'Jul', 8: 'Aug',
+    9: 'Sep', 10: 'Oct', 11: 'Nov', 12: 'Dec'
+}
+ENGLISH_MONTHS_REV = {v.lower(): k for k, v in ENGLISH_MONTHS.items()}
+
+# Load encryption configuration
+CONFIG_DIR = Path(__file__).resolve().parent.parent / "config"
+ENCRYPTION_CONFIG_PATH = CONFIG_DIR / "encryption_config.yml"
+
+_encryption_config = None
+
+def _load_encryption_config():
+    """Load encryption configuration from YAML file."""
+    global _encryption_config
+    if _encryption_config is None:
+        try:
+            if ENCRYPTION_CONFIG_PATH.exists():
+                with open(ENCRYPTION_CONFIG_PATH) as f:
+                    _encryption_config = yaml.safe_load(f) or {}
+            else:
+                _encryption_config = {}
+        except Exception:
+            _encryption_config = {}
+    return _encryption_config
+
+
+def get_encryption_config():
+    """Get the encryption configuration."""
+    return _load_encryption_config()
+
 
 def convert_date_string_french(date_str):
     """
     Convert a date string from "YYYY-MM-DD" to "8 mai 2025" (in French), without using locale.
     """
-    MONTHS_FR = [
-        "janvier", "février", "mars", "avril", "mai", "juin",
-        "juillet", "août", "septembre", "octobre", "novembre", "décembre"
-    ]
-
     date_obj = datetime.strptime(date_str, "%Y-%m-%d")
     day = date_obj.day
-    month = MONTHS_FR[date_obj.month - 1]
+    month = FRENCH_MONTHS[date_obj.month]
     year = date_obj.year
 
     return f"{day} {month} {year}"
+
 
 def convert_date_string(date_str):
     """
@@ -48,6 +86,7 @@ def convert_date_string(date_str):
     except ValueError:
         raise ValueError(f"Unrecognized date format: {date_str}")
 
+
 def convert_date_iso(date_str):
     """
     Convert a date string from "Mon DD, YYYY" format to "YYYY-MM-DD".
@@ -63,6 +102,70 @@ def convert_date_iso(date_str):
     """
     date_obj = datetime.strptime(date_str, "%b %d, %Y")
     return date_obj.strftime("%Y-%m-%d")
+
+
+def convert_date(date_str: str, to_format: str = 'display', lang: str = 'en') -> Optional[str]:
+    """
+    Convert dates between ISO and localized display formats.
+    
+    Parameters:
+        date_str (str | datetime | pd.Timestamp): Date string to convert
+        to_format (str): Target format - 'iso' or 'display' (default: 'display')
+        lang (str): Language code ('en', 'fr', etc.) (default: 'en')
+    
+    Returns:
+        str: Formatted date string according to specified format
+    
+    Examples:
+        convert_date('2025-05-08', 'display', 'en') -> 'May 8, 2025'
+        convert_date('2025-05-08', 'display', 'fr') -> '8 mai 2025'
+        convert_date('May 8, 2025', 'iso', 'en') -> '2025-05-08'
+        convert_date('8 mai 2025', 'iso', 'fr') -> '2025-05-08'
+    """
+    if pd.isna(date_str):
+        return None
+
+    try:
+        # Convert input to datetime object
+        if isinstance(date_str, (pd.Timestamp, datetime)):
+            date_obj = date_str
+        elif isinstance(date_str, str):
+            if '-' in date_str:  # ISO format
+                date_obj = datetime.strptime(date_str.strip(), "%Y-%m-%d")
+            else:  # Localized format
+                try:
+                    if lang == 'fr':
+                        day, month, year = date_str.split()
+                        month_num = FRENCH_MONTHS_REV.get(month.lower())
+                        if not month_num:
+                            raise ValueError(f"Invalid French month: {month}")
+                        date_obj = datetime(int(year), month_num, int(day))
+                    else:
+                        month, rest = date_str.split(maxsplit=1)
+                        day, year = rest.rstrip(',').split(',')
+                        month_num = ENGLISH_MONTHS_REV.get(month.strip().lower())
+                        if not month_num:
+                            raise ValueError(f"Invalid English month: {month}")
+                        date_obj = datetime(int(year), month_num, int(day.strip()))
+                except (ValueError, KeyError) as e:
+                    raise ValueError(f"Unable to parse date string: {date_str}") from e
+        else:
+            raise ValueError(f"Unsupported date type: {type(date_str)}")
+
+        # Convert to target format
+        if to_format == 'iso':
+            return date_obj.strftime("%Y-%m-%d")
+        else:  # display format
+            if lang == 'fr':
+                month_name = FRENCH_MONTHS[date_obj.month]
+                return f"{date_obj.day} {month_name} {date_obj.year}"
+            else:
+                month_name = ENGLISH_MONTHS[date_obj.month]
+                return f"{month_name} {date_obj.day}, {date_obj.year}"
+
+    except Exception as e:
+        raise ValueError(f"Date conversion failed: {str(e)}") from e
+
 
 def over_16_check(date_of_birth, delivery_date):
     """
@@ -177,3 +280,138 @@ def generate_qr_code(
 
 def compile_typst(immunization_record, outpath):
     typst.compile(immunization_record, output = outpath)
+
+def build_pdf_password(oen_partial: str, dob: str) -> str:
+    """
+    Construct the password for PDF access based on encryption config.
+    
+    By default, uses date of birth in YYYYMMDD format.
+    Can be customized via config/encryption_config.yml.
+    
+    Args:
+        oen_partial: Client identifier (OEN)
+        dob: Date of birth in YYYY-MM-DD format
+        
+    Returns:
+        Password string for PDF encryption
+    """
+    config = get_encryption_config()
+    password_config = config.get("password", {})
+    
+    password_parts = []
+    
+    # Add client_id if configured
+    if password_config.get("include_client_id", False):
+        password_parts.append(str(oen_partial))
+    
+    # Add DOB if configured
+    if password_config.get("include_dob", True):
+        dob_format = password_config.get("dob_format", "yyyymmdd")
+        if dob_format.lower() == "yyyymmdd":
+            dob_digits = dob.replace("-", "")
+        else:
+            dob_digits = dob.replace("-", "")
+        password_parts.append(dob_digits)
+    
+    password = "".join(password_parts)
+    
+    # Default fallback: if no parts, use DOB
+    if not password:
+        password = dob.replace("-", "")
+    
+    return password
+
+
+def encrypt_pdf(file_path: str, oen_partial: str, dob: str) -> str:
+    """
+    Encrypt a PDF with a password derived from the client identifier and DOB.
+
+    Returns the path to the encrypted PDF (<file>_encrypted.pdf).
+    """
+    password = build_pdf_password(str(oen_partial), str(dob))
+    reader = PdfReader(file_path, strict=False)
+    writer = PdfWriter()
+
+    copied = False
+
+    # Prefer optimized cloning/append operations when available to avoid page-by-page copies.
+    append = getattr(writer, "append", None)
+    if append:
+        try:
+            append(reader)
+            copied = True
+        except TypeError:
+            try:
+                append(file_path)
+                copied = True
+            except Exception:
+                copied = False
+        except Exception:
+            copied = False
+
+    if not copied:
+        for attr in ("clone_reader_document_root", "cloneReaderDocumentRoot"):
+            clone_fn = getattr(writer, attr, None)
+            if clone_fn:
+                try:
+                    clone_fn(reader)
+                    copied = True
+                    break
+                except Exception:
+                    copied = False
+
+    if not copied:
+        append_from_reader = getattr(writer, "appendPagesFromReader", None)
+        if append_from_reader:
+            try:
+                append_from_reader(reader)
+                copied = True
+            except Exception:
+                copied = False
+
+    if not copied:
+        for page in reader.pages:
+            writer.add_page(page)
+
+    if reader.metadata:
+        writer.add_metadata(reader.metadata)
+
+    writer.encrypt(user_password=password, owner_password=password)
+
+    src = Path(file_path)
+    encrypted_path = src.with_name(f"{src.stem}_encrypted{src.suffix}")
+    with open(encrypted_path, "wb") as f:
+        writer.write(f)
+
+    return str(encrypted_path)
+
+
+def decrypt_pdf(encrypted_file_path: str, oen_partial: str, dob: str) -> str:
+    """
+    Decrypt a password-protected PDF generated by encrypt_pdf and write an
+    unencrypted copy alongside it (for internal workflows/tests).
+    """
+    password = build_pdf_password(str(oen_partial), str(dob))
+    reader = PdfReader(encrypted_file_path)
+    if reader.is_encrypted:
+        if reader.decrypt(password) == 0:
+            raise ValueError("Failed to decrypt PDF with derived password.")
+
+    writer = PdfWriter()
+    for page in reader.pages:
+        writer.add_page(page)
+
+    if reader.metadata:
+        writer.add_metadata(reader.metadata)
+
+    enc = Path(encrypted_file_path)
+    stem = enc.stem
+    if stem.endswith("_encrypted"):
+        base = stem[:-len("_encrypted")]
+    else:
+        base = stem
+    decrypted_path = enc.with_name(f"{base}_decrypted{enc.suffix}")
+    with open(decrypted_path, "wb") as f:
+        writer.write(f)
+
+    return str(decrypted_path)

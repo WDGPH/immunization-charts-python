@@ -18,12 +18,13 @@ from typing import Optional
 # Import pipeline steps
 try:
     from . import batch_pdfs, cleanup, compile_notices, count_pdfs
-    from . import generate_notices, prepare_output, preprocess
+    from . import encrypt_notice, generate_notices, prepare_output, preprocess
 except ImportError:  # pragma: no cover - fallback for CLI execution
     import batch_pdfs
     import cleanup
     import compile_notices
     import count_pdfs
+    import encrypt_notice
     import generate_notices
     import prepare_output
     import preprocess
@@ -86,6 +87,11 @@ Examples:
         help="Group batches by board identifier",
     )
     parser.add_argument(
+        "--encrypt",
+        action="store_true",
+        help="Enable optional PDF encryption step (disables batching)",
+    )
+    parser.add_argument(
         "--input-dir",
         type=Path,
         default=DEFAULT_INPUT_DIR,
@@ -108,6 +114,9 @@ def validate_args(args: argparse.Namespace) -> None:
     
     if args.batch_size < 0:
         raise ValueError("--batch-size must be a non-negative integer")
+    
+    if args.encrypt and args.batch_size > 0:
+        raise ValueError("Encryption (--encrypt) and batching (--batch-size) cannot be used together")
 
 
 def print_header(input_file: str) -> None:
@@ -273,7 +282,31 @@ def run_step_5_validate_pdfs(
     count_pdfs.write_json(results, buckets, target=count_json, language=language)
 
 
-def run_step_6_batch_pdfs(
+def run_step_6_encrypt_pdfs(
+    output_dir: Path,
+    language: str,
+    run_id: str,
+) -> None:
+    """Step 6: Encrypting PDF notices (optional)."""
+    print_step(6, "Encrypting PDF notices")
+    
+    pdf_dir = output_dir / "pdf_individual"
+    artifacts_dir = output_dir / "artifacts"
+    json_file = artifacts_dir / f"preprocessed_clients_{run_id}.json"
+    
+    # Convert language code to full language name
+    language_map = {"en": "english", "fr": "french"}
+    language_full = language_map.get(language.lower(), language)
+    
+    # Encrypt PDFs using the combined preprocessed clients JSON
+    encrypt_notice.encrypt_pdfs_in_directory(
+        pdf_directory=pdf_dir,
+        json_file=json_file,
+        language=language_full,
+    )
+
+
+def run_step_7_batch_pdfs(
     output_dir: Path,
     language: str,
     run_id: str,
@@ -281,11 +314,11 @@ def run_step_6_batch_pdfs(
     batch_by_school: bool,
     batch_by_board: bool,
 ) -> None:
-    """Step 6: Batching PDFs (optional)."""
-    print_step(6, "Batching PDFs")
+    """Step 7: Batching PDFs (optional)."""
+    print_step(7, "Batching PDFs")
     
     if batch_size <= 0:
-        print("📦 Step 6: Batching skipped (batch size <= 0).")
+        print("📦 Step 7: Batching skipped (batch size <= 0).")
         return
     
     # Create batch configuration
@@ -306,15 +339,15 @@ def run_step_6_batch_pdfs(
         print("No batches created.")
 
 
-def run_step_7_cleanup(
+def run_step_8_cleanup(
     output_dir: Path,
     skip_cleanup: bool,
 ) -> None:
-    """Step 7: Cleanup intermediate files."""
+    """Step 8: Cleanup intermediate files."""
     print()
     
     if skip_cleanup:
-        print("🧹 Step 7: Cleanup skipped (--keep-intermediate-files flag).")
+        print("🧹 Step 8: Cleanup skipped (--keep-intermediate-files flag).")
     else:
         print("🧹 Step 7: Cleanup started...")
         cleanup.cleanup(output_dir)
@@ -428,9 +461,17 @@ def main(argv: Optional[list[str]] = None) -> int:
         step_times.append(("PDF Validation", step_duration))
         print_step_complete(5, "Length validation", step_duration)
         
-        # Step 6: Batching PDFs
+        # Step 6: Encrypting PDFs (optional)
+        if args.encrypt:
+            step_start = time.time()
+            run_step_6_encrypt_pdfs(output_dir, args.language, run_id)
+            step_duration = time.time() - step_start
+            step_times.append(("PDF Encryption", step_duration))
+            print_step_complete(6, "Encryption", step_duration)
+        
+        # Step 7: Batching PDFs (optional, skipped if encryption enabled)
         step_start = time.time()
-        run_step_6_batch_pdfs(
+        run_step_7_batch_pdfs(
             output_dir,
             args.language,
             run_id,
@@ -441,10 +482,10 @@ def main(argv: Optional[list[str]] = None) -> int:
         step_duration = time.time() - step_start
         if args.batch_size > 0:
             step_times.append(("PDF Batching", step_duration))
-            print_step_complete(6, "Batching", step_duration)
+            print_step_complete(7, "Batching", step_duration)
         
-        # Step 7: Cleanup
-        run_step_7_cleanup(output_dir, args.keep_intermediate_files)
+        # Step 8: Cleanup
+        run_step_8_cleanup(output_dir, args.keep_intermediate_files)
         
         # Print summary
         total_duration = time.time() - total_start
