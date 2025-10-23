@@ -1,5 +1,5 @@
 import sys
-from PyPDF2 import PdfReader
+from pypdf import PdfReader
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:

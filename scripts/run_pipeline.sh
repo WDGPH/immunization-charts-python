@@ -46,7 +46,7 @@ TOTAL_START=$(date +%s)
 STEP1_START=$(date +%s)
 echo ""
 echo "🔍 Step 1: Preprocessing started..."
-python preprocess.py ${INDIR} ${INFILE} ${OUTDIR} ${LANG}
+python preprocess.py ${INDIR} ${INFILE} ${OUTDIR} ${LANG} ${BATCH_SIZE}
 STEP1_END=$(date +%s)
 STEP1_DURATION=$((STEP1_END - STEP1_START))
 echo "✅ Step 1: Preprocessing complete in ${STEP1_DURATION} seconds."
