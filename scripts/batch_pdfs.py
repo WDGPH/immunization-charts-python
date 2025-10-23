@@ -59,6 +59,7 @@ class ClientArtifact:
     vaccines_due_list: Sequence[str] | None
     received: Sequence[dict] | None
     metadata: Dict[str, object]
+    qr: Dict[str, object] | None = None
 
 
 @dataclass(frozen=True)
