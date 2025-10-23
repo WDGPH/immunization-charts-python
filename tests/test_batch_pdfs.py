@@ -7,6 +7,7 @@ import pytest
 from pypdf import PdfWriter
 
 from scripts import batch_pdfs
+from scripts.enums import BatchStrategy
 
 RUN_ID = "20240101T000000"
 
@@ -85,7 +86,7 @@ def test_size_based_batching_with_remainder(tmp_path: Path) -> None:
     for idx in range(1, 6):
         client, pages = _client_template(idx, school_id="sch_a", board_id="brd_a")
         clients.append(client)
-        pdf_path = pdf_dir / f"en_client_{client['sequence']}_{client['client_id']}.pdf"
+        pdf_path = pdf_dir / f"en_notice_{client['sequence']}_{client['client_id']}.pdf"
         _write_pdf(pdf_path, pages=pages)
 
     _write_artifact(output_dir, clients)
@@ -94,8 +95,7 @@ def test_size_based_batching_with_remainder(tmp_path: Path) -> None:
         output_dir=output_dir,
         language="en",
         batch_size=2,
-        batch_by_school=False,
-        batch_by_board=False,
+        batch_strategy=BatchStrategy.SIZE,
         run_id=RUN_ID,
     )
 
@@ -108,7 +108,7 @@ def test_size_based_batching_with_remainder(tmp_path: Path) -> None:
     ]
 
     manifest = json.loads(results[0].manifest_path.read_text(encoding="utf-8"))
-    assert manifest["batch_type"] == "size"
+    assert manifest["batch_type"] == "size_based"
     assert manifest["total_batches"] == 3
     assert len(manifest["clients"]) == 2
     assert manifest["clients"][0]["sequence"] == "00001"
@@ -123,7 +123,7 @@ def test_school_batching_splits_large_group(tmp_path: Path) -> None:
             idx, school_id="sch_shared", board_id="brd_a", pages=idx % 2 + 1
         )
         clients.append(client)
-        pdf_path = pdf_dir / f"en_client_{client['sequence']}_{client['client_id']}.pdf"
+        pdf_path = pdf_dir / f"en_notice_{client['sequence']}_{client['client_id']}.pdf"
         _write_pdf(pdf_path, pages=pages)
 
     _write_artifact(output_dir, clients)
@@ -132,8 +132,7 @@ def test_school_batching_splits_large_group(tmp_path: Path) -> None:
         output_dir=output_dir,
         language="en",
         batch_size=2,
-        batch_by_school=True,
-        batch_by_board=False,
+        batch_strategy=BatchStrategy.SCHOOL,
         run_id=RUN_ID,
     )
 
@@ -145,7 +144,7 @@ def test_school_batching_splits_large_group(tmp_path: Path) -> None:
     ]
 
     manifest_one = json.loads(results[0].manifest_path.read_text(encoding="utf-8"))
-    assert manifest_one["batch_type"] == "school"
+    assert manifest_one["batch_type"] == "school_grouped"
     assert manifest_one["batch_identifier"] == "sch_shared"
     assert manifest_one["total_clients"] == 2
     assert manifest_one["total_pages"] == sum(
@@ -159,7 +158,7 @@ def test_batch_by_board_missing_identifier_raises(tmp_path: Path) -> None:
     clients = []
     client, pages = _client_template(1, school_id="sch_a", board_id="")
     clients.append(client)
-    pdf_path = pdf_dir / f"en_client_{client['sequence']}_{client['client_id']}.pdf"
+    pdf_path = pdf_dir / f"en_notice_{client['sequence']}_{client['client_id']}.pdf"
     _write_pdf(pdf_path, pages=pages)
 
     _write_artifact(output_dir, clients)
@@ -168,8 +167,7 @@ def test_batch_by_board_missing_identifier_raises(tmp_path: Path) -> None:
         output_dir=output_dir,
         language="en",
         batch_size=2,
-        batch_by_school=False,
-        batch_by_board=True,
+        batch_strategy=BatchStrategy.BOARD,
         run_id=RUN_ID,
     )
 
@@ -194,8 +192,7 @@ def test_zero_batch_size_no_output(tmp_path: Path) -> None:
         output_dir=output_dir,
         language="en",
         batch_size=0,
-        batch_by_school=False,
-        batch_by_board=False,
+        batch_strategy=BatchStrategy.SIZE,
         run_id=RUN_ID,
     )
 

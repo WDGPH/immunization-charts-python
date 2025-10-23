@@ -5,10 +5,11 @@ pipeline steps. Handles data validation, client sorting, and vaccine processing.
 QR code generation is handled by a separate step after preprocessing.
 """
 
+from __future__ import annotations
+
 import json
 import logging
 import re
-from dataclasses import dataclass
 from datetime import datetime, timezone
 from hashlib import sha1
 from pathlib import Path
@@ -18,6 +19,11 @@ from typing import Any, Dict, List, Optional
 import pandas as pd
 import yaml
 
+from .data_models import (
+    ArtifactPayload,
+    ClientRecord,
+    PreprocessResult,
+)
 from .utils import (
     convert_date_iso,
     convert_date_string,
@@ -62,12 +68,6 @@ REQUIRED_COLUMNS = [
     "STREET ADDRESS LINE 1",
     "STREET ADDRESS LINE 2",
 ]
-
-
-@dataclass
-class PreprocessResult:
-    clients: List[Dict[str, Any]]
-    warnings: List[str]
 
 
 def configure_logging(output_dir: Path, run_id: str) -> Path:
@@ -340,7 +340,7 @@ def build_preprocess_result(
     ).reset_index(drop=True)
     sorted_df["SEQUENCE"] = [f"{idx + 1:05d}" for idx in range(len(sorted_df))]
 
-    clients: List[Dict[str, Any]] = []
+    clients: List[ClientRecord] = []
     for row in sorted_df.itertuples(index=False):
         client_id = str(row.CLIENT_ID)
         sequence = row.SEQUENCE
@@ -376,45 +376,51 @@ def build_preprocess_result(
         else:
             over_16 = False
 
-        client_entry = {
-            "sequence": sequence,
-            "client_id": client_id,
-            "language": language,
-            "school": {
-                "id": row.SCHOOL_ID,
-                "name": row.SCHOOL_NAME,
-                "type": row.SCHOOL_TYPE or None,
-            },
-            "board": {
-                "id": row.BOARD_ID,
-                "name": row.BOARD_NAME or None,
-            },
-            "person": {
-                "first_name": row.FIRST_NAME,
-                "last_name": row.LAST_NAME,
-                "full_name": " ".join(
-                    filter(None, [row.FIRST_NAME, row.LAST_NAME])
-                ).strip(),
-                "date_of_birth_iso": dob_iso,
-                "date_of_birth_display": formatted_dob,
-                "age": None if pd.isna(row.AGE) else int(row.AGE),
-                "over_16": over_16,
-            },
-            "contact": {
-                "street": address_line,
-                "city": row.CITY,
-                "province": row.PROVINCE,
-                "postal_code": postal_code,
-            },
-            "vaccines_due": vaccines_due,
-            "vaccines_due_list": vaccines_due_list,
-            "received": received,
-            "metadata": {
-                "unique_id": row.UNIQUE_ID or None,
-            },
+        person = {
+            "full_name": " ".join(
+                filter(None, [row.FIRST_NAME, row.LAST_NAME])
+            ).strip(),
+            "date_of_birth": dob_iso or "",
+            "date_of_birth_display": formatted_dob or "",
+            "date_of_birth_iso": dob_iso or "",
+            "age": str(row.AGE) if not pd.isna(row.AGE) else "",
+            "over_16": over_16,
         }
 
-        clients.append(client_entry)
+        school = {
+            "name": row.SCHOOL_NAME,
+            "id": row.SCHOOL_ID,
+        }
+
+        board = {
+            "name": row.BOARD_NAME or "",
+            "id": row.BOARD_ID,
+        }
+
+        contact = {
+            "street": address_line,
+            "city": row.CITY,
+            "province": row.PROVINCE,
+            "postal_code": postal_code,
+        }
+
+        client = ClientRecord(
+            sequence=sequence,
+            client_id=client_id,
+            language=language,
+            person=person,
+            school=school,
+            board=board,
+            contact=contact,
+            vaccines_due=vaccines_due if vaccines_due else None,
+            vaccines_due_list=vaccines_due_list if vaccines_due_list else None,
+            received=received if received else None,
+            metadata={
+                "unique_id": row.UNIQUE_ID or None,
+            },
+        )
+
+        clients.append(client)
 
     return PreprocessResult(
         clients=clients,
@@ -427,16 +433,62 @@ def write_artifact(
 ) -> Path:
     """Write preprocessed result to JSON artifact file."""
     output_dir.mkdir(parents=True, exist_ok=True)
-    payload = {
-        "run_id": run_id,
-        "language": language,
-        "generated_at": datetime.now(timezone.utc).isoformat(),
-        "total_clients": len(result.clients),
-        "clients": result.clients,
-        "warnings": result.warnings,
+    
+    # Create ArtifactPayload with rich metadata
+    artifact_payload = ArtifactPayload(
+        run_id=run_id,
+        language=language,
+        clients=result.clients,
+        warnings=result.warnings,
+        created_at=datetime.now(timezone.utc).isoformat(),
+        total_clients=len(result.clients),
+    )
+    
+    # Serialize to JSON (clients are dataclasses, so convert to dict)
+    payload_dict = {
+        "run_id": artifact_payload.run_id,
+        "language": artifact_payload.language,
+        "created_at": artifact_payload.created_at,
+        "total_clients": artifact_payload.total_clients,
+        "warnings": artifact_payload.warnings,
+        "clients": [
+            {
+                "sequence": client.sequence,
+                "client_id": client.client_id,
+                "language": client.language,
+                "person": {
+                    "full_name": client.person["full_name"],
+                    "date_of_birth": client.person["date_of_birth"],
+                    "date_of_birth_display": client.person["date_of_birth_display"],
+                    "date_of_birth_iso": client.person["date_of_birth_iso"],
+                    "age": client.person["age"],
+                    "over_16": client.person["over_16"],
+                },
+                "school": {
+                    "name": client.school["name"],
+                    "id": client.school["id"],
+                },
+                "board": {
+                    "name": client.board["name"],
+                    "id": client.board["id"],
+                },
+                "contact": {
+                    "street": client.contact["street"],
+                    "city": client.contact["city"],
+                    "province": client.contact["province"],
+                    "postal_code": client.contact["postal_code"],
+                },
+                "vaccines_due": client.vaccines_due,
+                "vaccines_due_list": client.vaccines_due_list or [],
+                "received": client.received or [],
+                "metadata": client.metadata,
+            }
+            for client in artifact_payload.clients
+        ],
     }
+    
     artifact_path = output_dir / f"preprocessed_clients_{run_id}.json"
-    artifact_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    artifact_path.write_text(json.dumps(payload_dict, indent=2), encoding="utf-8")
     LOG.info("Wrote normalized artifact to %s", artifact_path)
     return artifact_path
 

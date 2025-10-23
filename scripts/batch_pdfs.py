@@ -6,9 +6,9 @@ unit testing. Batching supports three modes:
 
 * Size-based (default): chunk the ordered list of PDFs into groups of
   ``batch_size``.
-* School-based: group by ``school_id`` and then chunk each group while
+* School-based: group by ``school_code`` and then chunk each group while
   preserving client order.
-* Board-based: group by ``board_id`` and chunk each group.
+* Board-based: group by ``board_code`` and chunk each group.
 
 Each batch produces a merged PDF inside ``output/pdf_combined`` and a manifest JSON
 record inside ``output/metadata`` that captures critical metadata for audits.
@@ -28,6 +28,8 @@ from typing import Dict, Iterator, List, Sequence
 from pypdf import PdfReader, PdfWriter
 
 from .config_loader import load_config
+from .data_models import PdfRecord
+from .enums import BatchStrategy, BatchType
 
 LOG = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
@@ -35,42 +37,46 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(mess
 
 @dataclass(frozen=True)
 class BatchConfig:
+    """Configuration for PDF batching operation.
+    
+    Attributes
+    ----------
+    output_dir : Path
+        Root output directory containing pipeline artifacts
+    language : str
+        Language code ('en' or 'fr')
+    batch_size : int
+        Maximum number of clients per batch (0 disables batching)
+    batch_strategy : BatchStrategy
+        Strategy for grouping PDFs into batches
+    run_id : str
+        Pipeline run identifier
+    """
     output_dir: Path
     language: str
     batch_size: int
-    batch_by_school: bool
-    batch_by_board: bool
+    batch_strategy: BatchStrategy
     run_id: str
 
 
 @dataclass(frozen=True)
-class ClientArtifact:
-    sequence: str
-    client_id: str
-    language: str
-    person: Dict[str, object]
-    school: Dict[str, object]
-    board: Dict[str, object]
-    contact: Dict[str, object]
-    vaccines_due: str | None
-    vaccines_due_list: Sequence[str] | None
-    received: Sequence[dict] | None
-    metadata: Dict[str, object]
-    qr: Dict[str, object] | None = None
-
-
-@dataclass(frozen=True)
-class PdfRecord:
-    sequence: str
-    client_id: str
-    pdf_path: Path
-    page_count: int
-    client: ClientArtifact
-
-
-@dataclass(frozen=True)
 class BatchPlan:
-    batch_type: str
+    """Plan for a single batch of PDFs.
+    
+    Attributes
+    ----------
+    batch_type : BatchType
+        Type/strategy used for this batch
+    batch_identifier : str | None
+        School or board code if batch was grouped, None for size-based
+    batch_number : int
+        Sequential batch number
+    total_batches : int
+        Total number of batches in this operation
+    clients : List[PdfRecord]
+        List of PDFs and metadata in this batch
+    """
+    batch_type: BatchType
     batch_identifier: str | None
     batch_number: int
     total_batches: int
@@ -79,13 +85,24 @@ class BatchPlan:
 
 @dataclass(frozen=True)
 class BatchResult:
+    """Result of a completed batch operation.
+    
+    Attributes
+    ----------
+    pdf_path : Path
+        Path to the merged PDF file
+    manifest_path : Path
+        Path to the JSON manifest file
+    batch_plan : BatchPlan
+        The plan used to create this batch
+    """
     pdf_path: Path
     manifest_path: Path
     batch_plan: BatchPlan
 
 
 PDF_PATTERN = re.compile(
-    r"^(?P<lang>[a-z]{2})_client_(?P<sequence>\d{5})_(?P<client_id>.+)\.pdf$"
+    r"^(?P<lang>[a-z]{2})_notice_(?P<sequence>\d{5})_(?P<client_id>.+)\.pdf$"
 )
 
 
@@ -119,15 +136,13 @@ def batch_pdfs_with_config(
     batch_size = batching_config.get("batch_size", 0)
     group_by = batching_config.get("group_by", None)
 
-    batch_by_school = group_by == "school"
-    batch_by_board = group_by == "board"
+    batch_strategy = BatchStrategy.from_string(group_by)
 
     config_obj = BatchConfig(
         output_dir=output_dir.resolve(),
         language=language,
         batch_size=batch_size,
-        batch_by_school=batch_by_school,
-        batch_by_board=batch_by_board,
+        batch_strategy=batch_strategy,
         run_id=run_id,
     )
 
@@ -185,12 +200,25 @@ def load_artifact(output_dir: Path, run_id: str) -> Dict[str, object]:
 
 def build_client_lookup(
     artifact: Dict[str, object],
-) -> Dict[tuple[str, str], ClientArtifact]:
+) -> Dict[tuple[str, str], dict]:
+    """Build a lookup table from artifact clients dict.
+    
+    Parameters
+    ----------
+    artifact : Dict[str, object]
+        Preprocessed artifact dictionary
+        
+    Returns
+    -------
+    Dict[tuple[str, str], dict]
+        Lookup table keyed by (sequence, client_id)
+    """
     clients = artifact.get("clients", [])
-    lookup: Dict[tuple[str, str], ClientArtifact] = {}
+    lookup: Dict[tuple[str, str], dict] = {}
     for client in clients:
-        record = ClientArtifact(**client)
-        lookup[(record.sequence, record.client_id)] = record
+        sequence = client.get("sequence")
+        client_id = client.get("client_id")
+        lookup[(sequence, client_id)] = client
     return lookup
 
 
@@ -198,11 +226,11 @@ def discover_pdfs(output_dir: Path, language: str) -> List[Path]:
     pdf_dir = output_dir / "pdf_individual"
     if not pdf_dir.exists():
         return []
-    return sorted(pdf_dir.glob(f"{language}_client_*.pdf"))
+    return sorted(pdf_dir.glob(f"{language}_notice_*.pdf"))
 
 
 def build_pdf_records(
-    output_dir: Path, language: str, clients: Dict[tuple[str, str], ClientArtifact]
+    output_dir: Path, language: str, clients: Dict[tuple[str, str], dict]
 ) -> List[PdfRecord]:
     pdf_paths = discover_pdfs(output_dir, language)
     records: List[PdfRecord] = []
@@ -231,7 +259,7 @@ def build_pdf_records(
 
 
 def ensure_ids(records: Sequence[PdfRecord], *, attr: str, log_path: Path) -> None:
-    missing = [record for record in records if not getattr(record.client, attr)["id"]]
+    missing = [record for record in records if not record.client[attr].get("id")]
     if missing:
         sample = missing[0]
         raise ValueError(
@@ -248,7 +276,7 @@ def ensure_ids(records: Sequence[PdfRecord], *, attr: str, log_path: Path) -> No
 def group_records(records: Sequence[PdfRecord], key: str) -> Dict[str, List[PdfRecord]]:
     grouped: Dict[str, List[PdfRecord]] = {}
     for record in records:
-        identifier = getattr(record.client, key)["id"]
+        identifier = record.client[key]["id"]
         grouped.setdefault(identifier, []).append(record)
     return dict(sorted(grouped.items(), key=lambda item: item[0]))
 
@@ -256,15 +284,28 @@ def group_records(records: Sequence[PdfRecord], key: str) -> Dict[str, List[PdfR
 def plan_batches(
     config: BatchConfig, records: List[PdfRecord], log_path: Path
 ) -> List[BatchPlan]:
+    """Plan how to group PDFs into batches based on configuration.
+    
+    Parameters
+    ----------
+    config : BatchConfig
+        Batching configuration including strategy and batch size
+    records : List[PdfRecord]
+        List of PDF records to batch
+    log_path : Path
+        Path to logging file
+        
+    Returns
+    -------
+    List[BatchPlan]
+        List of batch plans
+    """
     if config.batch_size <= 0:
         return []
 
-    if config.batch_by_school and config.batch_by_board:
-        raise ValueError("Cannot batch by both school and board simultaneously.")
-
     plans: List[BatchPlan] = []
 
-    if config.batch_by_school:
+    if config.batch_strategy == BatchStrategy.SCHOOL:
         ensure_ids(records, attr="school", log_path=log_path)
         grouped = group_records(records, "school")
         for identifier, items in grouped.items():
@@ -272,7 +313,7 @@ def plan_batches(
             for index, chunk in enumerate(chunked(items, config.batch_size), start=1):
                 plans.append(
                     BatchPlan(
-                        batch_type="school",
+                        batch_type=BatchType.SCHOOL_GROUPED,
                         batch_identifier=identifier,
                         batch_number=index,
                         total_batches=total_batches,
@@ -281,7 +322,7 @@ def plan_batches(
                 )
         return plans
 
-    if config.batch_by_board:
+    if config.batch_strategy == BatchStrategy.BOARD:
         ensure_ids(records, attr="board", log_path=log_path)
         grouped = group_records(records, "board")
         for identifier, items in grouped.items():
@@ -289,7 +330,7 @@ def plan_batches(
             for index, chunk in enumerate(chunked(items, config.batch_size), start=1):
                 plans.append(
                     BatchPlan(
-                        batch_type="board",
+                        batch_type=BatchType.BOARD_GROUPED,
                         batch_identifier=identifier,
                         batch_number=index,
                         total_batches=total_batches,
@@ -298,12 +339,12 @@ def plan_batches(
                 )
         return plans
 
-    # Size-based batching
+    # Size-based batching (default)
     total_batches = (len(records) + config.batch_size - 1) // config.batch_size
     for index, chunk in enumerate(chunked(records, config.batch_size), start=1):
         plans.append(
             BatchPlan(
-                batch_type="size",
+                batch_type=BatchType.SIZE_BASED,
                 batch_identifier=None,
                 batch_number=index,
                 total_batches=total_batches,
@@ -339,10 +380,14 @@ def write_batch(
     metadata_dir: Path,
     artifact_path: Path,
 ) -> BatchResult:
-    if plan.batch_identifier:
-        identifier_slug = slugify(plan.batch_identifier)
-        name = f"{config.language}_{plan.batch_type}_{identifier_slug}_{plan.batch_number:03d}_of_{plan.total_batches:03d}"
-    else:
+    # Generate filename based on batch type and identifiers
+    if plan.batch_type == BatchType.SCHOOL_GROUPED:
+        identifier_slug = slugify(plan.batch_identifier or "unknown")
+        name = f"{config.language}_school_{identifier_slug}_{plan.batch_number:03d}_of_{plan.total_batches:03d}"
+    elif plan.batch_type == BatchType.BOARD_GROUPED:
+        identifier_slug = slugify(plan.batch_identifier or "unknown")
+        name = f"{config.language}_board_{identifier_slug}_{plan.batch_number:03d}_of_{plan.total_batches:03d}"
+    else:  # SIZE_BASED
         name = f"{config.language}_batch_{plan.batch_number:03d}_of_{plan.total_batches:03d}"
 
     output_pdf = combined_dir / f"{name}.pdf"
@@ -356,7 +401,7 @@ def write_batch(
     manifest = {
         "run_id": config.run_id,
         "language": config.language,
-        "batch_type": plan.batch_type,
+        "batch_type": plan.batch_type.value,
         "batch_identifier": plan.batch_identifier,
         "batch_number": plan.batch_number,
         "total_batches": plan.total_batches,
@@ -369,9 +414,9 @@ def write_batch(
             {
                 "sequence": record.sequence,
                 "client_id": record.client_id,
-                "full_name": record.client.person.get("full_name"),
-                "school": record.client.school,
-                "board": record.client.board,
+                "full_name": record.client["person"]["full_name"],
+                "school": record.client["school"]["name"],
+                "board": record.client["board"]["name"],
                 "pdf_path": _relative(record.pdf_path, config.output_dir),
                 "artifact_path": _relative(artifact_path, config.output_dir),
                 "pages": record.page_count,

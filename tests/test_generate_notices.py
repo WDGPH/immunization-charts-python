@@ -13,28 +13,29 @@ def sample_artifact(tmp_path: Path) -> Path:
     artifact = {
         "run_id": "20251015T210000",
         "language": "en",
+        "created_at": "2025-10-15T21:00:00+00:00",
+        "total_clients": 1,
+        "warnings": [],
         "clients": [
             {
                 "sequence": "00001",
                 "client_id": "12345",
                 "language": "en",
                 "person": {
-                    "first_name": "Alice",
-                    "last_name": "Mouse",
                     "full_name": "Alice Mouse",
-                    "date_of_birth_iso": "2015-01-01",
+                    "date_of_birth": "2015-01-01",
                     "date_of_birth_display": "January 1, 2015",
-                    "age": 10,
+                    "date_of_birth_iso": "2015-01-01",
+                    "age": "10",
                     "over_16": False,
                 },
                 "school": {
-                    "id": "sch_abc",
                     "name": "Burrow Public School",
-                    "type": "Elementary",
+                    "code": "sch_abc",
                 },
                 "board": {
-                    "id": "brd_foo",
                     "name": "Whisker Board",
+                    "code": "brd_foo",
                 },
                 "contact": {
                     "street": "1 Carrot Lane",
@@ -101,11 +102,13 @@ def test_read_artifact_mismatched_language(
         path.write_text("stub", encoding="utf-8")
 
     payload = generate_notices.read_artifact(sample_artifact)
-    payload = generate_notices.read_artifact(sample_artifact)
     payload = generate_notices.ArtifactPayload(
         run_id=payload.run_id,
         language="fr",
         clients=payload.clients,
+        warnings=payload.warnings,
+        created_at=payload.created_at,
+        total_clients=payload.total_clients,
     )
 
     with pytest.raises(ValueError):

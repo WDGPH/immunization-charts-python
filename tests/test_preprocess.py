@@ -35,19 +35,19 @@ def test_build_preprocess_result_generates_sequences_and_ids():
     )
 
     assert len(result.clients) == 2
-    client_ids = [client["client_id"] for client in result.clients]
+    client_ids = [client.client_id for client in result.clients]
     assert client_ids == ["C2", "C1"]
 
     first_client = result.clients[0]
-    assert first_client["sequence"] == "00001"
-    assert first_client["school"]["id"].startswith("sch_")
-    assert first_client["board"]["id"].startswith("brd_")
-    assert first_client["person"]["full_name"] == "Benoit Arnaud"
-    assert first_client["vaccines_due"].startswith("Invasive Haemophilus")
+    assert first_client.sequence == "00001"
+    assert first_client.school["id"].startswith("sch_")
+    assert first_client.board["id"].startswith("brd_")
+    assert first_client.person["full_name"] == "Benoit Arnaud"
+    assert first_client.vaccines_due.startswith("Invasive Haemophilus")
 
     second_client = result.clients[1]
-    assert second_client["vaccines_due"] == "Foo Vaccine"
-    assert second_client["received"][0]["date_given"] == "2020-05-01"
-    assert second_client["received"][0]["diseases"] == ["Diphtheria", "Tetanus"]
+    assert second_client.vaccines_due == "Foo Vaccine"
+    assert second_client.received[0]["date_given"] == "2020-05-01"
+    assert second_client.received[0]["diseases"] == ["Diphtheria", "Tetanus"]
 
     assert "Missing board name" in result.warnings[0]
