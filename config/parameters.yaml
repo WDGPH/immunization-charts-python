@@ -1,9 +1,28 @@
-# Parameters
+# ==============================================================================
+# IMMUNIZATION CHARTS - UNIFIED CONFIGURATION
+# ==============================================================================
+# This configuration file controls all aspects of the immunization charts
+# PDF generation pipeline, including QR payloads, PDF encryption, and
+# pipeline parameters.
 
+# ==============================================================================
+# DELIVERY AND DATA DATES
+# ==============================================================================
 date_today: "August 31, 2025"
 
+# Used to calculate student age at time of mail delivery
+# Students 16 and older can be addressed directly
+# Letters for students under 16 should be addressed to their parent/guardian
+delivery_date: "2025-04-08"
+
+# To include in notice text as date that immunization history is reflective of
+data_date: "2025-04-01"
+
+# ==============================================================================
+# FILE INPUT/OUTPUT CONFIGURATION
+# ==============================================================================
 # Name of output folder which will be updated dynamically in the script
-output_folder: "demo-output-"  
+output_folder: "demo-output-"
 
 # Columns that are expected in the input file
 expected_columns:
@@ -18,6 +37,9 @@ expected_columns:
   - Postal_Code
   - Received_Agents
 
+# ==============================================================================
+# CHART AND IMMUNIZATION SETTINGS
+# ==============================================================================
 # Vaccines or agents that should occur in the template for the chart 
 chart_diseases_header:
   - Diphtheria
@@ -42,14 +64,6 @@ ignore_agents:
   - RabIg
   - Ig
 
-# Used to calculate student age at time of mail delivery
-# Students 16 and older can be addressed directly
-# Letters for students under 16 should be addressed to their parent/guardian
-delivery_date: "2025-04-08"
-
-# To include in notice text as date that immunization history is reflective of
-data_date: "2025-04-01"
-
 # Minimum number of rows to show in immunization history chart
 # Charts will be padded with rows as appropriate
 min_rows: 5
@@ -58,3 +72,137 @@ min_rows: 5
 # Note: 10 PDFs with 10 clients each will run slower than 1 PDF with 100 clients
 # Use a batch size of 1 if you would like a single client per PDF file.
 batch_size: 100
+
+# ==============================================================================
+# QR CODE PAYLOAD CONFIGURATION
+# ==============================================================================
+# Configuration for QR code payloads embedded in notices.
+#
+# The qr_payload_template section allows flexible customization of QR payload
+# content through template strings. Strings support Python-style placeholders
+# for dynamic value substitution.
+#
+# Allowed placeholders:
+#   - client_id, first_name, last_name, name
+#   - date_of_birth, date_of_birth_iso
+#   - school, city, postal_code, province, street_address
+#   - language, language_code
+#   - delivery_date
+#
+# Example: "https://example.com/update?id={client_id}&dob={date_of_birth_iso}"
+
+qr:
+  # Enable QR code generation in notices
+  enabled: true
+
+  # Default language for QR payload (if not explicitly specified)
+  default_language: "english"
+
+  # QR payload template strings with Python-style placeholders
+  payload_template:
+    english: "https://www.test-immunization.ca/update?client_id={client_id}&dob={date_of_birth_iso}&lang={language_code}"
+    french: "https://www.test-immunization.ca/update?client_id={client_id}&dob={date_of_birth_iso}&lang={language_code}"
+
+  # List of allowed placeholders for validation
+  # (used to validate template strings at runtime)
+  allowed_placeholders:
+    - client_id
+    - first_name
+    - last_name
+    - name
+    - date_of_birth
+    - date_of_birth_iso
+    - school
+    - city
+    - postal_code
+    - province
+    - street_address
+    - language
+    - language_code
+    - delivery_date
+
+# ==============================================================================
+# PDF ENCRYPTION CONFIGURATION
+# ==============================================================================
+# Configuration for PDF encryption and password generation.
+#
+# The password_template section allows flexible customization of PDF password
+# generation through template strings, similar to QR payload templating.
+# This enables:
+#   - Combine multiple fields: "{client_id}{date_of_birth_iso}"
+#   - Format variations: "{date_of_birth_iso_compact}" for YYYYMMDD
+#   - Language-specific variations
+#   - Custom separators
+#
+# Allowed placeholders (same as QR):
+#   - client_id, first_name, last_name, name
+#   - date_of_birth, date_of_birth_iso
+#   - school, city, postal_code, province, street_address
+#   - language, language_code
+#   - delivery_date
+#
+# Date format variants:
+#   - date_of_birth_iso: "2010-05-15" (YYYY-MM-DD)
+#   - date_of_birth_iso_compact: "20100515" (YYYYMMDD)
+#
+# Examples:
+#   - "{date_of_birth_iso_compact}": "20100515"
+#   - "{client_id}{date_of_birth_iso_compact}": "12320100515"
+#   - "{first_name}-{date_of_birth_iso}": "Alice-2010-05-15"
+
+encryption:
+  # Enable or disable encryption processing
+  enabled: true
+
+  # Default processing language
+  # Options: "english", "french"
+  default_language: "english"
+
+  # Output naming convention for encrypted PDFs
+  # Available variables: {stem}, {suffix}
+  # {stem} = filename without extension
+  # {suffix} = file extension (e.g., ".pdf")
+  encrypted_filename_pattern: "{stem}_encrypted{suffix}"
+
+  # Skip encryption if the encrypted file already exists and is newer
+  # than the source PDF (for efficiency in batch operations)
+  skip_if_exists: true
+
+  # Processing mode for batch encryption
+  # Options:
+  #   - "sequential": Process PDFs one at a time (default, deterministic)
+  sequential_mode: true
+
+  # Password generation settings using template-based approach
+  # Similar to QR payload templating for maximum flexibility
+  password:
+    # Use a template string to generate the password
+    # The template is rendered with client data substitution
+    # Default: use only DOB in compact format
+    template: "{date_of_birth_iso_compact}"
+
+    # List of allowed placeholders for validation
+    # (used to validate template strings at runtime)
+    allowed_placeholders:
+      - client_id
+      - first_name
+      - last_name
+      - name
+      - date_of_birth
+      - date_of_birth_iso
+      - date_of_birth_iso_compact
+      - school
+      - city
+      - postal_code
+      - province
+      - street_address
+      - language
+      - language_code
+      - delivery_date
+
+  # Logging and feedback settings
+  feedback:
+    verbose: false
+    show_progress: true
+    show_skipped_notices: true
+    show_failed_notices: true
