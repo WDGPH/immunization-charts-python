@@ -27,10 +27,7 @@ from typing import Dict, Iterator, List, Sequence
 
 from pypdf import PdfReader, PdfWriter
 
-try:
-    from .config_loader import load_config
-except ImportError:  # pragma: no cover - fallback for CLI execution
-    from config_loader import load_config
+from .config_loader import load_config
 
 LOG = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")

@@ -6,10 +6,7 @@ storage footprint after the pipeline completes successfully."""
 import shutil
 from pathlib import Path
 
-try:
-    from .config_loader import load_config
-except ImportError:  # pragma: no cover - fallback for CLI execution
-    from config_loader import load_config
+from .config_loader import load_config
 
 
 def safe_delete(path: Path):

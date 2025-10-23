@@ -12,14 +12,9 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Mapping, Sequence
 
-try:  # Allow both package and script-style invocation
-    from .generate_mock_template_en import render_notice as render_notice_en
-    from .generate_mock_template_fr import render_notice as render_notice_fr
-    from .utils import generate_qr_code
-except ImportError:  # pragma: no cover - fallback for CLI execution
-    from generate_mock_template_en import render_notice as render_notice_en
-    from generate_mock_template_fr import render_notice as render_notice_fr
-    from utils import generate_qr_code
+from .generate_mock_template_en import render_notice as render_notice_en
+from .generate_mock_template_fr import render_notice as render_notice_fr
+from .utils import generate_qr_code
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 ROOT_DIR = SCRIPT_DIR.parent
