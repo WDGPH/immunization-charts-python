@@ -1,0 +1,41 @@
+# Encryption Configuration
+#
+# This configuration file controls the behavior of the PDF encryption step
+# in the immunization charts pipeline.
+
+# Enable or disable encryption processing
+enabled: true
+
+# Default processing language
+# Options: "english", "french"
+default_language: "english"
+
+# Output naming convention for encrypted PDFs
+# Available variables: {stem}, {suffix}
+# {stem} = filename without extension
+# {suffix} = file extension (e.g., ".pdf")
+encrypted_filename_pattern: "{stem}_encrypted{suffix}"
+
+# Skip encryption if the encrypted file already exists and is newer
+# than the source PDF (for efficiency in batch operations)
+skip_if_exists: true
+
+# Processing mode for batch encryption
+# Options:
+#   - "sequential": Process PDFs one at a time (default, deterministic)
+sequential_mode: true
+
+# Password generation settings
+password:
+  # Password components: client_id + date_of_birth (YYYYMMDD)
+  # Example: client_id="123", dob="2010-05-15" -> password="12320100515"
+  include_client_id: false
+  include_dob: true
+  dob_format: "yyyymmdd"  # Compact format for password
+
+# Logging and feedback settings
+feedback:
+  verbose: false
+  show_progress: true
+  show_skipped_notices: true
+  show_failed_notices: true
