@@ -11,8 +11,12 @@ import shutil
 TEST_LANG = "english"
 PROJECT_DIR = Path(__file__).resolve().parents[1]
 INPUT_DIR = PROJECT_DIR / "input"
+TEST_INPUT_DIR = PROJECT_DIR / "tests/test_data/input_run_pipeline"
 OUTPUT_DIR = PROJECT_DIR / f"output/json_{TEST_LANG}"
 BATCH_SIZE = 100  # Make sure this matches preprocess.py value
+TMP_TEST_DIR = (
+    PROJECT_DIR / "tests/tmp_test_dir/test_run_pipeline_tmp"
+)  # Name of test dir where existing files in ./input and ./output will be stored
 
 
 # Returns filepath for input dataset
@@ -21,63 +25,54 @@ def test_input_path():
     return INPUT_DIR / "test_dataset.xlsx"
 
 
-# Moves test inputs to main input directory
-@pytest.fixture
-def test_move_inputs():
-    input_path = PROJECT_DIR / "tests/test_data/input_run_pipeline"
+# Cleans output folder before and after test
+@pytest.fixture(autouse=True)
+def clean_output_files():
     filename = "test_dataset.xlsx"
 
-    keep_files = []
+    tmp_filenames = {}
+
+    # Move existing input and output directories to temporary directory during testing
+    if os.path.exists(PROJECT_DIR / "input"):
+        print(f"Temporarily moving input folder to {TMP_TEST_DIR}/input")
+        os.makedirs(TMP_TEST_DIR, exist_ok=True)
+        shutil.move(PROJECT_DIR / "input", TMP_TEST_DIR / "input")
+        tmp_filenames[PROJECT_DIR / "input"] = TMP_TEST_DIR / "input"
+
+    if os.path.exists(PROJECT_DIR / "output"):
+        print(f"Temporarily moving output folder to {TMP_TEST_DIR}/output")
+        os.makedirs(TMP_TEST_DIR, exist_ok=True)
+        shutil.move(PROJECT_DIR / "output", TMP_TEST_DIR / "output")
+        tmp_filenames[PROJECT_DIR / "output"] = TMP_TEST_DIR / "output"
+
+    # Move test input to input directory
+    os.makedirs(INPUT_DIR, exist_ok=True)
 
     if not os.path.exists(INPUT_DIR / filename):
         print(
             f"File {filename} not found at destination. Copying from test directory..."
         )
-        shutil.copy(input_path / filename, INPUT_DIR / filename)
+        shutil.copy(TEST_INPUT_DIR / filename, INPUT_DIR / filename)
     else:
         print(f"File {filename} already exists at destination.")
 
-        # Check whether to overwrite existing file in dir
-        user_response = input("Do you want to overwrite the existing file? (y/n): ")
-        if user_response.lower() == "y":
-            print(f"Overwriting {filename}...")
-            shutil.copy(input_path / filename, INPUT_DIR / filename)
-        elif user_response.lower() == "n":
-            print(
-                "Keeping existing file. Please note this may cause issues with testing."
-            )
-            keep_files.append(INPUT_DIR / filename)
-        else:
-            print("Invalid input. Please enter 'y' or 'n'.")
-
-    # Return list of files not to be deleted at end of test
-    return keep_files
-
-
-# Cleans output folder before and after test
-@pytest.fixture(autouse=True)
-def clean_output_files(test_input_path, test_move_inputs):
     yield
-    # Delete directories generated during script if empty after removing test outputs
-    gen_dirs = ["batches", "by_school", f"json_{TEST_LANG}"]
-    for gen_dir in gen_dirs:
-        dir_path = PROJECT_DIR / f"output/{gen_dir}"
-        if os.path.exists(dir_path):
-            if len(os.listdir(dir_path)) == 0:
-                shutil.rmtree(dir_path)
-                print(
-                    f"Directory '{dir_path}' and all its contents deleted successfully."
-                )
-            else:
-                print(
-                    f"Directory '{dir_path}' was not empty and so was not deleted at end of test."
-                )
-        else:
-            print(f"Directory '{dir_path}' does not exist.")
 
-    # Delete copied input file from input dir
-    if os.path.exists(test_input_path) and (test_input_path not in test_move_inputs):
-        test_input_path.unlink()
+    # Restore original files and folders
+    for tmp_filename in tmp_filenames.keys():
+        # Remove generated folders
+        if os.path.exists(tmp_filename):
+            if os.path.isdir(tmp_filename):
+                shutil.rmtree(tmp_filename)
+            else:
+                tmp_filename.unlink()
+
+        print(f"Restoring original '{tmp_filename}'.")
+        shutil.move(tmp_filenames[tmp_filename], tmp_filename)
+
+    # Remove temporary dir for renamed files
+    if os.path.exists(TMP_TEST_DIR):
+        shutil.rmtree(TMP_TEST_DIR)
 
 
 def extract_client_id(text):
@@ -86,7 +81,7 @@ def extract_client_id(text):
 
 
 # Run tests for whole pipeline
-def test_run_pipeline(test_input_path, test_move_inputs, clean_output_files):
+def test_run_pipeline(test_input_path, clean_output_files):
     test_df = pd.read_excel(test_input_path)
 
     test_school_batch_names = []
@@ -167,6 +162,10 @@ def test_run_pipeline(test_input_path, test_move_inputs, clean_output_files):
         assert os.path.exists(
             OUTPUT_DIR / (test_school_batch_name + "_client_ids.csv")
         ), f"Missing csv: {test_school_batch_name}_client_ids.csv"
+        assert (
+            os.path.getsize(OUTPUT_DIR / (test_school_batch_name + "_client_ids.csv"))
+            != 0
+        ), {f"Empty csv: {test_school_batch_name}_client_ids.csv"}
 
         # Check that all clients are present in pdf
         client_id_list = pd.read_csv(
@@ -181,6 +180,9 @@ def test_run_pipeline(test_input_path, test_move_inputs, clean_output_files):
         assert os.path.exists(OUTPUT_DIR / (test_school_batch_name + ".json")), (
             f"Missing json: {test_school_batch_name}.json"
         )
+        assert os.path.getsize(OUTPUT_DIR / (test_school_batch_name + ".json")) != 0, {
+            f"Empty json: {test_school_batch_name}.json"
+        }
 
         # Check that immunization notice .typ file exists for school batch
         assert os.path.exists(
@@ -197,6 +199,9 @@ def test_run_pipeline(test_input_path, test_move_inputs, clean_output_files):
 
         if os.path.exists(OUTPUT_DIR / "conf.typ"):
             (OUTPUT_DIR / "conf.typ").unlink()
+
+        if os.path.exists(OUTPUT_DIR / "conf.pdf"):
+            (OUTPUT_DIR / "conf.pdf").unlink()
 
     # Remove test outputs in output/by_school folder
     for test_school_name in test_school_names:

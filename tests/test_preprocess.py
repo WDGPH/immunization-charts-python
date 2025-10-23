@@ -55,7 +55,7 @@ def test_load_data(sample_data):
     df = load_data(input_path)
 
     # Test load_data
-    assert not df.empty
+    assert not df.empty, f"Input dataset is empty: {input_path}"
 
 
 def test_validate_transform_columns(sample_data):
@@ -92,7 +92,7 @@ def test_validate_transform_columns(sample_data):
     )  # FIXME make required_columns come from a config file
 
     for column in required_columns:
-        column = column.replace(" ", "_")
+        column = column.replace(" ", " ")
         column = column.replace("PROVINCE/TERRITORY", "PROVINCE")
         assert column in df.columns
 
@@ -140,6 +140,17 @@ def test_separate_by_school(sample_data):
     for school_name in df["SCHOOL_NAME"].unique():
         assert os.path.exists(
             output_dir_school / f"{school_name.replace(' ', '_').upper()}.csv"
+        ), (
+            f"Missing file for : {output_dir_school}/{school_name.replace(' ', ' ').upper()}.csv"
+        )
+
+        assert (
+            os.path.getsize(
+                output_dir_school / f"{school_name.replace(' ', '_').upper()}.csv"
+            )
+            != 0
+        ), (
+            f"File size of 0 for: {output_dir_school}/{school_name.replace(' ', ' ').upper()}.csv"
         )
 
 
@@ -195,6 +206,18 @@ def test_split_batches(sample_data):
             assert os.path.exists(
                 output_dir_batch
                 / f"{school_name.replace(' ', '_').upper()}_{(num_batch + 1):0{2}d}.csv"
+            ), (
+                f"Missing file: {school_name.replace(' ', '_').upper()}_{(num_batch + 1):0{2}d}.csv"
+            )
+
+            assert (
+                os.path.getsize(
+                    output_dir_batch
+                    / f"{school_name.replace(' ', '_').upper()}_{(num_batch + 1):0{2}d}.csv"
+                )
+                != 0
+            ), (
+                f"File size of 0 for: {school_name.replace(' ', '_').upper()}_{(num_batch + 1):0{2}d}.csv"
             )
 
 
@@ -382,4 +405,16 @@ def test_save_output(sample_data):
             assert os.path.exists(
                 output_dir_final
                 / f"{school_name.replace(' ', '_').upper()}_{(num_batch + 1):0{2}d}.json"
+            ), (
+                f"File missing: {school_name.replace(' ', '_').upper()}_{(num_batch + 1):0{2}d}.json"
+            )
+
+            assert (
+                os.path.getsize(
+                    output_dir_final
+                    / f"{school_name.replace(' ', '_').upper()}_{(num_batch + 1):0{2}d}.json"
+                )
+                != 0
+            ), (
+                f"File size of 0 for: {school_name.replace(' ', '_').upper()}_{(num_batch + 1):0{2}d}.json"
             )

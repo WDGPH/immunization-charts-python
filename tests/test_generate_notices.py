@@ -7,8 +7,9 @@ import re
 
 TEST_LANG = "english"
 PROJECT_DIR = Path(__file__).resolve().parents[1]
-# Directory where generate_notices.sh will look for inputs and create outputs
+TEST_OUTPUT_DIR = PROJECT_DIR / "tests/test_data/input_generate_notices"
 OUTPUT_DIR = PROJECT_DIR / f"output/json_{TEST_LANG}"
+TMP_TEST_DIR = PROJECT_DIR / "tests/tmp_test_dir/test_generate_notices_tmp"
 
 
 # Returns list of names of school batches in test
@@ -19,14 +20,22 @@ def test_school_batch_names():
     ]
 
 
-# Moves test inputs to main input directory
-@pytest.fixture
-def test_move_inputs():
+# Cleans output folder before and after test
+@pytest.fixture(autouse=True)
+def clean_output_files():
+    tmp_filenames = {}
+
+    # Move existing output directories to temporary directory during testing
+    if os.path.exists(PROJECT_DIR / "output"):
+        print(f"Temporarily moving output folder to {TMP_TEST_DIR}/output")
+        os.makedirs(TMP_TEST_DIR, exist_ok=True)
+        shutil.move(PROJECT_DIR / "output", TMP_TEST_DIR / "output")
+        tmp_filenames[PROJECT_DIR / "output"] = TMP_TEST_DIR / "output"
+
+    # Remake output dir for test files
     os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-    keep_files = []
-
-    input_path = PROJECT_DIR / "tests/test_data/input_generate_notices"
+    input_path = PROJECT_DIR / "tests/test_data/input_compile_notices"
     for filename in os.listdir(input_path):
         if not os.path.exists(OUTPUT_DIR / filename):
             print(
@@ -36,42 +45,27 @@ def test_move_inputs():
         else:
             print(f"File {filename} already exists at destination.")
 
-            # Check whether to overwrite existing file in dir
-            user_response = input("Do you want to overwrite the existing file? (y/n): ")
-            if user_response.lower() == "y":
-                print(f"Overwriting {filename}...")
-                shutil.copy(input_path / filename, OUTPUT_DIR / filename)
-            elif user_response.lower() == "n":
-                print(
-                    "Keeping existing file. Please note this may cause issues with testing."
-                )
-                keep_files.append(OUTPUT_DIR / filename)
-            else:
-                print("Invalid input. Please enter 'y' or 'n'.")
-
-    # Return list of files not to be deleted at end of test
-    return keep_files
-
-
-# Cleans output folder before and after test
-@pytest.fixture(autouse=True)
-def clean_output_files(test_move_inputs):
-    # Delete copied over test files after test
     yield
-    input_path = PROJECT_DIR / "tests/test_data/input_generate_notices"
-    for filename in os.listdir(input_path):
-        if not os.path.exists(OUTPUT_DIR / filename):
-            print(f"File {filename} not found in output folder.")
-        else:
-            if OUTPUT_DIR / filename not in test_move_inputs:
-                print(f"Cleaning file {filename} from output folder.")
-                (OUTPUT_DIR / filename).unlink()
+
+    # Restore original files and folders
+    for tmp_filename in tmp_filenames.keys():
+        # Remove generated folders
+        if os.path.exists(tmp_filename):
+            if os.path.isdir(tmp_filename):
+                shutil.rmtree(tmp_filename)
             else:
-                print(f"Not removing file {filename} from output folder.")
+                tmp_filename.unlink()
+
+        print(f"Restoring original '{tmp_filename}'.")
+        shutil.move(tmp_filenames[tmp_filename], tmp_filename)
+
+    # Remove temporary dir for renamed files
+    if os.path.exists(TMP_TEST_DIR):
+        shutil.rmtree(TMP_TEST_DIR)
 
 
 # Run tests for Generate Notices step of pipeline
-def test_generate_notices(test_school_batch_names, test_move_inputs):
+def test_generate_notices(test_school_batch_names):
     # Test that supplementary files exist
     assert (PROJECT_DIR / "assets/logo.png").exists()
     assert (PROJECT_DIR / "assets/signature.png").exists()
@@ -127,6 +121,7 @@ def test_generate_notices(test_school_batch_names, test_move_inputs):
         # Check that the referenced file exists
         csv_path = filepath.parent / csv_file
         assert csv_path.exists(), f"Referenced CSV file does not exist: {csv_path}"
+        assert os.path.getsize(csv_path) != 0, f"Referenced CSV file empty: {csv_path}"
 
         # Match a #let statement that uses json()
         match = re.search(
@@ -149,6 +144,9 @@ def test_generate_notices(test_school_batch_names, test_move_inputs):
         # Check that the referenced file exists
         json_path = filepath.parent / json_file
         assert json_path.exists(), f"Referenced JSON file does not exist: {json_path}"
+        assert os.path.getsize(json_path) != 0, (
+            f"Referenced JSON file empty: {json_path}"
+        )
 
         # Remove test output file
         filepath.unlink()
