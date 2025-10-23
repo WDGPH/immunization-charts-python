@@ -177,7 +177,33 @@ Steps performed:
     - Build notices with `ClientDataProcessor`
     - Save JSON + client IDs
 
+## QR Code Configuration
 
+The QR payload can be customised in `config/qr_config.yaml`. Each string behaves like a Python f-string and can reference the placeholders listed below. The preprocessing step validates the configuration on every run and raises an error if it encounters an unknown placeholder or invalid format, helping surface issues before templates are rendered.
+
+**Available placeholders**
+- `client_id`
+- `first_name`
+- `last_name`
+- `name`
+- `date_of_birth` (language-formatted string)
+- `date_of_birth_iso` (`YYYY-MM-DD`)
+- `school`
+- `city`
+- `postal_code`
+- `province`
+- `street_address`
+- `language` (`english` or `french`)
+- `language_code` (`en` or `fr`)
+- `delivery_date`
+
+**Sample override**
+```yaml
+qr_payload_template:
+  english: "https://portal.example.ca/update?client_id={client_id}&dob={date_of_birth_iso}"
+```
+
+Update the configuration file, rerun the pipeline, and regenerated notices will reflect the new QR payload.
 ## Changelog
 
 See [CHANGELOG.md](./CHANGELOG.md) for details of each release.

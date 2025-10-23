@@ -19,7 +19,6 @@ from typing import Optional
 try:
     from . import batch_pdfs, cleanup, compile_notices, count_pdfs
     from . import generate_notices, prepare_output, preprocess
-    from . import summarize_preprocessed_clients
 except ImportError:  # pragma: no cover - fallback for CLI execution
     import batch_pdfs
     import cleanup
@@ -28,7 +27,6 @@ except ImportError:  # pragma: no cover - fallback for CLI execution
     import generate_notices
     import prepare_output
     import preprocess
-    import summarize_preprocessed_clients
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 ROOT_DIR = SCRIPT_DIR.parent

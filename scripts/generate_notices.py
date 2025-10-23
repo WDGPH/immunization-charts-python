@@ -16,9 +16,11 @@ from typing import Dict, List, Mapping, Sequence
 try:  # Allow both package and script-style invocation
     from .generate_mock_template_en import render_notice as render_notice_en
     from .generate_mock_template_fr import render_notice as render_notice_fr
+    from .utils import generate_qr_code
 except ImportError:  # pragma: no cover - fallback for CLI execution
     from generate_mock_template_en import render_notice as render_notice_en
     from generate_mock_template_fr import render_notice as render_notice_fr
+    from utils import generate_qr_code
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 ROOT_DIR = SCRIPT_DIR.parent
@@ -45,6 +47,7 @@ class ClientRecord:
     vaccines_due_list: List[str]
     received: List[Dict[str, object]]
     metadata: Dict[str, object]
+    qr: Dict[str, object] = None
 
 
 @dataclass(frozen=True)
@@ -100,7 +103,7 @@ def _to_typ_value(value) -> str:
     raise TypeError(f"Unsupported value type for Typst conversion: {type(value)!r}")
 
 
-def build_template_context(client: ClientRecord) -> Dict[str, str]:
+def build_template_context(client: ClientRecord, qr_output_dir: Path | None = None) -> Dict[str, str]:
     client_data = {
         "name": client.person["full_name"],
         "address": client.contact["street"],
@@ -109,6 +112,20 @@ def build_template_context(client: ClientRecord) -> Dict[str, str]:
         "date_of_birth": client.person["date_of_birth_display"],
         "school": client.school["name"],
     }
+
+    # Generate QR code if payload is available
+    if client.qr and qr_output_dir:
+        payload = client.qr.get("payload", "")
+        if payload:
+            try:
+                qr_path = generate_qr_code(
+                    payload,
+                    qr_output_dir,
+                    filename=f"qr_code_{client.sequence}_{client.client_id}.png",
+                )
+                client_data["qr_code"] = _to_root_relative(qr_path)
+            except RuntimeError as exc:  # pragma: no cover - optional QR generation
+                LOG.warning("Could not generate QR code for client %s: %s", client.client_id, exc)
 
     return {
         "client_row": _to_typ_value([client.client_id]),
@@ -136,9 +153,10 @@ def render_notice(
     logo: Path,
     signature: Path,
     parameters: Path,
+    qr_output_dir: Path | None = None,
 ) -> str:
     renderer = LANGUAGE_RENDERERS[client.language]
-    context = build_template_context(client)
+    context = build_template_context(client, qr_output_dir)
     return renderer(
         context,
         logo_path=_to_root_relative(logo),
@@ -153,6 +171,7 @@ def generate_typst_files(
     parameters_path: Path,
 ) -> List[Path]:
     output_dir.mkdir(parents=True, exist_ok=True)
+    qr_output_dir = output_dir / "qr_codes"
     files: List[Path] = []
     language = payload.language
     for client in payload.clients:
@@ -166,6 +185,7 @@ def generate_typst_files(
             logo=logo_path,
             signature=signature_path,
             parameters=parameters_path,
+            qr_output_dir=qr_output_dir if client.qr else None,
         )
         filename = f"{language}_client_{client.sequence}_{client.client_id}.typ"
         file_path = output_dir / filename

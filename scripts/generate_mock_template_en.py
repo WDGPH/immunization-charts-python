@@ -70,7 +70,14 @@ Please review the Immunization Record on page 2 and update your child's record b
 
 Please update Public Health and your childcare centre every time your child receives a vaccine. 
 
-*If you are choosing not to immunize your child*, a valid medical exemption or statement of conscience or religious belief must be submitted. 
+#grid(
+  columns: (1fr, auto),
+  gutter: 10pt,
+  [*If you are choosing not to immunize your child*, a valid medical exemption or statement of conscience or religious belief must be submitted. Links to these forms can be located at #text(fill:conf.wdgteal)[#link("https://www.test-immunization.ca/exemptions")]. Please note this exemption is for childcare only and a new exemption will be required upon enrollment in elementary school.],
+  [#if "qr_code" in client [
+    #image(client.qr_code, width: 2cm)
+  ]]
+)
 
 If there is an outbreak, children who are not adequately immunized may be excluded.
 
