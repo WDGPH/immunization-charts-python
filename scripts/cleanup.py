@@ -31,7 +31,7 @@ def cleanup(outdir_path: Path):
         remove_files_with_ext(legacy_dir)
         safe_delete(legacy_dir)
 
-    for folder in ['artifacts', 'by_school', 'batches']:
+    for folder in ['artifacts', 'by_school', 'batches', 'qr_codes']:
         safe_delete(outdir_path / folder)
         
 def main(argv: list[str] | None = None):

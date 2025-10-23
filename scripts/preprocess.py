@@ -1,4 +1,10 @@
-import argparse
+"""Preprocessing pipeline for immunization-charts.
+
+Normalizes and structures input data into a single JSON artifact for downstream
+pipeline steps. Handles data validation, client sorting, vaccine processing, and
+optional QR payload formatting.
+"""
+
 import json
 import logging
 import re
@@ -6,19 +12,53 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from hashlib import sha1
 from pathlib import Path
-from typing import Any, Dict, List
+from string import Formatter
+from typing import Any, Dict, Iterable, List, Optional, Set
 
 import pandas as pd
+import yaml
 
 try:  # Allow both package and script style execution
-    from .utils import convert_date_iso, convert_date_string, convert_date_string_french
+    from .utils import convert_date_iso, convert_date_string, convert_date_string_french, over_16_check
 except ImportError:  # pragma: no cover - fallback for CLI execution
-    from utils import convert_date_iso, convert_date_string, convert_date_string_french
+    from utils import convert_date_iso, convert_date_string, convert_date_string_french, over_16_check
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 CONFIG_DIR = SCRIPT_DIR.parent / "config"
 DISEASE_MAP_PATH = CONFIG_DIR / "disease_map.json"
 VACCINE_REFERENCE_PATH = CONFIG_DIR / "vaccine_reference.json"
+QR_CONFIG_PATH = CONFIG_DIR / "qr_config.yaml"
+
+LOG = logging.getLogger(__name__)
+
+LANGUAGE_LABELS = {
+    "en": "english",
+    "fr": "french",
+}
+
+SUPPORTED_QR_TEMPLATE_FIELDS: Set[str] = {
+    "client_id",
+    "first_name",
+    "last_name",
+    "name",
+    "date_of_birth",
+    "date_of_birth_iso",
+    "school",
+    "city",
+    "postal_code",
+    "province",
+    "street_address",
+    "language",
+    "language_code",
+    "delivery_date",
+}
+
+DEFAULT_QR_PAYLOAD_TEMPLATE = {
+    "en": "https://www.test-immunization.ca/update?client_id={client_id}&dob={date_of_birth_iso}",
+    "fr": "https://www.test-immunization.ca/update?client_id={client_id}&dob={date_of_birth_iso}",
+}
+
+_FORMATTER = Formatter()
 
 IGNORE_AGENTS = [
     "-unspecified",
@@ -48,31 +88,18 @@ REQUIRED_COLUMNS = [
 class PreprocessResult:
     clients: List[Dict[str, Any]]
     warnings: List[str]
+    qr: Optional[Dict[str, Any]] = None
 
 
-def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(
-        description="Validate and normalize immunization data extracts into a single JSON artifact."
-    )
-    parser.add_argument("input_dir", type=Path, help="Directory containing the source extract.")
-    parser.add_argument("input_file", type=str, help="Filename of the extract (CSV or Excel).")
-    parser.add_argument("output_dir", type=Path, help="Directory where artifacts will be written.")
-    parser.add_argument(
-        "language",
-        nargs="?",
-        default="en",
-        choices=["en", "fr"],
-        help="Language code for downstream processing (default: en).",
-    )
-    parser.add_argument(
-        "--run-id",
-        dest="run_id",
-        help="Optional run identifier used when naming artifacts (defaults to current UTC timestamp).",
-    )
-    return parser.parse_args(argv)
+@dataclass(frozen=True)
+class QrSettings:
+    payload_template: Optional[str]
+    allowed_placeholders: Set[str]
+    delivery_date: Optional[str]
 
 
 def configure_logging(output_dir: Path, run_id: str) -> Path:
+    """Configure file logging for preprocessing step."""
     log_dir = output_dir / "logs"
     log_dir.mkdir(parents=True, exist_ok=True)
     log_path = log_dir / f"preprocess_{run_id}.log"
@@ -90,10 +117,11 @@ def configure_logging(output_dir: Path, run_id: str) -> Path:
 
 
 def detect_file_type(file_path: Path) -> str:
-    """Return the file extension for preprocessing logic"""
+    """Return the file extension for preprocessing logic."""
     if not file_path.exists():
         raise FileNotFoundError(f"Input file not found: {file_path}")
     return file_path.suffix.lower()
+
 
 def read_input(file_path: Path) -> pd.DataFrame:
     """Read CSV/Excel into DataFrame with robust encoding and delimiter detection."""
@@ -109,23 +137,23 @@ def read_input(file_path: Path) -> pd.DataFrame:
                     # Let pandas sniff the delimiter
                     df = pd.read_csv(file_path, sep=None, encoding=enc, engine="python")
                     break
-                except UnicodeDecodeError:
-                    continue
-                except pd.errors.ParserError:
+                except (UnicodeDecodeError, pd.errors.ParserError):
                     continue
             else:
                 raise ValueError("Could not decode CSV with common encodings or delimiters")
         else:
             raise ValueError(f"Unsupported file type: {ext}")
 
-        logging.info(f"Loaded {len(df)} rows from {file_path}")
+        LOG.info("Loaded %s rows from %s", len(df), file_path)
         return df
 
-    except Exception as e:
-        logging.error(f"Failed to read {file_path}: {e}")
+    except Exception as exc:  # pragma: no cover - logging branch
+        LOG.error("Failed to read %s: %s", file_path, exc)
         raise
 
+
 def ensure_required_columns(df: pd.DataFrame) -> pd.DataFrame:
+    """Normalize column names and validate required columns."""
     df = df.copy()
     df.columns = [col.strip().upper() for col in df.columns]
     missing = [col for col in REQUIRED_COLUMNS if col not in df.columns]
@@ -136,9 +164,10 @@ def ensure_required_columns(df: pd.DataFrame) -> pd.DataFrame:
     df.rename(columns={"PROVINCE/TERRITORY": "PROVINCE"}, inplace=True)
     return df
 
+
 def normalize_dataframe(df: pd.DataFrame) -> pd.DataFrame:
+    """Standardize data types and fill missing values."""
     working = df.copy()
-    # Standardize string columns we care about.
     string_columns = [
         "SCHOOL_NAME",
         "FIRST_NAME",
@@ -177,6 +206,7 @@ def normalize_dataframe(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def synthesize_identifier(existing: str, source: str, prefix: str) -> str:
+    """Generate a deterministic identifier if one is not provided."""
     existing = (existing or "").strip()
     if existing:
         return existing
@@ -187,7 +217,7 @@ def synthesize_identifier(existing: str, source: str, prefix: str) -> str:
 
 
 def process_vaccines_due(vaccines_due: Any, language: str, disease_map: Dict[str, str]) -> str:
-    """Map diseases to vaccines using disease_map and handle language-specific cases."""
+    """Map overdue diseases to vaccine names using disease_map."""
     if not isinstance(vaccines_due, str) or not vaccines_due.strip():
         return ""
 
@@ -214,6 +244,7 @@ def process_vaccines_due(vaccines_due: Any, language: str, disease_map: Dict[str
 
 
 def process_received_agents(received_agents: Any, ignore_agents: List[str]) -> List[Dict[str, Any]]:
+    """Extract and normalize vaccination history from received_agents string."""
     if not isinstance(received_agents, str) or not received_agents.strip():
         return []
 
@@ -248,10 +279,11 @@ def enrich_grouped_records(
     vaccine_reference: Dict[str, Any],
     language: str,
 ) -> List[Dict[str, Any]]:
+    """Enrich grouped vaccine records with disease information."""
     enriched: List[Dict[str, Any]] = []
     for item in grouped:
         vaccines = [v.replace("-unspecified", "*").replace(" unspecified", "*") for v in item["vaccine"]]
-        diseases = []
+        diseases: List[str] = []
         for vaccine in vaccines:
             ref = vaccine_reference.get(vaccine, vaccine)
             if isinstance(ref, list):
@@ -268,13 +300,135 @@ def enrich_grouped_records(
     return enriched
 
 
+def _string_or_empty(value: Any) -> str:
+    """Safely convert value to string, returning empty string for None/NaN."""
+    if value is None or (isinstance(value, float) and pd.isna(value)):
+        return ""
+    return str(value).strip()
+
+
+def _extract_template_fields(template: str) -> Set[str]:
+    """Extract placeholder names from a format string."""
+    try:
+        return {field_name for _, field_name, _, _ in _FORMATTER.parse(template) if field_name}
+    except ValueError as exc:
+        raise ValueError(f"Invalid QR payload template: {exc}") from exc
+
+
+def _format_qr_payload(template: str, context: Dict[str, str], allowed_placeholders: Set[str]) -> str:
+    """Format and validate QR payload template against allowed placeholders."""
+    placeholders = _extract_template_fields(template)
+    unknown_fields = placeholders - context.keys()
+    if unknown_fields:
+        raise KeyError(
+            f"Unknown placeholder(s) {sorted(unknown_fields)} in qr_payload_template. "
+            f"Available placeholders: {sorted(context.keys())}"
+        )
+
+    disallowed = placeholders - allowed_placeholders
+    if disallowed:
+        raise ValueError(
+            f"Disallowed placeholder(s) {sorted(disallowed)} in qr_payload_template. "
+            f"Allowed placeholders: {sorted(allowed_placeholders)}"
+        )
+
+    return template.format(**context)
+
+
+def _default_qr_payload(context: Dict[str, str]) -> str:
+    """Generate default QR payload as JSON."""
+    payload = {
+        "id": context.get("client_id"),
+        "name": context.get("name"),
+        "dob": context.get("date_of_birth_iso"),
+        "school": context.get("school"),
+    }
+    return json.dumps(payload, sort_keys=True)
+
+
+def _build_qr_context(
+    *,
+    client_id: str,
+    first_name: str,
+    last_name: str,
+    dob_display: str,
+    dob_iso: Optional[str],
+    school: str,
+    city: str,
+    postal_code: str,
+    province: str,
+    street_address: str,
+    language_code: str,
+    delivery_date: Optional[str],
+) -> Dict[str, str]:
+    """Build template context for QR payload formatting."""
+    language_label = LANGUAGE_LABELS.get(language_code, language_code)
+    return {
+        "client_id": _string_or_empty(client_id),
+        "first_name": _string_or_empty(first_name),
+        "last_name": _string_or_empty(last_name),
+        "name": " ".join(filter(None, [_string_or_empty(first_name), _string_or_empty(last_name)])).strip(),
+        "date_of_birth": _string_or_empty(dob_display),
+        "date_of_birth_iso": _string_or_empty(dob_iso),
+        "school": _string_or_empty(school),
+        "city": _string_or_empty(city),
+        "postal_code": _string_or_empty(postal_code),
+        "province": _string_or_empty(province),
+        "street_address": _string_or_empty(street_address),
+        "language": language_label,
+        "language_code": _string_or_empty(language_code),
+        "delivery_date": _string_or_empty(delivery_date),
+    }
+
+
+def load_qr_settings(language: str, *, config_path: Path = QR_CONFIG_PATH) -> QrSettings:
+    """Load QR configuration from yaml file."""
+    payload_template = DEFAULT_QR_PAYLOAD_TEMPLATE.get(language)
+    allowed_placeholders = set(SUPPORTED_QR_TEMPLATE_FIELDS)
+    delivery_date: Optional[str] = None
+
+    if not config_path.exists():
+        LOG.info("QR configuration not found at %s; using defaults.", config_path)
+        return QrSettings(payload_template, allowed_placeholders, delivery_date)
+
+    config_data = yaml.safe_load(config_path.read_text(encoding="utf-8")) or {}
+
+    template_config = config_data.get("qr_payload_template")
+    if isinstance(template_config, dict):
+        for key in (language, LANGUAGE_LABELS.get(language)):
+            if key and template_config.get(key):
+                payload_template = template_config[key]
+                break
+    elif isinstance(template_config, str):
+        payload_template = template_config
+    elif template_config is not None:
+        LOG.warning(
+            "Ignoring qr_payload_template with unsupported type %s; expected str or mapping.",
+            type(template_config).__name__,
+        )
+
+    overrides = config_data.get("allowed_placeholders")
+    if overrides is not None:
+        if isinstance(overrides, Iterable) and not isinstance(overrides, (str, bytes)):
+            allowed_placeholders |= {str(item) for item in overrides}
+        else:
+            LOG.warning("Ignoring invalid allowed_placeholders configuration; expected a list of strings.")
+
+    delivery_date = config_data.get("delivery_date") or delivery_date
+
+    return QrSettings(payload_template, allowed_placeholders, delivery_date)
+
+
 def build_preprocess_result(
     df: pd.DataFrame,
     language: str,
     disease_map: Dict[str, str],
     vaccine_reference: Dict[str, Any],
     ignore_agents: List[str],
+    qr_settings: Optional[QrSettings] = None,
 ) -> PreprocessResult:
+    """Process and normalize client data into structured artifact."""
+    qr_settings = qr_settings or load_qr_settings(language)
     warnings: set[str] = set()
     working = normalize_dataframe(df)
 
@@ -316,8 +470,14 @@ def build_preprocess_result(
         received = enrich_grouped_records(received_grouped, vaccine_reference, language)
 
         postal_code = row.POSTAL_CODE if row.POSTAL_CODE else "Not provided"
-        over_16 = bool(row.AGE >= 16) if not pd.isna(row.AGE) else False
         address_line = " ".join(filter(None, [row.STREET_ADDRESS_LINE_1, row.STREET_ADDRESS_LINE_2])).strip()
+
+        if not pd.isna(row.AGE):
+            over_16 = bool(row.AGE >= 16)
+        elif dob_iso and qr_settings.delivery_date:
+            over_16 = over_16_check(dob_iso, qr_settings.delivery_date)
+        else:
+            over_16 = False
 
         client_entry = {
             "sequence": sequence,
@@ -352,18 +512,55 @@ def build_preprocess_result(
             "received": received,
             "metadata": {
                 "unique_id": row.UNIQUE_ID or None,
+                "delivery_date": qr_settings.delivery_date,
             },
         }
+
+        qr_context = _build_qr_context(
+            client_id=client_id,
+            first_name=row.FIRST_NAME,
+            last_name=row.LAST_NAME,
+            dob_display=formatted_dob or "",
+            dob_iso=dob_iso,
+            school=row.SCHOOL_NAME,
+            city=row.CITY,
+            postal_code=postal_code,
+            province=row.PROVINCE,
+            street_address=address_line,
+            language_code=language,
+            delivery_date=qr_settings.delivery_date,
+        )
+
+        qr_payload = _default_qr_payload(qr_context)
+        if qr_settings.payload_template:
+            try:
+                qr_payload = _format_qr_payload(
+                    qr_settings.payload_template, qr_context, qr_settings.allowed_placeholders
+                )
+            except (KeyError, ValueError) as exc:
+                raise ValueError(f"Failed to format QR payload for client {client_id}: {exc}") from exc
+
+        client_entry["qr"] = {
+            "payload": qr_payload,
+        }
+
         clients.append(client_entry)
 
+    qr_summary = {
+        "payload_template": qr_settings.payload_template,
+        "allowed_placeholders": sorted(qr_settings.allowed_placeholders),
+        "delivery_date": qr_settings.delivery_date,
+    }
 
     return PreprocessResult(
         clients=clients,
         warnings=sorted(warnings),
+        qr=qr_summary,
     )
 
 
 def write_artifact(output_dir: Path, language: str, run_id: str, result: PreprocessResult) -> Path:
+    """Write preprocessed result to JSON artifact file."""
     output_dir.mkdir(parents=True, exist_ok=True)
     payload = {
         "run_id": run_id,
@@ -373,38 +570,25 @@ def write_artifact(output_dir: Path, language: str, run_id: str, result: Preproc
         "clients": result.clients,
         "warnings": result.warnings,
     }
+    if result.qr is not None:
+        payload["qr"] = result.qr
     artifact_path = output_dir / f"preprocessed_clients_{run_id}.json"
     artifact_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
-    logging.info("Wrote normalized artifact to %s", artifact_path)
+    LOG.info("Wrote normalized artifact to %s", artifact_path)
     return artifact_path
 
 
-def main(argv: list[str] | None = None) -> int:
-    args = parse_args(argv)
-    run_id = args.run_id or datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S")
+def extract_total_clients(artifact_path: Path) -> int:
+    """Extract total client count from preprocessed artifact."""
+    with artifact_path.open("r", encoding="utf-8") as handle:
+        payload = json.load(handle)
 
-    log_path = configure_logging(args.output_dir, run_id)
+    total: Optional[int] = payload.get("total_clients")
+    if total is None:
+        clients = payload.get("clients", [])
+        total = len(clients)
 
-    input_path = args.input_dir / args.input_file
-    df_raw = read_input(input_path)
-    df = ensure_required_columns(df_raw)
-
-    disease_map = json.loads(DISEASE_MAP_PATH.read_text(encoding="utf-8"))
-    vaccine_reference = json.loads(VACCINE_REFERENCE_PATH.read_text(encoding="utf-8"))
-
-    result = build_preprocess_result(df, args.language, disease_map, vaccine_reference, IGNORE_AGENTS)
-
-    artifact_path = write_artifact(args.output_dir / "artifacts", args.language, run_id, result)
-
-    print(f"Structured data saved to {artifact_path}")
-    print(f"Preprocess log written to {log_path}")
-    if result.warnings:
-        print("Warnings detected during preprocessing:")
-        for warning in result.warnings:
-            print(f" - {warning}")
-    
-    return 0
-
-
-if __name__ == "__main__":
-    main()
+    try:
+        return int(total)
+    except (TypeError, ValueError) as exc:  # pragma: no cover - defensive guard
+        raise ValueError("Unable to determine the total number of clients") from exc
