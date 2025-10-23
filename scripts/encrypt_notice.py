@@ -53,19 +53,19 @@ def _load_notice_metadata(json_path: Path, language: str) -> Tuple[str, str]:
 
 def encrypt_notice(json_path: str | Path, pdf_path: str | Path, language: str) -> str:
     """Encrypt a PDF notice using client data from the JSON file.
-    
+
     Returns the path to the encrypted PDF with _encrypted suffix.
     If the encrypted version already exists and is newer than the source,
     returns the existing file without re-encrypting.
-    
+
     Args:
         json_path: Path to the JSON file containing client metadata
         pdf_path: Path to the PDF file to encrypt
         language: Language code ('english' or 'french')
-        
+
     Returns:
         Path to the encrypted PDF file
-        
+
     Raises:
         FileNotFoundError: If JSON or PDF file not found
         ValueError: If JSON is invalid or language is not supported
@@ -97,17 +97,17 @@ def encrypt_pdfs_in_directory(
     language: str,
 ) -> None:
     """Encrypt all PDF notices in a directory using a combined JSON metadata file.
-    
+
     The JSON file should contain a dict where keys are client identifiers and
     values contain client metadata with DOB information.
-    
+
     PDFs are encrypted in-place with the _encrypted suffix added to filename.
-    
+
     Args:
         pdf_directory: Directory containing PDF files to encrypt
         json_file: Path to the combined JSON file with all client metadata
         language: Language code ('english' or 'french')
-        
+
     Raises:
         FileNotFoundError: If PDF directory or JSON file don't exist
         ValueError: If language is not supported
@@ -169,7 +169,7 @@ def encrypt_pdfs_in_directory(
     for pdf_path in pdf_files:
         pdf_name = pdf_path.name
         stem = pdf_path.stem
-        
+
         # Skip conf and already-encrypted files
         if stem == "conf" or stem.endswith("_encrypted"):
             continue
@@ -198,7 +198,7 @@ def encrypt_pdfs_in_directory(
             # Fall back to flat format
             if not dob_iso:
                 dob_iso = client_data.get("date_of_birth_iso")
-        
+
         if not dob_iso:
             # Try to get display format and convert
             dob_display = None
@@ -207,11 +207,11 @@ def encrypt_pdfs_in_directory(
                     dob_display = client_data["person"].get("date_of_birth_display")
                 if not dob_display:
                     dob_display = client_data.get("date_of_birth")
-            
+
             if not dob_display:
                 skipped.append((pdf_name, "Missing date of birth in metadata"))
                 continue
-            
+
             try:
                 dob_iso = convert_date(
                     dob_display,
@@ -224,8 +224,10 @@ def encrypt_pdfs_in_directory(
 
         # Encrypt the PDF
         try:
-            encrypted_path = pdf_path.with_name(f"{pdf_path.stem}_encrypted{pdf_path.suffix}")
-            
+            encrypted_path = pdf_path.with_name(
+                f"{pdf_path.stem}_encrypted{pdf_path.suffix}"
+            )
+
             # Skip if encrypted version is newer than source
             if encrypted_path.exists():
                 try:
@@ -234,7 +236,7 @@ def encrypt_pdfs_in_directory(
                         continue
                 except OSError:
                     pass
-            
+
             encrypt_pdf(str(pdf_path), str(client_id), dob_iso)
             # Delete the unencrypted version after successful encryption
             try:

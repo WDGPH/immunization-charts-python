@@ -20,7 +20,9 @@ def _write_pdf(path: Path, pages: int = 1) -> None:
         writer.write(fh)
 
 
-def _client_template(sequence: int, *, school_id: str, board_id: str, pages: int = 1) -> tuple[dict, int]:
+def _client_template(
+    sequence: int, *, school_id: str, board_id: str, pages: int = 1
+) -> tuple[dict, int]:
     seq = f"{sequence:05d}"
     client_id = f"client{sequence:03d}"
     client = {
@@ -117,7 +119,9 @@ def test_school_batching_splits_large_group(tmp_path: Path) -> None:
     pdf_dir = output_dir / "pdf_individual"
     clients: list[dict] = []
     for idx in range(1, 5):
-        client, pages = _client_template(idx, school_id="sch_shared", board_id="brd_a", pages=idx % 2 + 1)
+        client, pages = _client_template(
+            idx, school_id="sch_shared", board_id="brd_a", pages=idx % 2 + 1
+        )
         clients.append(client)
         pdf_path = pdf_dir / f"en_client_{client['sequence']}_{client['client_id']}.pdf"
         _write_pdf(pdf_path, pages=pages)
@@ -144,7 +148,9 @@ def test_school_batching_splits_large_group(tmp_path: Path) -> None:
     assert manifest_one["batch_type"] == "school"
     assert manifest_one["batch_identifier"] == "sch_shared"
     assert manifest_one["total_clients"] == 2
-    assert manifest_one["total_pages"] == sum(item["pages"] for item in manifest_one["clients"])
+    assert manifest_one["total_pages"] == sum(
+        item["pages"] for item in manifest_one["clients"]
+    )
 
 
 def test_batch_by_board_missing_identifier_raises(tmp_path: Path) -> None:

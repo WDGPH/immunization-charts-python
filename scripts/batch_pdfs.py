@@ -1,8 +1,8 @@
 """Batch per-client PDFs into combined bundles with manifests.
 
-This module implements Task 5 of the per-client PDF refactor plan. It can be
-invoked as a CLI tool or imported for unit testing. Batching supports three
-modes:
+This module batches individual per-client PDFs into combined bundles with
+accompanying manifest records. It can be invoked as a CLI tool or imported for
+unit testing. Batching supports three modes:
 
 * Size-based (default): chunk the ordered list of PDFs into groups of
   ``batch_size``.
@@ -16,7 +16,6 @@ record inside ``output/metadata`` that captures critical metadata for audits.
 
 from __future__ import annotations
 
-import argparse
 import json
 import logging
 import re
@@ -27,6 +26,11 @@ from pathlib import Path
 from typing import Dict, Iterator, List, Sequence
 
 from pypdf import PdfReader, PdfWriter
+
+try:
+    from .config_loader import load_config
+except ImportError:  # pragma: no cover - fallback for CLI execution
+    from config_loader import load_config
 
 LOG = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
@@ -82,39 +86,83 @@ class BatchResult:
     batch_plan: BatchPlan
 
 
-PDF_PATTERN = re.compile(r"^(?P<lang>[a-z]{2})_client_(?P<sequence>\d{5})_(?P<client_id>.+)\.pdf$")
+PDF_PATTERN = re.compile(
+    r"^(?P<lang>[a-z]{2})_client_(?P<sequence>\d{5})_(?P<client_id>.+)\.pdf$"
+)
 
 
-def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Batch per-client PDFs into combined outputs.")
-    parser.add_argument("output_dir", type=Path, help="Root output directory containing pipeline artifacts.")
-    parser.add_argument("language", choices=["en", "fr"], help="Language prefix to batch (en or fr).")
-    parser.add_argument(
-        "--batch-size",
-        dest="batch_size",
-        type=int,
-        default=0,
-        help="Maximum number of clients per batch (0 disables batching).",
+def batch_pdfs_with_config(
+    output_dir: Path,
+    language: str,
+    run_id: str,
+    config_path: Path | None = None,
+) -> List[BatchResult]:
+    """Batch PDFs using configuration from parameters.yaml.
+
+    Parameters
+    ----------
+    output_dir : Path
+        Root output directory containing pipeline artifacts.
+    language : str
+        Language prefix to batch ('en' or 'fr').
+    run_id : str
+        Pipeline run identifier to locate preprocessing artifacts.
+    config_path : Path, optional
+        Path to parameters.yaml. If not provided, uses default location.
+
+    Returns
+    -------
+    List[BatchResult]
+        List of batch results created.
+    """
+    config = load_config(config_path)
+
+    batching_config = config.get("batching", {})
+    batch_size = batching_config.get("batch_size", 0)
+    group_by = batching_config.get("group_by", None)
+
+    batch_by_school = group_by == "school"
+    batch_by_board = group_by == "board"
+
+    config_obj = BatchConfig(
+        output_dir=output_dir.resolve(),
+        language=language,
+        batch_size=batch_size,
+        batch_by_school=batch_by_school,
+        batch_by_board=batch_by_board,
+        run_id=run_id,
     )
-    parser.add_argument(
-        "--batch-by-school",
-        dest="batch_by_school",
-        action="store_true",
-        help="Group batches by school identifier before chunking.",
-    )
-    parser.add_argument(
-        "--batch-by-board",
-        dest="batch_by_board",
-        action="store_true",
-        help="Group batches by board identifier before chunking.",
-    )
-    parser.add_argument(
-        "--run-id",
-        dest="run_id",
-        required=True,
-        help="Pipeline run identifier to locate preprocessing artifacts and logs.",
-    )
-    return parser.parse_args(argv)
+
+    return batch_pdfs(config_obj)
+
+
+def main(
+    output_dir: Path, language: str, run_id: str, config_path: Path | None = None
+) -> List[BatchResult]:
+    """Main entry point for PDF batching.
+
+    Parameters
+    ----------
+    output_dir : Path
+        Root output directory containing pipeline artifacts.
+    language : str
+        Language prefix to batch ('en' or 'fr').
+    run_id : str
+        Pipeline run identifier.
+    config_path : Path, optional
+        Path to parameters.yaml configuration file.
+
+    Returns
+    -------
+    List[BatchResult]
+        List of batches created.
+    """
+    results = batch_pdfs_with_config(output_dir, language, run_id, config_path)
+    if results:
+        print(f"Created {len(results)} batches in {output_dir / 'pdf_combined'}")
+    else:
+        print("No batches created.")
+    return results
 
 
 def chunked(iterable: Sequence[PdfRecord], size: int) -> Iterator[List[PdfRecord]]:
@@ -137,7 +185,9 @@ def load_artifact(output_dir: Path, run_id: str) -> Dict[str, object]:
     return payload
 
 
-def build_client_lookup(artifact: Dict[str, object]) -> Dict[tuple[str, str], ClientArtifact]:
+def build_client_lookup(
+    artifact: Dict[str, object],
+) -> Dict[tuple[str, str], ClientArtifact]:
     clients = artifact.get("clients", [])
     lookup: Dict[tuple[str, str], ClientArtifact] = {}
     for client in clients:
@@ -153,7 +203,9 @@ def discover_pdfs(output_dir: Path, language: str) -> List[Path]:
     return sorted(pdf_dir.glob(f"{language}_client_*.pdf"))
 
 
-def build_pdf_records(output_dir: Path, language: str, clients: Dict[tuple[str, str], ClientArtifact]) -> List[PdfRecord]:
+def build_pdf_records(
+    output_dir: Path, language: str, clients: Dict[tuple[str, str], ClientArtifact]
+) -> List[PdfRecord]:
     pdf_paths = discover_pdfs(output_dir, language)
     records: List[PdfRecord] = []
     for pdf_path in pdf_paths:
@@ -181,11 +233,7 @@ def build_pdf_records(output_dir: Path, language: str, clients: Dict[tuple[str, 
 
 
 def ensure_ids(records: Sequence[PdfRecord], *, attr: str, log_path: Path) -> None:
-    missing = [
-        record
-        for record in records
-        if not getattr(record.client, attr)["id"]
-    ]
+    missing = [record for record in records if not getattr(record.client, attr)["id"]]
     if missing:
         sample = missing[0]
         raise ValueError(
@@ -207,7 +255,9 @@ def group_records(records: Sequence[PdfRecord], key: str) -> Dict[str, List[PdfR
     return dict(sorted(grouped.items(), key=lambda item: item[0]))
 
 
-def plan_batches(config: BatchConfig, records: List[PdfRecord], log_path: Path) -> List[BatchPlan]:
+def plan_batches(
+    config: BatchConfig, records: List[PdfRecord], log_path: Path
+) -> List[BatchPlan]:
     if config.batch_size <= 0:
         return []
 
@@ -334,7 +384,9 @@ def write_batch(
 
     manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
     LOG.info("Created %s (%s clients)", output_pdf.name, len(plan.clients))
-    return BatchResult(pdf_path=output_pdf, manifest_path=manifest_path, batch_plan=plan)
+    return BatchResult(
+        pdf_path=output_pdf, manifest_path=manifest_path, batch_plan=plan
+    )
 
 
 def batch_pdfs(config: BatchConfig) -> List[BatchResult]:
@@ -342,7 +394,9 @@ def batch_pdfs(config: BatchConfig) -> List[BatchResult]:
         LOG.info("Batch size <= 0; skipping batching step.")
         return []
 
-    artifact_path = config.output_dir / "artifacts" / f"preprocessed_clients_{config.run_id}.json"
+    artifact_path = (
+        config.output_dir / "artifacts" / f"preprocessed_clients_{config.run_id}.json"
+    )
     if not artifact_path.exists():
         raise FileNotFoundError(f"Expected artifact at {artifact_path}")
 
@@ -385,23 +439,9 @@ def batch_pdfs(config: BatchConfig) -> List[BatchResult]:
     return results
 
 
-def main(argv: list[str] | None = None) -> None:
-    args = parse_args(argv)
-    config = BatchConfig(
-        output_dir=args.output_dir.resolve(),
-        language=args.language,
-        batch_size=args.batch_size,
-        batch_by_school=args.batch_by_school,
-        batch_by_board=args.batch_by_board,
-        run_id=args.run_id,
-    )
-
-    results = batch_pdfs(config)
-    if results:
-        print(f"Created {len(results)} batches in {config.output_dir / 'pdf_combined'}")
-    else:
-        print("No batches created.")
-
-
 if __name__ == "__main__":
-    main()
+    # This script is now called only from run_pipeline.py
+    # and should not be invoked directly
+    raise RuntimeError(
+        "batch_pdfs.py should not be invoked directly. Use run_pipeline.py instead."
+    )

@@ -2,38 +2,12 @@
 
 from __future__ import annotations
 
-import argparse
 import json
 from collections import Counter
 from pathlib import Path
 from typing import Iterable, List, Tuple
 
 from pypdf import PdfReader
-
-
-def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Summarize page counts for PDFs.")
-    parser.add_argument(
-        "target",
-        type=Path,
-        help="PDF file or directory containing PDFs.",
-    )
-    parser.add_argument(
-        "--language",
-        help="Optional language prefix to filter PDF filenames (e.g., 'en').",
-    )
-    parser.add_argument(
-        "--verbose",
-        action="store_true",
-        help="Print per-file page counts instead of summary only.",
-    )
-    parser.add_argument(
-        "--json",
-        dest="json_output",
-        type=Path,
-        help="Optional path to write the summary as JSON.",
-    )
-    return parser.parse_args(argv)
 
 
 def discover_pdfs(target: Path) -> List[Path]:
@@ -114,15 +88,40 @@ def write_json(
     target.write_text(json.dumps(payload, indent=2), encoding="utf-8")
 
 
-def main(argv: list[str] | None = None) -> None:
-    args = parse_args(argv)
-    files = discover_pdfs(args.target)
-    filtered = filter_by_language(files, args.language)
+def main(
+    target: Path,
+    language: str | None = None,
+    verbose: bool = False,
+    json_output: Path | None = None,
+) -> Tuple[List[Tuple[Path, int]], Counter]:
+    """Main entry point for PDF counting and validation.
+
+    Parameters
+    ----------
+    target : Path
+        PDF file or directory containing PDFs.
+    language : str, optional
+        Optional language prefix to filter PDF filenames (e.g., 'en').
+    verbose : bool, optional
+        Print per-file page counts instead of summary only.
+    json_output : Path, optional
+        Optional path to write the summary as JSON.
+
+    Returns
+    -------
+    Tuple[List[Tuple[Path, int]], Counter]
+        Results and bucket counts from summarization.
+    """
+    files = discover_pdfs(target)
+    filtered = filter_by_language(files, language)
     results, buckets = summarize_pdfs(filtered)
-    print_summary(results, buckets, language=args.language, verbose=args.verbose)
-    if args.json_output:
-        write_json(results, buckets, target=args.json_output, language=args.language)
+    print_summary(results, buckets, language=language, verbose=verbose)
+    if json_output:
+        write_json(results, buckets, target=json_output, language=language)
+    return results, buckets
 
 
 if __name__ == "__main__":
-    main()
+    raise RuntimeError(
+        "count_pdfs.py should not be invoked directly. Use run_pipeline.py instead."
+    )

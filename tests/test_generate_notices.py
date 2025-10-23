@@ -62,7 +62,9 @@ def sample_artifact(tmp_path: Path) -> Path:
     return artifact_path
 
 
-def test_generate_typst_files_creates_expected_output(tmp_path: Path, sample_artifact: Path) -> None:
+def test_generate_typst_files_creates_expected_output(
+    tmp_path: Path, sample_artifact: Path
+) -> None:
     output_dir = tmp_path / "output"
     project_root = Path(__file__).resolve().parents[1]
     logo = project_root / "assets" / "logo.png"
@@ -88,7 +90,9 @@ def test_generate_typst_files_creates_expected_output(tmp_path: Path, sample_art
     assert '#let vaccines_due_array = ("MMR",)' in content
 
 
-def test_read_artifact_mismatched_language(tmp_path: Path, sample_artifact: Path) -> None:
+def test_read_artifact_mismatched_language(
+    tmp_path: Path, sample_artifact: Path
+) -> None:
     output_dir = tmp_path / "out"
     logo = tmp_path / "logo.png"
     signature = tmp_path / "signature.png"

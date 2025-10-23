@@ -7,16 +7,16 @@ follow-up. For now it mirrors the behaviour of the original shell script.
 
 from __future__ import annotations
 
-import argparse
 import os
 import subprocess
 from pathlib import Path
 
-# Defaults mirror the prior shell implementation while leaving room for future
-# configurability.
+try:
+    from .config_loader import load_config
+except ImportError:  # pragma: no cover - fallback for CLI execution
+    from config_loader import load_config
+
 ROOT_DIR = Path(__file__).resolve().parent.parent
-DEFAULT_FONT_PATH = Path("/usr/share/fonts/truetype/freefont/")
-DEFAULT_TYPST_BIN = os.environ.get("TYPST_BIN", "typst")
 
 
 def discover_typst_files(artifact_dir: Path) -> list[Path]:
@@ -69,47 +69,69 @@ def compile_typst_files(
     return len(typ_files)
 
 
-def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Compile Typst notices into PDFs.")
-    parser.add_argument("artifact_dir", type=Path, help="Directory containing Typst artifacts.")
-    parser.add_argument("output_dir", type=Path, help="Directory to write compiled PDFs.")
-    parser.add_argument(
-        "--font-path",
-        type=Path,
-        default=DEFAULT_FONT_PATH,
-        help="Optional font search path to pass to typst.",
+def compile_with_config(
+    artifact_dir: Path,
+    output_dir: Path,
+    config_path: Path | None = None,
+) -> int:
+    """Compile Typst files using configuration from parameters.yaml.
+
+    Parameters
+    ----------
+    artifact_dir : Path
+        Directory containing Typst artifacts (.typ files).
+    output_dir : Path
+        Directory where compiled PDFs will be written.
+    config_path : Path, optional
+        Path to parameters.yaml. If not provided, uses default location.
+
+    Returns
+    -------
+    int
+        Number of files compiled.
+    """
+    config = load_config(config_path)
+
+    typst_config = config.get("typst", {})
+    font_path_str = typst_config.get("font_path", "/usr/share/fonts/truetype/freefont/")
+    typst_bin = typst_config.get("bin", "typst")
+
+    # Allow TYPST_BIN environment variable to override config
+    typst_bin = os.environ.get("TYPST_BIN", typst_bin)
+
+    font_path = Path(font_path_str) if font_path_str else None
+
+    return compile_typst_files(
+        artifact_dir,
+        output_dir,
+        typst_bin=typst_bin,
+        font_path=font_path,
+        root_dir=ROOT_DIR,
+        verbose=False,
     )
-    parser.add_argument(
-        "--root",
-        type=Path,
-        default=ROOT_DIR,
-        help="Typst root directory for resolving absolute imports.",
-    )
-    parser.add_argument(
-        "--typst-bin",
-        default=DEFAULT_TYPST_BIN,
-        help="Typst executable to invoke (defaults to $TYPST_BIN or 'typst').",
-    )
-    parser.add_argument(
-        "--quiet",
-        action="store_true",
-        help="Suppress per-file compile output and only print the final summary.",
-    )
-    return parser.parse_args(argv)
 
 
-def main(argv: list[str] | None = None) -> None:
-    args = parse_args(argv)
-    compiled = compile_typst_files(
-        args.artifact_dir,
-        args.output_dir,
-        typst_bin=args.typst_bin,
-        font_path=args.font_path,
-        root_dir=args.root,
-        verbose=not args.quiet,
-    )
+def main(artifact_dir: Path, output_dir: Path, config_path: Path | None = None) -> int:
+    """Main entry point for Typst compilation.
+
+    Parameters
+    ----------
+    artifact_dir : Path
+        Directory containing Typst artifacts.
+    output_dir : Path
+        Directory for output PDFs.
+    config_path : Path, optional
+        Path to parameters.yaml configuration file.
+
+    Returns
+    -------
+    int
+        Number of files compiled.
+    """
+    compiled = compile_with_config(artifact_dir, output_dir, config_path)
     if compiled:
-        print(f"Compiled {compiled} Typst file(s) to PDFs in {args.output_dir}.")
+        print(f"Compiled {compiled} Typst file(s) to PDFs in {output_dir}.")
+    return compiled
 
 
 if __name__ == "__main__":

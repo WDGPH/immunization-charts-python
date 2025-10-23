@@ -2,45 +2,47 @@
 # IMMUNIZATION CHARTS - UNIFIED CONFIGURATION
 # ==============================================================================
 # This configuration file controls all aspects of the immunization charts
-# PDF generation pipeline, including QR payloads, PDF encryption, and
-# pipeline parameters.
+# PDF generation pipeline. Settings are organized to reflect the pipeline
+# processing order:
+#
+# Step 1: Prepare output directory
+# Step 2: Preprocessing (data normalization, QR payload setup)
+# Step 3: Generate Typst templates
+# Step 4: Compile Typst to PDF
+# Step 5: Validate PDF page lengths
+# Step 6: Encrypt PDFs
+# Step 7: Batch PDFs (optional, skipped if encryption enabled)
+# Step 8: Cleanup intermediate files
+#
+# For a minimal configuration that skips batching, comment out or remove the
+# batching section entirely.
 
 # ==============================================================================
-# DELIVERY AND DATA DATES
+# GENERAL PIPELINE CONFIGURATION
 # ==============================================================================
-date_today: "August 31, 2025"
+pipeline:
+  # Automatically remove existing output directory contents without prompting
+  # Set to true to skip confirmation when output directory already exists
+  auto_remove_output: true
+  
+  # Keep intermediate files after successful pipeline completion
+  # Intermediate files include: .typ (Typst source), .json (metadata), per-client .pdf
+  keep_intermediate_files: false
+
+# ==============================================================================
+# STEP 2: PREPROCESSING CONFIGURATION
+# ==============================================================================
+# Data normalization and content configuration for immunization notices.
 
 # Used to calculate student age at time of mail delivery
 # Students 16 and older can be addressed directly
 # Letters for students under 16 should be addressed to their parent/guardian
 delivery_date: "2025-04-08"
 
-# To include in notice text as date that immunization history is reflective of
-data_date: "2025-04-01"
+# Date to display in notice templates (e.g., "August 31, 2025")
+date_today: "August 31, 2025"
 
-# ==============================================================================
-# FILE INPUT/OUTPUT CONFIGURATION
-# ==============================================================================
-# Name of output folder which will be updated dynamically in the script
-output_folder: "demo-output-"
-
-# Columns that are expected in the input file
-expected_columns:
-  - School
-  - Client_ID
-  - First_Name
-  - Last_Name
-  - Date_of_Birth
-  - Street_Address
-  - City
-  - Province
-  - Postal_Code
-  - Received_Agents
-
-# ==============================================================================
-# CHART AND IMMUNIZATION SETTINGS
-# ==============================================================================
-# Vaccines or agents that should occur in the template for the chart 
+# Vaccines or agents that should appear in the immunization history chart
 chart_diseases_header:
   - Diphtheria
   - Tetanus
@@ -56,7 +58,7 @@ chart_diseases_header:
   - Varicella
   - Other
 
-# Vaccines or agents to ignore in/drop from immunization history
+# Vaccines or agents to ignore/drop from immunization history
 ignore_agents:
   - RSVAb
   - VarIg
@@ -64,145 +66,112 @@ ignore_agents:
   - RabIg
   - Ig
 
-# Minimum number of rows to show in immunization history chart
-# Charts will be padded with rows as appropriate
-min_rows: 5
-
-# Number of clients to include in a single PDF
-# Note: 10 PDFs with 10 clients each will run slower than 1 PDF with 100 clients
-# Use a batch size of 1 if you would like a single client per PDF file.
-batch_size: 100
-
-# ==============================================================================
-# QR CODE PAYLOAD CONFIGURATION
-# ==============================================================================
+# QR code payload configuration (for notices)
 # Configuration for QR code payloads embedded in notices.
 #
-# The qr_payload_template section allows flexible customization of QR payload
-# content through template strings. Strings support Python-style placeholders
+# The payload_template section allows flexible customization of QR payload
+# content through template strings. Templates support Python-style placeholders
 # for dynamic value substitution.
 #
 # Allowed placeholders:
 #   - client_id, first_name, last_name, name
 #   - date_of_birth, date_of_birth_iso
 #   - school, city, postal_code, province, street_address
-#   - language, language_code
-#   - delivery_date
+#   - language, language_code, delivery_date
 #
 # Example: "https://example.com/update?id={client_id}&dob={date_of_birth_iso}"
 
 qr:
-  # Enable QR code generation in notices
+  # Enable or disable QR code generation in notices
   enabled: true
 
-  # Default language for QR payload (if not explicitly specified)
-  default_language: "english"
-
   # QR payload template strings with Python-style placeholders
+  # Separate templates for each language
   payload_template:
-    english: "https://www.test-immunization.ca/update?client_id={client_id}&dob={date_of_birth_iso}&lang={language_code}"
-    french: "https://www.test-immunization.ca/update?client_id={client_id}&dob={date_of_birth_iso}&lang={language_code}"
-
-  # List of allowed placeholders for validation
-  # (used to validate template strings at runtime)
-  allowed_placeholders:
-    - client_id
-    - first_name
-    - last_name
-    - name
-    - date_of_birth
-    - date_of_birth_iso
-    - school
-    - city
-    - postal_code
-    - province
-    - street_address
-    - language
-    - language_code
-    - delivery_date
+    en: "https://www.test-immunization.ca/update?client_id={client_id}&dob={date_of_birth_iso}&lang={language_code}"
+    fr: "https://www.test-immunization.ca/update?client_id={client_id}&dob={date_of_birth_iso}&lang={language_code}"
 
 # ==============================================================================
-# PDF ENCRYPTION CONFIGURATION
+# STEP 3-4: TYPST COMPILATION CONFIGURATION
+# ==============================================================================
+# Configuration for Typst template generation and PDF compilation.
+typst:
+  # Path to Typst font directory
+  # Used for custom font resolution during PDF compilation
+  font_path: "/usr/share/fonts/truetype/freefont/"
+  
+  # Typst executable name or full path
+  # Can be overridden via TYPST_BIN environment variable
+  bin: "typst"
+
+# ==============================================================================
+# STEP 6: PDF ENCRYPTION CONFIGURATION
 # ==============================================================================
 # Configuration for PDF encryption and password generation.
 #
 # The password_template section allows flexible customization of PDF password
-# generation through template strings, similar to QR payload templating.
-# This enables:
-#   - Combine multiple fields: "{client_id}{date_of_birth_iso}"
-#   - Format variations: "{date_of_birth_iso_compact}" for YYYYMMDD
-#   - Language-specific variations
-#   - Custom separators
+# generation through template strings. Passwords are generated from client
+# metadata by substituting template placeholders with actual values.
 #
-# Allowed placeholders (same as QR):
+# Allowed placeholders:
 #   - client_id, first_name, last_name, name
-#   - date_of_birth, date_of_birth_iso
+#   - date_of_birth, date_of_birth_iso, date_of_birth_iso_compact
 #   - school, city, postal_code, province, street_address
-#   - language, language_code
-#   - delivery_date
-#
-# Date format variants:
-#   - date_of_birth_iso: "2010-05-15" (YYYY-MM-DD)
-#   - date_of_birth_iso_compact: "20100515" (YYYYMMDD)
+#   - language, language_code, delivery_date
 #
 # Examples:
-#   - "{date_of_birth_iso_compact}": "20100515"
-#   - "{client_id}{date_of_birth_iso_compact}": "12320100515"
-#   - "{first_name}-{date_of_birth_iso}": "Alice-2010-05-15"
+#   - "{date_of_birth_iso_compact}": Uses DOB in YYYYMMDD format (e.g., "20100515")
+#   - "{client_id}{date_of_birth_iso_compact}": Combines ID and DOB
+#   - "{first_name}-{date_of_birth_iso}": Combines name and DOB with dash
 
 encryption:
-  # Enable or disable encryption processing
+  # Enable or disable PDF encryption processing
   enabled: true
 
-  # Default processing language
-  # Options: "english", "french"
-  default_language: "english"
-
-  # Output naming convention for encrypted PDFs
-  # Available variables: {stem}, {suffix}
-  # {stem} = filename without extension
-  # {suffix} = file extension (e.g., ".pdf")
-  encrypted_filename_pattern: "{stem}_encrypted{suffix}"
-
-  # Skip encryption if the encrypted file already exists and is newer
-  # than the source PDF (for efficiency in batch operations)
-  skip_if_exists: true
-
-  # Processing mode for batch encryption
-  # Options:
-  #   - "sequential": Process PDFs one at a time (default, deterministic)
-  sequential_mode: true
-
   # Password generation settings using template-based approach
-  # Similar to QR payload templating for maximum flexibility
   password:
-    # Use a template string to generate the password
-    # The template is rendered with client data substitution
-    # Default: use only DOB in compact format
+    # Template string to generate PDF passwords
+    # Default: use only DOB in compact format (YYYYMMDD)
     template: "{date_of_birth_iso_compact}"
 
-    # List of allowed placeholders for validation
-    # (used to validate template strings at runtime)
-    allowed_placeholders:
-      - client_id
-      - first_name
-      - last_name
-      - name
-      - date_of_birth
-      - date_of_birth_iso
-      - date_of_birth_iso_compact
-      - school
-      - city
-      - postal_code
-      - province
-      - street_address
-      - language
-      - language_code
-      - delivery_date
+# ==============================================================================
+# STEP 7: BATCHING CONFIGURATION (Optional)
+# ==============================================================================
+# Configure how per-client PDFs are combined into batches.
+# 
+# Batching is automatically skipped when encryption is enabled.
+# To disable batching entirely, set batch_size to 0 or comment out this section.
+#
+# Example configurations:
+#   - batch_size: 100            # 100 clients per batch, sequential ordering
+#   - batch_size: 50, group_by: school   # 50 clients per batch, grouped by school
+#   - batch_size: 0              # Disable batching (keep individual PDFs)
 
-  # Logging and feedback settings
-  feedback:
-    verbose: false
-    show_progress: true
-    show_skipped_notices: true
-    show_failed_notices: true
+batching:
+  # Number of clients to include in a single batch/combined PDF
+  # Set to 0 or omit to disable batching entirely
+  batch_size: 100
+
+  # Group batches by an identifier before chunking
+  # Options: null (sequential by client order), "school", "board"
+  # null = chunk PDFs in order (default)
+  # "school" = group by school_id, then chunk each school's PDFs
+  # "board" = group by board_id, then chunk each board's PDFs
+  group_by: null
+
+# ==============================================================================
+# STEP 8: CLEANUP CONFIGURATION
+# ==============================================================================
+cleanup:
+  # Directories to remove during cleanup phase
+  remove_directories:
+    - "artifacts"
+    - "by_school"
+    - "batches"
+    - "qr_codes"
+  
+  # File extensions to remove from legacy directories
+  remove_extensions:
+    - "typ"
+    - "json"
+    - "csv"

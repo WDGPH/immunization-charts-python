@@ -55,7 +55,7 @@ The main pipeline orchestrator (`run_pipeline.py`) automates the end-to-end work
 **Usage Example:**
 ```bash
 cd scripts
-python3 run_pipeline.py <input_file> <language> [options]
+python3 run_pipeline.py <input_file> <language> [--output-dir PATH]
 ```
 
 **Required Arguments:**
@@ -63,27 +63,27 @@ python3 run_pipeline.py <input_file> <language> [options]
 - `<language>`: Language code (`en` or `fr`)
 
 **Optional Arguments:**
-- `--keep-intermediate-files`: Preserve .typ, .json, and per-client .pdf files
-- `--remove-existing-output`: Automatically remove existing output directory without prompt
-- `--batch-size N`: Enable batching with at most N clients per batch (0 disables batching)
-- `--batch-by-school`: Group batches by school identifier
-- `--batch-by-board`: Group batches by board identifier
 - `--input-dir PATH`: Input directory (default: ../input)
 - `--output-dir PATH`: Output directory (default: ../output)
+- `--config-dir PATH`: Configuration directory (default: ../config)
+
+**Configuration:**
+All pipeline behavior is controlled via `config/parameters.yaml`:
+- `pipeline.auto_remove_output`: Automatically remove existing output (true/false)
+- `pipeline.keep_intermediate_files`: Preserve .typ, .json, and per-client .pdf files (true/false)
+- `batching.batch_size`: Enable batching with at most N clients per batch (0 disables)
+- `batching.group_by`: Batch grouping strategy (null, "school", or "board")
 
 **Examples:**
 ```bash
 # Basic usage
 python3 run_pipeline.py students.xlsx en
 
-# With batching by school
-python3 run_pipeline.py students.xlsx en --batch-size 50 --batch-by-school
-
-# Keep intermediate files for debugging
-python3 run_pipeline.py students.xlsx fr --keep-intermediate-files
+# Override output directory
+python3 run_pipeline.py students.xlsx en --output-dir /tmp/output
 ```
 
-> ℹ️ **Typst preview note:** The WDGPH code-server development environments render Typst files via Tinymist. The shared template at `scripts/conf.typ` only defines helper functions, colour tokens, and table layouts that the generated notice `.typ` files import; it doesn't emit any pages on its own, so Tinymist has nothing to preview if attempted on this file. To examine the actual markup that uses these helpers, run the pipeline with `--keep-intermediate-files` so the generated notice `.typ` files stay in `output/artifacts/` for manual inspection.
+> ℹ️ **Typst preview note:** The WDGPH code-server development environments render Typst files via Tinymist. The shared template at `scripts/conf.typ` only defines helper functions, colour tokens, and table layouts that the generated notice `.typ` files import; it doesn't emit any pages on its own, so Tinymist has nothing to preview if attempted on this file. To examine the actual markup that uses these helpers, run the pipeline with `pipeline.keep_intermediate_files: true` in `config/parameters.yaml` so the generated notice `.typ` files stay in `output/artifacts/` for manual inspection.
 
 **Outputs:**
 - Processed notices and charts in the `output/` directory
@@ -109,15 +109,15 @@ You'll see a quick summary of which checks ran (right now that’s the clean-up 
 
 ## Preprocessing
 
-The Python-based pipeline `preprocess.py` orchestrates immunization record preparation and structuring. It replaces the previous Bash script and now provides:
+The `preprocess.py` module orchestrates immunization record preparation and structuring. It provides:
 
 - Reading and validating input files (CSV/Excel) with schema enforcement
 - Cleaning and transforming client data (dates, addresses, vaccine history)
 - Synthesizing stable school/board identifiers when they are missing in the extract
 - Assigning deterministic per-client sequence numbers sorted by school → last name → first name
-- Emitting a normalized run artifact at `output/artifacts/preprocessed_clients_<run_id>.json` (while still keeping the legacy `output/json_<language>/` payloads during the transition to the Python generator)
+- Emitting a normalized run artifact at `output/artifacts/preprocessed_clients_<run_id>.json`
 
-Logging is written to `preprocess.log` for traceability.
+Logging is written to `output/logs/preprocess_<run_id>.log` for traceability.
 
 ### Main Class: `ClientDataProcessor`
 
