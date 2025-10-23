@@ -1,21 +1,19 @@
-#!/usr/bin/env python3
 """Utility to prepare the pipeline output directory.
 
 This script ensures the output directory exists, optionally removes any
 existing contents (while preserving the logs directory), and creates the log
-directory if needed. It mirrors the behaviour previously implemented in the
-``run_pipeline.sh`` shell script so that all directory management lives in
-Python.
+directory if needed.
+
+Note: This module is called exclusively from run_pipeline.py. The internal
+functions handle all logic; CLI support has been removed in favor of explicit
+function calls from the orchestrator.
 """
 
 from __future__ import annotations
 
-import argparse
 import shutil
 from pathlib import Path
 from typing import Callable, Optional
-
-CANCELLED_EXIT_CODE = 2
 
 
 def _is_log_directory(candidate: Path, log_dir: Path) -> bool:
@@ -103,40 +101,7 @@ def prepare_output_directory(
     return True
 
 
-def _build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Prepare the pipeline output directory")
-    parser.add_argument(
-        "--output-dir",
-        required=True,
-        type=Path,
-        help="Root directory for pipeline outputs",
-    )
-    parser.add_argument(
-        "--log-dir",
-        required=True,
-        type=Path,
-        help="Directory used to store pipeline logs",
-    )
-    parser.add_argument(
-        "--auto-remove",
-        action="store_true",
-        help="Remove existing contents without prompting",
-    )
-    return parser
-
-
-def main(argv: Optional[list[str]] = None) -> int:
-    parser = _build_parser()
-    args = parser.parse_args(argv)
-
-    success = prepare_output_directory(
-        output_dir=args.output_dir,
-        log_dir=args.log_dir,
-        auto_remove=args.auto_remove,
-    )
-
-    return 0 if success else CANCELLED_EXIT_CODE
-
-
 if __name__ == "__main__":
-    raise SystemExit(main())
+    raise RuntimeError(
+        "prepare_output.py should not be invoked directly. Use run_pipeline.py instead."
+    )

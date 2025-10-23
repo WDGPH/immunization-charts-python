@@ -2,6 +2,7 @@
 
 Port of the original mock template authored by Kassy Raymond.
 """
+
 from __future__ import annotations
 
 from typing import Mapping
@@ -154,15 +155,13 @@ def render_notice(
         raise KeyError(f"Missing context keys: {missing_keys}")
 
     prefix = (
-        TEMPLATE_PREFIX
-        .replace("__LOGO_PATH__", logo_path)
+        TEMPLATE_PREFIX.replace("__LOGO_PATH__", logo_path)
         .replace("__SIGNATURE_PATH__", signature_path)
         .replace("__PARAMETERS_PATH__", parameters_path)
     )
 
     dynamic = (
-        DYNAMIC_BLOCK
-        .replace("__CLIENT_ROW__", context["client_row"])
+        DYNAMIC_BLOCK.replace("__CLIENT_ROW__", context["client_row"])
         .replace("__CLIENT_DATA__", context["client_data"])
         .replace("__VACCINES_DUE_STR__", context["vaccines_due_str"])
         .replace("__VACCINES_DUE_ARRAY__", context["vaccines_due_array"])

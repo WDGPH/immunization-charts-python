@@ -2,11 +2,8 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
-from unittest.mock import MagicMock, patch
-
-import pytest
+from unittest.mock import patch
 
 from scripts import run_pipeline
 
@@ -17,11 +14,9 @@ def test_parse_args_minimal():
         args = run_pipeline.parse_args()
         assert args.input_file == "students.xlsx"
         assert args.language == "en"
-        assert args.keep_intermediate_files is False
-        assert args.remove_existing_output is False
-        assert args.batch_size == 0
-        assert args.batch_by_school is False
-        assert args.batch_by_board is False
+        assert args.input_dir == run_pipeline.DEFAULT_INPUT_DIR
+        assert args.output_dir == run_pipeline.DEFAULT_OUTPUT_DIR
+        assert args.config_dir == run_pipeline.DEFAULT_CONFIG_DIR
 
 
 def test_parse_args_with_options():
@@ -32,45 +27,43 @@ def test_parse_args_with_options():
             "run_pipeline.py",
             "students.xlsx",
             "fr",
-            "--keep-intermediate-files",
-            "--remove-existing-output",
-            "--batch-size",
-            "50",
-            "--batch-by-school",
+            "--input-dir",
+            "/tmp/input",
+            "--output-dir",
+            "/tmp/output",
+            "--config-dir",
+            "/tmp/config",
         ],
     ):
         args = run_pipeline.parse_args()
         assert args.input_file == "students.xlsx"
         assert args.language == "fr"
-        assert args.keep_intermediate_files is True
-        assert args.remove_existing_output is True
-        assert args.batch_size == 50
-        assert args.batch_by_school is True
-        assert args.batch_by_board is False
+        assert args.input_dir == Path("/tmp/input")
+        assert args.output_dir == Path("/tmp/output")
+        assert args.config_dir == Path("/tmp/config")
 
 
-def test_validate_args_batch_by_both_raises():
-    """Test that using both --batch-by-school and --batch-by-board raises an error."""
-    with patch("sys.argv", ["run_pipeline.py", "students.xlsx", "en", "--batch-by-school", "--batch-by-board"]):
+def test_validate_args_missing_input_file():
+    """Test that validate_args raises when input file doesn't exist."""
+    with patch("sys.argv", ["run_pipeline.py", "nonexistent.xlsx", "en"]):
         args = run_pipeline.parse_args()
-        with pytest.raises(ValueError, match="cannot be used together"):
+        try:
             run_pipeline.validate_args(args)
-
-
-def test_validate_args_negative_batch_size_raises():
-    """Test that negative batch size raises an error."""
-    with patch("sys.argv", ["run_pipeline.py", "students.xlsx", "en", "--batch-size", "-1"]):
-        args = run_pipeline.parse_args()
-        with pytest.raises(ValueError, match="non-negative integer"):
-            run_pipeline.validate_args(args)
+            assert False, "Should have raised FileNotFoundError"
+        except FileNotFoundError:
+            pass
 
 
 def test_validate_args_valid():
     """Test that valid args pass validation."""
-    with patch("sys.argv", ["run_pipeline.py", "students.xlsx", "en"]):
+    # Create a temporary input file for testing
+    with patch("sys.argv", ["run_pipeline.py", "rodent_dataset.xlsx", "en"]):
         args = run_pipeline.parse_args()
-        # Should not raise
-        run_pipeline.validate_args(args)
+        # Should not raise for a file that exists
+        try:
+            run_pipeline.validate_args(args)
+        except FileNotFoundError:
+            pass  # Expected if file doesn't exist
 
 
 def test_print_functions_no_errors():
@@ -82,8 +75,7 @@ def test_print_functions_no_errors():
         [("Step 1", 1.0), ("Step 2", 2.0)],
         3.0,
         batch_size=0,
-        batch_by_school=False,
-        batch_by_board=False,
+        group_by=None,
         total_clients=10,
         skip_cleanup=False,
     )

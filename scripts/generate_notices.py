@@ -1,13 +1,12 @@
 """Generate per-client Typst notices from the normalized preprocessing artifact.
 
-This is Task 3 from the refactor plan. It replaces the legacy shell-based generator
-with a Python implementation that consumes the JSON file emitted by
-``preprocess.py``.
+This module consumes the JSON artifact emitted by ``preprocess.py`` and generates
+per-client Typst templates for notice rendering.
 """
+
 from __future__ import annotations
 
 import json
-import argparse
 import logging
 from dataclasses import dataclass
 from pathlib import Path
@@ -57,28 +56,16 @@ class ArtifactPayload:
     clients: List[ClientRecord]
 
 
-def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Generate Typst notices from preprocessed JSON.")
-    parser.add_argument("artifact_path", type=Path, help="Path to the preprocessed JSON artifact.")
-    parser.add_argument("output_dir", type=Path, help="Directory to write Typst files.")
-    parser.add_argument("logo_path", type=Path, help="Path to the logo image.")
-    parser.add_argument("signature_path", type=Path, help="Path to the signature image.")
-    parser.add_argument("parameters_path", type=Path, help="Path to the YAML parameters file.")
-    return parser.parse_args(argv)
-
-
 def read_artifact(path: Path) -> ArtifactPayload:
     payload = json.loads(path.read_text(encoding="utf-8"))
     clients = [ClientRecord(**client) for client in payload["clients"]]
-    return ArtifactPayload(run_id=payload["run_id"], language=payload["language"], clients=clients)
+    return ArtifactPayload(
+        run_id=payload["run_id"], language=payload["language"], clients=clients
+    )
 
 
 def _escape_string(value: str) -> str:
-    return (
-        value.replace("\\", "\\\\")
-        .replace("\"", "\\\"")
-        .replace("\n", "\\n")
-    )
+    return value.replace("\\", "\\\\").replace('"', '\\"').replace("\n", "\\n")
 
 
 def _to_typ_value(value) -> str:
@@ -103,7 +90,9 @@ def _to_typ_value(value) -> str:
     raise TypeError(f"Unsupported value type for Typst conversion: {type(value)!r}")
 
 
-def build_template_context(client: ClientRecord, qr_output_dir: Path | None = None) -> Dict[str, str]:
+def build_template_context(
+    client: ClientRecord, qr_output_dir: Path | None = None
+) -> Dict[str, str]:
     client_data = {
         "name": client.person["full_name"],
         "address": client.contact["street"],
@@ -125,7 +114,11 @@ def build_template_context(client: ClientRecord, qr_output_dir: Path | None = No
                 )
                 client_data["qr_code"] = _to_root_relative(qr_path)
             except RuntimeError as exc:  # pragma: no cover - optional QR generation
-                LOG.warning("Could not generate QR code for client %s: %s", client.client_id, exc)
+                LOG.warning(
+                    "Could not generate QR code for client %s: %s",
+                    client.client_id,
+                    exc,
+                )
 
     return {
         "client_row": _to_typ_value([client.client_id]),
@@ -142,7 +135,9 @@ def _to_root_relative(path: Path) -> str:
     try:
         relative = absolute.relative_to(ROOT_DIR)
     except ValueError as exc:  # pragma: no cover - defensive guard
-        raise ValueError(f"Path {absolute} is outside of project root {ROOT_DIR}") from exc
+        raise ValueError(
+            f"Path {absolute} is outside of project root {ROOT_DIR}"
+        ) from exc
     return "/" + relative.as_posix()
 
 
@@ -163,6 +158,8 @@ def render_notice(
         signature_path=_to_root_relative(signature),
         parameters_path=_to_root_relative(parameters),
     )
+
+
 def generate_typst_files(
     payload: ArtifactPayload,
     output_dir: Path,
@@ -195,21 +192,49 @@ def generate_typst_files(
     return files
 
 
-def main(argv: list[str] | None = None) -> None:
-    args = parse_args(argv)
-    payload = read_artifact(args.artifact_path)
+def main(
+    artifact_path: Path,
+    output_dir: Path,
+    logo_path: Path,
+    signature_path: Path,
+    parameters_path: Path,
+) -> List[Path]:
+    """Main entry point for Typst notice generation.
 
+    Parameters
+    ----------
+    artifact_path : Path
+        Path to the preprocessed JSON artifact.
+    output_dir : Path
+        Directory to write Typst files.
+    logo_path : Path
+        Path to the logo image.
+    signature_path : Path
+        Path to the signature image.
+    parameters_path : Path
+        Path to the YAML parameters file.
+
+    Returns
+    -------
+    List[Path]
+        List of generated Typst file paths.
+    """
+    payload = read_artifact(artifact_path)
     generated = generate_typst_files(
         payload,
-        args.output_dir,
-        args.logo_path,
-        args.signature_path,
-        args.parameters_path,
+        output_dir,
+        logo_path,
+        signature_path,
+        parameters_path,
     )
     print(
-        f"Generated {len(generated)} Typst files in {args.output_dir} for language {payload.language}"
+        f"Generated {len(generated)} Typst files in {output_dir} for language {payload.language}"
     )
+    return generated
 
 
 if __name__ == "__main__":
-    main()
+    raise RuntimeError(
+        "generate_notices.py should not be invoked directly. "
+        "Use run_pipeline.py instead."
+    )

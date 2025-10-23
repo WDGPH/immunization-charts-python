@@ -1,3 +1,8 @@
+"""Utility functions for immunization pipeline processing.
+
+Provides helper functions for date conversion, PDF encryption/decryption, QR code
+generation, and encryption configuration management."""
+
 from __future__ import annotations
 
 from datetime import datetime
@@ -11,16 +16,34 @@ import yaml
 from pypdf import PdfReader, PdfWriter
 
 FRENCH_MONTHS = {
-    1: 'janvier', 2: 'février', 3: 'mars', 4: 'avril',
-    5: 'mai', 6: 'juin', 7: 'juillet', 8: 'août',
-    9: 'septembre', 10: 'octobre', 11: 'novembre', 12: 'décembre'
+    1: "janvier",
+    2: "février",
+    3: "mars",
+    4: "avril",
+    5: "mai",
+    6: "juin",
+    7: "juillet",
+    8: "août",
+    9: "septembre",
+    10: "octobre",
+    11: "novembre",
+    12: "décembre",
 }
 FRENCH_MONTHS_REV = {v.lower(): k for k, v in FRENCH_MONTHS.items()}
 
 ENGLISH_MONTHS = {
-    1: 'Jan', 2: 'Feb', 3: 'Mar', 4: 'Apr',
-    5: 'May', 6: 'Jun', 7: 'Jul', 8: 'Aug',
-    9: 'Sep', 10: 'Oct', 11: 'Nov', 12: 'Dec'
+    1: "Jan",
+    2: "Feb",
+    3: "Mar",
+    4: "Apr",
+    5: "May",
+    6: "Jun",
+    7: "Jul",
+    8: "Aug",
+    9: "Sep",
+    10: "Oct",
+    11: "Nov",
+    12: "Dec",
 }
 ENGLISH_MONTHS_REV = {v.lower(): k for k, v in ENGLISH_MONTHS.items()}
 
@@ -29,6 +52,7 @@ CONFIG_DIR = Path(__file__).resolve().parent.parent / "config"
 
 _encryption_config = None
 _formatter = Formatter()
+
 
 def _load_encryption_config():
     """Load encryption configuration from unified parameters.yaml file."""
@@ -53,8 +77,17 @@ def get_encryption_config():
 
 
 def convert_date_string_french(date_str):
-    """
-    Convert a date string from "YYYY-MM-DD" to "8 mai 2025" (in French), without using locale.
+    """Convert a date string from YYYY-MM-DD format to French display format.
+
+    Parameters
+    ----------
+    date_str : str
+        Date string in YYYY-MM-DD format.
+
+    Returns
+    -------
+    str
+        Date in French format (e.g., "8 mai 2025").
     """
     date_obj = datetime.strptime(date_str, "%Y-%m-%d")
     day = date_obj.day
@@ -65,19 +98,21 @@ def convert_date_string_french(date_str):
 
 
 def convert_date_string(date_str):
-    """
-    Convert a date (string or Timestamp) from 'YYYY-MM-DD' to 'Mon DD, YYYY'.
-    
-    Parameters:
-        date_str (str | datetime | pd.Timestamp): 
-            Date string in 'YYYY-MM-DD' format or datetime-like object.
-    
-    Returns:
-        str: Date in the format 'Mon DD, YYYY'.
+    """Convert a date to English display format.
+
+    Parameters
+    ----------
+    date_str : str | datetime | pd.Timestamp
+        Date string in YYYY-MM-DD format or datetime-like object.
+
+    Returns
+    -------
+    str
+        Date in the format Mon DD, YYYY (e.g., "May 8, 2025").
     """
     if pd.isna(date_str):
         return None
-    
+
     # If it's already a datetime or Timestamp
     if isinstance(date_str, (pd.Timestamp, datetime)):
         return date_str.strftime("%b %d, %Y")
@@ -91,39 +126,47 @@ def convert_date_string(date_str):
 
 
 def convert_date_iso(date_str):
-    """
-    Convert a date string from "Mon DD, YYYY" format to "YYYY-MM-DD".
+    """Convert a date from English display format to ISO format.
 
-    Parameters:
-        date_str (str): Date in the format "Mon DD, YYYY" (e.g., "May 8, 2025").
+    Parameters
+    ----------
+    date_str : str
+        Date in English display format (e.g., "May 8, 2025").
 
-    Returns:
-        str: Date in the format "YYYY-MM-DD".
-
-    Example:
-        convert_date("May 8, 2025") -> "2025-05-08"
+    Returns
+    -------
+    str
+        Date in ISO format (YYYY-MM-DD).
     """
     date_obj = datetime.strptime(date_str, "%b %d, %Y")
     return date_obj.strftime("%Y-%m-%d")
 
 
-def convert_date(date_str: str, to_format: str = 'display', lang: str = 'en') -> Optional[str]:
-    """
-    Convert dates between ISO and localized display formats.
-    
-    Parameters:
-        date_str (str | datetime | pd.Timestamp): Date string to convert
-        to_format (str): Target format - 'iso' or 'display' (default: 'display')
-        lang (str): Language code ('en', 'fr', etc.) (default: 'en')
-    
-    Returns:
-        str: Formatted date string according to specified format
-    
-    Examples:
-        convert_date('2025-05-08', 'display', 'en') -> 'May 8, 2025'
-        convert_date('2025-05-08', 'display', 'fr') -> '8 mai 2025'
-        convert_date('May 8, 2025', 'iso', 'en') -> '2025-05-08'
-        convert_date('8 mai 2025', 'iso', 'fr') -> '2025-05-08'
+def convert_date(
+    date_str: str, to_format: str = "display", lang: str = "en"
+) -> Optional[str]:
+    """Convert dates between ISO and localized display formats.
+
+    Parameters
+    ----------
+    date_str : str | datetime | pd.Timestamp
+        Date string to convert.
+    to_format : str, optional
+        Target format - 'iso' or 'display' (default: 'display').
+    lang : str, optional
+        Language code 'en' or 'fr' (default: 'en').
+
+    Returns
+    -------
+    str
+        Formatted date string according to specified format.
+
+    Examples
+    --------
+    convert_date('2025-05-08', 'display', 'en') -> 'May 8, 2025'
+    convert_date('2025-05-08', 'display', 'fr') -> '8 mai 2025'
+    convert_date('May 8, 2025', 'iso', 'en') -> '2025-05-08'
+    convert_date('8 mai 2025', 'iso', 'fr') -> '2025-05-08'
     """
     if pd.isna(date_str):
         return None
@@ -133,11 +176,11 @@ def convert_date(date_str: str, to_format: str = 'display', lang: str = 'en') ->
         if isinstance(date_str, (pd.Timestamp, datetime)):
             date_obj = date_str
         elif isinstance(date_str, str):
-            if '-' in date_str:  # ISO format
+            if "-" in date_str:  # ISO format
                 date_obj = datetime.strptime(date_str.strip(), "%Y-%m-%d")
             else:  # Localized format
                 try:
-                    if lang == 'fr':
+                    if lang == "fr":
                         day, month, year = date_str.split()
                         month_num = FRENCH_MONTHS_REV.get(month.lower())
                         if not month_num:
@@ -145,7 +188,7 @@ def convert_date(date_str: str, to_format: str = 'display', lang: str = 'en') ->
                         date_obj = datetime(int(year), month_num, int(day))
                     else:
                         month, rest = date_str.split(maxsplit=1)
-                        day, year = rest.rstrip(',').split(',')
+                        day, year = rest.rstrip(",").split(",")
                         month_num = ENGLISH_MONTHS_REV.get(month.strip().lower())
                         if not month_num:
                             raise ValueError(f"Invalid English month: {month}")
@@ -156,10 +199,10 @@ def convert_date(date_str: str, to_format: str = 'display', lang: str = 'en') ->
             raise ValueError(f"Unsupported date type: {type(date_str)}")
 
         # Convert to target format
-        if to_format == 'iso':
+        if to_format == "iso":
             return date_obj.strftime("%Y-%m-%d")
         else:  # display format
-            if lang == 'fr':
+            if lang == "fr":
                 month_name = FRENCH_MONTHS[date_obj.month]
                 return f"{date_obj.day} {month_name} {date_obj.year}"
             else:
@@ -171,18 +214,19 @@ def convert_date(date_str: str, to_format: str = 'display', lang: str = 'en') ->
 
 
 def over_16_check(date_of_birth, delivery_date):
-    """
-    Check if the age is over 16 years.
+    """Check if a client is over 16 years old on delivery date.
 
-    Parameters:
-        date_of_birth (str): Date of birth in the format "YYYY-MM-DD".
-        delivery_date (str): Date of visit in the format "YYYY-MM-DD".
+    Parameters
+    ----------
+    date_of_birth : str
+        Date of birth in YYYY-MM-DD format.
+    delivery_date : str
+        Delivery date in YYYY-MM-DD format.
 
-    Returns:
-        bool: True if age is over 16 years, False otherwise.
-    
-    Example:
-        over_16_check("2009-09-08", "2025-05-08") -> False
+    Returns
+    -------
+    bool
+        True if the client is over 16 years old on delivery_date, False otherwise.
     """
 
     birth_datetime = datetime.strptime(date_of_birth, "%Y-%m-%d")
@@ -191,13 +235,30 @@ def over_16_check(date_of_birth, delivery_date):
     age = delivery_datetime.year - birth_datetime.year
 
     # Adjust if birthday hasn't occurred yet in the DOV month
-    if (delivery_datetime.month < birth_datetime.month) or \
-       (delivery_datetime.month == birth_datetime.month and delivery_datetime.day < birth_datetime.day):
+    if (delivery_datetime.month < birth_datetime.month) or (
+        delivery_datetime.month == birth_datetime.month
+        and delivery_datetime.day < birth_datetime.day
+    ):
         age -= 1
 
     return age >= 16
 
+
 def calculate_age(DOB, DOV):
+    """Calculate the age in years and months.
+
+    Parameters
+    ----------
+    DOB : str
+        Date of birth in YYYY-MM-DD format.
+    DOV : str
+        Date of visit in YYYY-MM-DD or Mon DD, YYYY format.
+
+    Returns
+    -------
+    str
+        Age string in format "YY Y MM M" (e.g., "5Y 3M").
+    """
     DOB_datetime = datetime.strptime(DOB, "%Y-%m-%d")
 
     if DOV[0].isdigit():
@@ -216,7 +277,6 @@ def calculate_age(DOB, DOV):
         months += 12
 
     return f"{years}Y {months}M"
-
 
 
 def generate_qr_code(
@@ -282,54 +342,79 @@ def generate_qr_code(
 
 
 def compile_typst(immunization_record, outpath):
-    typst.compile(immunization_record, output = outpath)
+    """Compile a Typst template to PDF output.
+
+    Parameters
+    ----------
+    immunization_record : str
+        Path to the Typst template file.
+    outpath : str
+        Path to output PDF file.
+    """
+    typst.compile(immunization_record, output=outpath)
+
 
 def build_pdf_password(oen_partial: str, dob: str) -> str:
-    """
-    Construct the password for PDF access based on encryption config template.
-    
-    Supports template-based password generation with placeholders such as:
+    """Construct the password for PDF access based on encryption config template.
+
+    Supports template-based password generation with placeholders:
+
     - {client_id}: Client identifier
     - {date_of_birth_iso}: Date in YYYY-MM-DD format
     - {date_of_birth_iso_compact}: Date in YYYYMMDD format
-    
-    By default, uses "{date_of_birth_iso_compact}" (YYYYMMDD format).
-    Can be customized via config/parameters.yaml encryption.password.template.
-    
-    Args:
-        oen_partial: Client identifier
-        dob: Date of birth in YYYY-MM-DD format
-        
-    Returns:
-        Password string for PDF encryption
+
+    By default, uses the compact DOB format (YYYYMMDD).
+
+    Parameters
+    ----------
+    oen_partial : str
+        Client identifier.
+    dob : str
+        Date of birth in YYYY-MM-DD format.
+
+    Returns
+    -------
+    str
+        Password string for PDF encryption.
     """
     config = get_encryption_config()
     password_config = config.get("password", {})
-    
+
     # Get the template (default to compact DOB format if not specified)
     template = password_config.get("template", "{date_of_birth_iso_compact}")
-    
+
     # Build the context with available placeholders
     context = {
         "client_id": str(oen_partial),
         "date_of_birth_iso": dob,
         "date_of_birth_iso_compact": dob.replace("-", ""),
     }
-    
+
     # Render the template
     try:
         password = template.format(**context)
     except KeyError as e:
         raise ValueError(f"Unknown placeholder in password template: {e}")
-    
+
     return password
 
 
 def encrypt_pdf(file_path: str, oen_partial: str, dob: str) -> str:
-    """
-    Encrypt a PDF with a password derived from the client identifier and DOB.
+    """Encrypt a PDF with a password derived from client identifier and DOB.
 
-    Returns the path to the encrypted PDF (<file>_encrypted.pdf).
+    Parameters
+    ----------
+    file_path : str
+        Path to the PDF file to encrypt.
+    oen_partial : str
+        Client identifier.
+    dob : str
+        Date of birth in YYYY-MM-DD format.
+
+    Returns
+    -------
+    str
+        Path to the encrypted PDF file with _encrypted suffix.
     """
     password = build_pdf_password(str(oen_partial), str(dob))
     reader = PdfReader(file_path, strict=False)
@@ -390,9 +475,23 @@ def encrypt_pdf(file_path: str, oen_partial: str, dob: str) -> str:
 
 
 def decrypt_pdf(encrypted_file_path: str, oen_partial: str, dob: str) -> str:
-    """
-    Decrypt a password-protected PDF generated by encrypt_pdf and write an
-    unencrypted copy alongside it (for internal workflows/tests).
+    """Decrypt a password-protected PDF and write an unencrypted copy.
+
+    Used for internal workflows and testing.
+
+    Parameters
+    ----------
+    encrypted_file_path : str
+        Path to the encrypted PDF file.
+    oen_partial : str
+        Client identifier.
+    dob : str
+        Date of birth in YYYY-MM-DD format.
+
+    Returns
+    -------
+    str
+        Path to the decrypted PDF file with _decrypted suffix.
     """
     password = build_pdf_password(str(oen_partial), str(dob))
     reader = PdfReader(encrypted_file_path)
@@ -410,7 +509,7 @@ def decrypt_pdf(encrypted_file_path: str, oen_partial: str, dob: str) -> str:
     enc = Path(encrypted_file_path)
     stem = enc.stem
     if stem.endswith("_encrypted"):
-        base = stem[:-len("_encrypted")]
+        base = stem[: -len("_encrypted")]
     else:
         base = stem
     decrypted_path = enc.with_name(f"{base}_decrypted{enc.suffix}")
