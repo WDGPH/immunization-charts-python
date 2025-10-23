@@ -15,7 +15,7 @@ OUTPUT_DIR = PROJECT_DIR / f"output/json_{TEST_LANG}"
 @pytest.fixture
 def test_school_batch_names():
     return [
-        "TEST_SCHOOL_01",
+        "WHISKER_ELEMENTARY_01",
     ]
 
 
@@ -23,6 +23,8 @@ def test_school_batch_names():
 @pytest.fixture
 def test_move_inputs():
     os.makedirs(OUTPUT_DIR, exist_ok=True)
+
+    keep_files = []
 
     input_path = PROJECT_DIR / "tests/test_data/input_generate_notices"
     for filename in os.listdir(input_path):
@@ -34,22 +36,38 @@ def test_move_inputs():
         else:
             print(f"File {filename} already exists at destination.")
 
+            # Check whether to overwrite existing file in dir
+            user_response = input("Do you want to overwrite the existing file? (y/n): ")
+            if user_response.lower() == "y":
+                print(f"Overwriting {filename}...")
+                shutil.copy(input_path / filename, OUTPUT_DIR / filename)
+            elif user_response.lower() == "n":
+                print(
+                    "Keeping existing file. Please note this may cause issues with testing."
+                )
+                keep_files.append(OUTPUT_DIR / filename)
+            else:
+                print("Invalid input. Please enter 'y' or 'n'.")
+
+    # Return list of files not to be deleted at end of test
+    return keep_files
+
 
 # Cleans output folder before and after test
 @pytest.fixture(autouse=True)
-def clean_output_files():
-    exts = ["*.typ", "*.csv", "*.json"]
-    # Delete confounding files before the test
-    for ext in exts:
-        if OUTPUT_DIR.exists():
-            for typ_file in OUTPUT_DIR.glob(ext):
-                typ_file.unlink()
+def clean_output_files(test_move_inputs):
+    # Delete copied over test files after test
     yield
-    # Delete confounding files after the test
-    for ext in exts:
-        if OUTPUT_DIR.exists():
-            for typ_file in OUTPUT_DIR.glob(ext):
-                typ_file.unlink()
+    input_path = PROJECT_DIR / "tests/test_data/input_generate_notices"
+    for filename in os.listdir(input_path):
+        if not os.path.exists(OUTPUT_DIR / filename):
+            print(f"File {filename} not found in output folder.")
+        else:
+            if OUTPUT_DIR / filename not in test_move_inputs:
+                print(f"Cleaning file {filename} from output folder.")
+                (OUTPUT_DIR / filename).unlink()
+            else:
+                print(f"Not removing file {filename} from output folder.")
 
 
 # Run tests for Generate Notices step of pipeline
@@ -132,17 +150,5 @@ def test_generate_notices(test_school_batch_names, test_move_inputs):
         json_path = filepath.parent / json_file
         assert json_path.exists(), f"Referenced JSON file does not exist: {json_path}"
 
-        # # Split content by pagebreaks
-        # sections = re.split(r"#pagebreak", content)
-
-        # # Assert that each section contains a client ID
-        # for section in sections:
-        #     assert "Client ID:" in section, "Missing client ID in section"
-
-        # # Optional: assert number of sections matches expected number of clients
-        # expected_client_count = 10  # adjust as needed
-        # assert len(sections) == expected_client_count, "Mismatch in client count"
-
-        # re/split(r"#let client_ids = csv("TEST_SCHOOL_01_client_ids.csv", delimiter: ",", row-type: array)")
-
-        # assert , f"Missing expected client_ids variable from {test_school_batch_name}_client_ids.csv"
+        # Remove test output file
+        filepath.unlink()
