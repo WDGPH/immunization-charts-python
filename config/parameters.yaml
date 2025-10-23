@@ -1,80 +1,48 @@
-# VIPER Pipeline Configuration
-# Parameters organized by pipeline step for clarity
-
-# ============================================================================
-# Step 1: Output Preparation
-# ============================================================================
-pipeline:
-  auto_remove_output: true
-  keep_intermediate_files: true
-
-# ============================================================================
-# Step 2: Preprocessing
-# ============================================================================
-delivery_date: '2025-04-08'
-ignore_agents:
-  - RSVAb
-  - VarIg
-  - HBIg
-  - RabIg
-  - Ig
-
-# ============================================================================
-# Step 3: Generating QR Codes
-# ============================================================================
-qr:
-  enabled: true
-  payload_template: https://www.test-immunization.ca/update?client_id={client_id}&dob={date_of_birth_iso}&lang={language_code}
-
-# ============================================================================
-# Step 4: Generating Notices
-# ============================================================================
+batching:
+  batch_size: 100
+  group_by: null
 chart_diseases_header:
-  - Diphtheria
-  - Tetanus
-  - Pertussis
-  - Polio
-  - Hib
-  - Pneumococcal
-  - Rotavirus
-  - Measles
-  - Mumps
-  - Rubella
-  - Meningococcal
-  - Varicella
-  - Other
-
+- Diphtheria
+- Tetanus
+- Pertussis
+- Polio
+- Hib
+- Pneumococcal
+- Rotavirus
+- Measles
+- Mumps
+- Rubella
+- Meningococcal
+- Varicella
+- Other
+cleanup:
+  remove_directories:
+  - artifacts
+  - by_school
+  - batches
+  - qr_codes
+  remove_extensions:
+  - typ
+  - json
+  - csv
 date_today: August 31, 2025
-
-typst:
-  bin: typst
-  font_path: /usr/share/fonts/truetype/freefont/
-
-# ============================================================================
-# Step 7: Encrypting PDFs
-# ============================================================================
+delivery_date: '2025-04-08'
 encryption:
   enabled: true
   password:
     template: '{date_of_birth_iso_compact}'
-
-# ============================================================================
-# Step 8: Batching PDFs
-# ============================================================================
-batching:
-  batch_size: 100
-  group_by: null
-
-# ============================================================================
-# Step 9: Cleanup
-# ============================================================================
-cleanup:
-  remove_directories:
-    - artifacts
-    - by_school
-    - batches
-    - qr_codes
-  remove_extensions:
-    - typ
-    - json
-    - csv
+ignore_agents:
+- RSVAb
+- VarIg
+- HBIg
+- RabIg
+- Ig
+pipeline:
+  auto_remove_output: true
+  keep_intermediate_files: true
+qr:
+  enabled: true
+  payload_template: https://www.test-immunization.ca/update?client_id={client_id}&dob={date_of_birth_iso}&lang={language_code}
+typst:
+  bin: typst
+  font_path: /usr/share/fonts/truetype/freefont/

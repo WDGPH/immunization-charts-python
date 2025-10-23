@@ -8,10 +8,13 @@ from __future__ import annotations
 
 import json
 import logging
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Mapping, Sequence
 
+from .data_models import (
+    ArtifactPayload,
+    ClientRecord,
+)
 from .generate_mock_template_en import render_notice as render_notice_en
 from .generate_mock_template_fr import render_notice as render_notice_fr
 
@@ -27,33 +30,35 @@ LANGUAGE_RENDERERS = {
 }
 
 
-@dataclass(frozen=True)
-class ClientRecord:
-    sequence: str
-    client_id: str
-    language: str
-    person: Dict[str, str]
-    school: Dict[str, str]
-    board: Dict[str, str]
-    contact: Dict[str, str]
-    vaccines_due: str
-    vaccines_due_list: List[str]
-    received: List[Dict[str, object]]
-    metadata: Dict[str, object]
-
-
-@dataclass(frozen=True)
-class ArtifactPayload:
-    run_id: str
-    language: str
-    clients: List[ClientRecord]
-
-
 def read_artifact(path: Path) -> ArtifactPayload:
-    payload = json.loads(path.read_text(encoding="utf-8"))
-    clients = [ClientRecord(**client) for client in payload["clients"]]
+    """Read and deserialize the preprocessed artifact JSON."""
+    payload_dict = json.loads(path.read_text(encoding="utf-8"))
+    clients = []
+    
+    for client_dict in payload_dict["clients"]:
+        client = ClientRecord(
+            sequence=client_dict["sequence"],
+            client_id=client_dict["client_id"],
+            language=client_dict["language"],
+            person=client_dict["person"],
+            school=client_dict["school"],
+            board=client_dict["board"],
+            contact=client_dict["contact"],
+            vaccines_due=client_dict.get("vaccines_due"),
+            vaccines_due_list=client_dict.get("vaccines_due_list"),
+            received=client_dict.get("received"),
+            metadata=client_dict.get("metadata", {}),
+            qr=client_dict.get("qr"),
+        )
+        clients.append(client)
+    
     return ArtifactPayload(
-        run_id=payload["run_id"], language=payload["language"], clients=clients
+        run_id=payload_dict["run_id"],
+        language=payload_dict["language"],
+        clients=clients,
+        warnings=payload_dict.get("warnings", []),
+        created_at=payload_dict.get("created_at", ""),
+        total_clients=payload_dict.get("total_clients", len(clients)),
     )
 
 
@@ -86,6 +91,7 @@ def _to_typ_value(value) -> str:
 def build_template_context(
     client: ClientRecord, qr_output_dir: Path | None = None
 ) -> Dict[str, str]:
+    """Build template context from client data."""
     client_data = {
         "name": client.person["full_name"],
         "address": client.contact["street"],
@@ -105,10 +111,10 @@ def build_template_context(
     return {
         "client_row": _to_typ_value([client.client_id]),
         "client_data": _to_typ_value(client_data),
-        "vaccines_due_str": _to_typ_value(client.vaccines_due),
-        "vaccines_due_array": _to_typ_value(client.vaccines_due_list),
-        "received": _to_typ_value(client.received),
-        "num_rows": str(len(client.received)),
+        "vaccines_due_str": _to_typ_value(client.vaccines_due or ""),
+        "vaccines_due_array": _to_typ_value(client.vaccines_due_list or []),
+        "received": _to_typ_value(client.received or []),
+        "num_rows": str(len(client.received or [])),
     }
 
 
