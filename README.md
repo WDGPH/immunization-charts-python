@@ -25,7 +25,46 @@ source .venv/bin/activate
 
 > ℹ️ `uv sync` only installs the core runtime packages by default. If you're planning to run tests or other dev tools, include the development group once via `uv sync --group dev` (or `uv sync --all-groups` if you prefer everything).
 
-## 🛠️ Pipeline Overview
+## 🛠️ Pipeline Overview & Architecture
+
+This section describes how the pipeline orchestrates data flow and manages state across processing steps.
+
+### Orchestration Model
+
+The pipeline follows a **sequential, stateless step architecture** where each processing step:
+
+1. **Reads fresh input** from disk (either Excel files or the preprocessed JSON artifact)
+2. **Processes data** independently without holding state between steps
+3. **Writes output** to disk for the next step to discover
+4. **Never passes in-memory objects** between steps via the orchestrator
+
+This design ensures:
+- **Modularity**: Steps can be understood, tested, and modified in isolation
+- **Resilience**: Each step can be re-run independently if needed
+- **Simplicity**: No complex data structures passed between components
+
+### Data Management
+
+The pipeline produces a single **normalized JSON artifact** (`preprocessed_clients_<run_id>.json`) during preprocessing. This artifact serves as the canonical source of truth:
+
+- **Created by:** `preprocess.py` (Step 2) - contains sorted clients with enriched metadata
+- **Consumed by:** `generate_notices.py` (Step 3) and `batch_pdfs.py` (Step 7)
+- **Format:** Single JSON file with run metadata, total client count, warnings, and per-client details
+
+Client data flows through specialized handlers during generation:
+
+| Stage | Input | Processing | Output |
+|-------|-------|-----------|--------|
+| **QR Generation** | In-memory `ClientRecord` objects | `build_template_context()` → `generate_qr_code()` | PNG images in `artifacts/qr_codes/` |
+| **Typst Template** | In-memory `ClientRecord` objects | `render_notice()` → template rendering | `.typ` files in `artifacts/typst/` |
+| **PDF Compilation** | Filesystem glob of `.typ` files | Typst subprocess | PDF files in `pdf_individual/` |
+| **PDF Batching** | In-memory `ClientArtifact` objects | Grouping and manifest generation | Batch PDFs in `pdf_combined/` |
+
+Each step reads the JSON fresh when needed—there is no shared in-memory state passed between steps through the orchestrator.
+
+### Client Ordering
+
+Clients are deterministically ordered during preprocessing by: **school name → last name → first name → client ID**, ensuring consistent, reproducible output across pipeline runs. Each client receives a deterministic sequence number (`00001`, `00002`, etc.) that persists through all downstream operations.
 
 ## 🚦 Pipeline Steps
 
