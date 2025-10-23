@@ -17,6 +17,8 @@ OUTPUT_DIR = PROJECT_DIR / f"output/json_{TEST_LANG}"
 def test_move_inputs():
     os.makedirs(OUTPUT_DIR, exist_ok=True)
 
+    keep_files = []
+
     input_path = PROJECT_DIR / "tests/test_data/input_compile_notices"
     for filename in os.listdir(input_path):
         if not os.path.exists(OUTPUT_DIR / filename):
@@ -27,31 +29,46 @@ def test_move_inputs():
         else:
             print(f"File {filename} already exists at destination.")
 
+            # Check whether to overwrite existing file in dir
+            user_response = input("Do you want to overwrite the existing file? (y/n): ")
+            if user_response.lower() == "y":
+                print(f"Overwriting {filename}...")
+                shutil.copy(input_path / filename, OUTPUT_DIR / filename)
+            elif user_response.lower() == "n":
+                print(
+                    "Keeping existing file. Please note this may cause issues with testing."
+                )
+                keep_files.append(OUTPUT_DIR / filename)
+            else:
+                print("Invalid input. Please enter 'y' or 'n'.")
+
+    # Return list of files not to be deleted at end of test
+    return keep_files
+
 
 # Returns list of names of school batches in test
 @pytest.fixture
 def test_school_batch_names():
     return [
-        "TEST_SCHOOL_01",
+        "WHISKER_ELEMENTARY_01",
     ]
 
 
 # Cleans output folder before and after test
 @pytest.fixture(autouse=True)
-def clean_output_files():
-    input_exts = ["*.typ", "*.csv", "*.json", "*.pdf"]
-    # Delete confounding files before the test
-    for ext in input_exts:
-        if OUTPUT_DIR.exists():
-            for typ_file in OUTPUT_DIR.glob(ext):
-                typ_file.unlink()
+def clean_output_files(test_move_inputs):
+    # Delete copied over test files after test
     yield
-    # Delete confounding files after the test
-    output_exts = ["*.typ", "*.csv", "*.json", "*.pdf"]
-    for ext in output_exts:
-        if OUTPUT_DIR.exists():
-            for typ_file in OUTPUT_DIR.glob(ext):
-                typ_file.unlink()
+    input_path = PROJECT_DIR / "tests/test_data/input_compile_notices"
+    for filename in os.listdir(input_path):
+        if not os.path.exists(OUTPUT_DIR / filename):
+            print(f"File {filename} not found in output folder.")
+        else:
+            if OUTPUT_DIR / filename not in test_move_inputs:
+                print(f"Cleaning file {filename} from output folder.")
+                (OUTPUT_DIR / filename).unlink()
+            else:
+                print(f"Not removing file {filename} from output folder.")
 
 
 def extract_client_id(text):
@@ -125,5 +142,9 @@ def test_compile_notices(test_school_batch_names, test_move_inputs):
             header=None,
             names=["client_ids"],
         )
+
         for client_id in client_id_list["client_ids"]:
             assert str(client_id) in client_sections.keys()
+
+        # Remove test output file
+        filepath.unlink()

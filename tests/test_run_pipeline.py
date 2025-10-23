@@ -27,6 +27,8 @@ def test_move_inputs():
     input_path = PROJECT_DIR / "tests/test_data/input_run_pipeline"
     filename = "test_dataset.xlsx"
 
+    keep_files = []
+
     if not os.path.exists(INPUT_DIR / filename):
         print(
             f"File {filename} not found at destination. Copying from test directory..."
@@ -35,35 +37,46 @@ def test_move_inputs():
     else:
         print(f"File {filename} already exists at destination.")
 
+        # Check whether to overwrite existing file in dir
+        user_response = input("Do you want to overwrite the existing file? (y/n): ")
+        if user_response.lower() == "y":
+            print(f"Overwriting {filename}...")
+            shutil.copy(input_path / filename, INPUT_DIR / filename)
+        elif user_response.lower() == "n":
+            print(
+                "Keeping existing file. Please note this may cause issues with testing."
+            )
+            keep_files.append(INPUT_DIR / filename)
+        else:
+            print("Invalid input. Please enter 'y' or 'n'.")
+
+    # Return list of files not to be deleted at end of test
+    return keep_files
+
 
 # Cleans output folder before and after test
 @pytest.fixture(autouse=True)
-def clean_output_files(test_input_path):
-    input_exts = ["*.typ", "*.csv", "*.json", "*.pdf"]
-    # Delete confounding files before the test
-    for ext in input_exts:
-        if OUTPUT_DIR.exists():
-            for typ_file in OUTPUT_DIR.glob(ext):
-                typ_file.unlink()
+def clean_output_files(test_input_path, test_move_inputs):
     yield
-    # Delete confounding files after the test
-    output_exts = ["*.typ", "*.csv", "*.json", "*.pdf"]
-    for ext in output_exts:
-        if OUTPUT_DIR.exists():
-            for typ_file in OUTPUT_DIR.glob(ext):
-                typ_file.unlink()
-    # Delete directories generated during script
+    # Delete directories generated during script if empty after removing test outputs
     gen_dirs = ["batches", "by_school", f"json_{TEST_LANG}"]
     for gen_dir in gen_dirs:
         dir_path = PROJECT_DIR / f"output/{gen_dir}"
         if os.path.exists(dir_path):
-            shutil.rmtree(dir_path)
-            print(f"Directory '{dir_path}' and all its contents deleted successfully.")
+            if len(os.listdir(dir_path)) == 0:
+                shutil.rmtree(dir_path)
+                print(
+                    f"Directory '{dir_path}' and all its contents deleted successfully."
+                )
+            else:
+                print(
+                    f"Directory '{dir_path}' was not empty and so was not deleted at end of test."
+                )
         else:
             print(f"Directory '{dir_path}' does not exist.")
 
-    # Delete copied input file
-    if os.path.exists(test_input_path):
+    # Delete copied input file from input dir
+    if os.path.exists(test_input_path) and (test_input_path not in test_move_inputs):
         test_input_path.unlink()
 
 
@@ -77,8 +90,10 @@ def test_run_pipeline(test_input_path, test_move_inputs, clean_output_files):
     test_df = pd.read_excel(test_input_path)
 
     test_school_batch_names = []
+    test_school_names = []
 
     for school_name in test_df["School Name"].unique():
+        test_school_names.append(f"{school_name.replace(' ', '_').upper()}")
         num_batches = math.ceil(
             len(test_df[test_df["School Name"] == school_name]) / BATCH_SIZE
         )
@@ -161,3 +176,28 @@ def test_run_pipeline(test_input_path, test_move_inputs, clean_output_files):
         )
         for client_id in client_id_list["client_ids"]:
             assert str(client_id) in client_sections.keys()
+
+        # Check that json file exists for school batch
+        assert os.path.exists(OUTPUT_DIR / (test_school_batch_name + ".json")), (
+            f"Missing json: {test_school_batch_name}.json"
+        )
+
+        # Check that immunization notice .typ file exists for school batch
+        assert os.path.exists(
+            OUTPUT_DIR / (test_school_batch_name + "_immunization_notice.typ")
+        ), f"Missing .typ: {test_school_batch_name}_immunization_notice.typ"
+
+        # Remove test output files in output/json_{lang} and output/batches folders
+        filepath.unlink()
+        (OUTPUT_DIR / (test_school_batch_name + "_client_ids.csv")).unlink()
+        (OUTPUT_DIR / (test_school_batch_name + ".json")).unlink()
+        (OUTPUT_DIR / (test_school_batch_name + "_immunization_notice.typ")).unlink()
+
+        (PROJECT_DIR / ("output/batches/" + test_school_batch_name + ".csv")).unlink()
+
+        if os.path.exists(OUTPUT_DIR / "conf.typ"):
+            (OUTPUT_DIR / "conf.typ").unlink()
+
+    # Remove test outputs in output/by_school folder
+    for test_school_name in test_school_names:
+        (PROJECT_DIR / ("output/by_school/" + test_school_name + ".csv")).unlink()

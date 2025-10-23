@@ -99,7 +99,7 @@ If you have any questions about your child’s vaccines, please call 555-555-555
   #set align(center)
   End of immunization record ]
 
-#let client_ids = csv("TEST_SCHOOL_01_client_ids.csv", delimiter: ",", row-type: array)
+#let client_ids = csv("WHISKER_ELEMENTARY_01_client_ids.csv", delimiter: ",", row-type: array)
 
 #for row in client_ids {
 
@@ -124,7 +124,7 @@ If you have any questions about your child’s vaccines, please call 555-555-555
   footer: align(center, page-numbers))
 
   let value = row.at(0) // Access the first (and only) element of the row
-  let data = json("TEST_SCHOOL_01.json").at(value)
+  let data = json("WHISKER_ELEMENTARY_01.json").at(value)
   let received = data.received
 
   let num_rows = received.len()

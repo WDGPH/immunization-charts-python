@@ -1,5 +1,11 @@
 import pytest
-from scripts.preprocess import ClientDataProcessor, split_batches, load_data, validate_transform_columns, separate_by_school
+from scripts.preprocess import (
+    ClientDataProcessor,
+    split_batches,
+    load_data,
+    validate_transform_columns,
+    separate_by_school,
+)
 import pandas as pd
 import os
 from pathlib import Path
@@ -16,6 +22,7 @@ BATCH_SIZE = 2
 TEST_DATASET = "test_dataset.xlsx"
 
 
+# Copy test data to temporary dir
 @pytest.fixture
 def sample_data(tmp_path):
     input_dir = tmp_path / "input"
@@ -25,7 +32,9 @@ def sample_data(tmp_path):
     filename = TEST_DATASET
 
     if not os.path.exists(input_dir / filename):
-        print(f"File {filename} not found at destination. Copying from test directory...")
+        print(
+            f"File {filename} not found at destination. Copying from test directory..."
+        )
         shutil.copy(input_path / filename, input_dir / filename)
     else:
         print(f"File {filename} already exists at destination.")
@@ -47,7 +56,8 @@ def test_load_data(sample_data):
 
     # Test load_data
     assert not df.empty
-    
+
+
 def test_validate_transform_columns(sample_data):
     sample_files = []
 
@@ -77,13 +87,15 @@ def test_validate_transform_columns(sample_data):
     df = load_data(input_path)
 
     # Test validate_transform_columns
-    validate_transform_columns(df, required_columns) #FIXME make required_columns come from a config file
-    
+    validate_transform_columns(
+        df, required_columns
+    )  # FIXME make required_columns come from a config file
+
     for column in required_columns:
-        column = column.replace(' ', '_')
+        column = column.replace(" ", "_")
         column = column.replace("PROVINCE/TERRITORY", "PROVINCE")
         assert column in df.columns
-    
+
 
 def test_separate_by_school(sample_data):
     sample_files = []
@@ -118,13 +130,17 @@ def test_separate_by_school(sample_data):
     df = load_data(input_path)
 
     # Test validate_transform_columns
-    validate_transform_columns(df, required_columns) #FIXME make required_columns come from a config file
-    
+    validate_transform_columns(
+        df, required_columns
+    )  # FIXME make required_columns come from a config file
+
     # Test separate_by_school
     separate_by_school(df, output_dir_school, "SCHOOL_NAME")
 
     for school_name in df["SCHOOL_NAME"].unique():
-        assert os.path.exists(output_dir_school / f"{school_name.replace(' ', '_').upper()}.csv")
+        assert os.path.exists(
+            output_dir_school / f"{school_name.replace(' ', '_').upper()}.csv"
+        )
 
 
 def test_split_batches(sample_data):
@@ -161,7 +177,9 @@ def test_split_batches(sample_data):
     df = load_data(input_path)
 
     # Test validate_transform_columns
-    validate_transform_columns(df, required_columns) #FIXME make required_columns come from a config file
+    validate_transform_columns(
+        df, required_columns
+    )  # FIXME make required_columns come from a config file
 
     # Test separate_by_school
     separate_by_school(df, output_dir_school, "SCHOOL_NAME")
@@ -174,7 +192,10 @@ def test_split_batches(sample_data):
     for school_name in df["SCHOOL_NAME"].unique():
         num_batches = math.ceil(len(df[df["SCHOOL_NAME"] == school_name]) / BATCH_SIZE)
         for num_batch in range(num_batches):
-            assert os.path.exists(output_dir_batch / f"{school_name.replace(' ', '_').upper()}_{(num_batch + 1):0{2}d}.csv")
+            assert os.path.exists(
+                output_dir_batch
+                / f"{school_name.replace(' ', '_').upper()}_{(num_batch + 1):0{2}d}.csv"
+            )
 
 
 def test_batch_processing(sample_data):
@@ -213,7 +234,9 @@ def test_batch_processing(sample_data):
     df = load_data(input_path)
 
     # Test validate_transform_columns
-    validate_transform_columns(df, required_columns) #FIXME make required_columns come from a config file
+    validate_transform_columns(
+        df, required_columns
+    )  # FIXME make required_columns come from a config file
 
     # Test separate_by_school
     separate_by_school(df, output_dir_school, "SCHOOL_NAME")
@@ -231,24 +254,39 @@ def test_batch_processing(sample_data):
 
     for batch_file in all_batch_files:
         print(f"Processing batch file: {batch_file}")
-        df_batch = pd.read_csv(batch_file, sep=";", engine="python", encoding="latin-1", quotechar='"')
+        df_batch = pd.read_csv(
+            batch_file, sep=";", engine="python", encoding="latin-1", quotechar='"'
+        )
 
-        if 'STREET_ADDRESS_LINE_2' in df_batch.columns:
-            df_batch['STREET_ADDRESS'] = df_batch['STREET_ADDRESS_LINE_1'].fillna('') + ' ' + df_batch['STREET_ADDRESS_LINE_2'].fillna('')
-            df_batch.drop(columns=['STREET_ADDRESS_LINE_1', 'STREET_ADDRESS_LINE_2'], inplace=True)
+        if "STREET_ADDRESS_LINE_2" in df_batch.columns:
+            df_batch["STREET_ADDRESS"] = (
+                df_batch["STREET_ADDRESS_LINE_1"].fillna("")
+                + " "
+                + df_batch["STREET_ADDRESS_LINE_2"].fillna("")
+            )
+            df_batch.drop(
+                columns=["STREET_ADDRESS_LINE_1", "STREET_ADDRESS_LINE_2"], inplace=True
+            )
 
         processor = ClientDataProcessor(
             df=df_batch,
             disease_map=json.load(open("./config/disease_map.json")),
             vaccine_ref=json.load(open("./config/vaccine_reference.json")),
-            ignore_agents=["-unspecified", "unspecified", "Not Specified", "Not specified", "Not Specified-unspecified"],
+            ignore_agents=[
+                "-unspecified",
+                "unspecified",
+                "Not Specified",
+                "Not specified",
+                "Not Specified-unspecified",
+            ],
             delivery_date="2024-06-01",
-            language=language  # or 'french'
+            language=language,  # or 'french'
         )
         processor.build_notices()
         logging.info("Preprocessing completed successfully.")
-    
+
         assert len(processor.notices) == len(df_batch)
+
 
 def test_save_output(sample_data):
     sample_files = []
@@ -287,7 +325,9 @@ def test_save_output(sample_data):
     df = load_data(input_path)
 
     # Test validate_transform_columns
-    validate_transform_columns(df, required_columns) #FIXME make required_columns come from a config file
+    validate_transform_columns(
+        df, required_columns
+    )  # FIXME make required_columns come from a config file
 
     # Test separate_by_school
     separate_by_school(df, output_dir_school, "SCHOOL_NAME")
@@ -303,19 +343,33 @@ def test_save_output(sample_data):
 
     for batch_file in all_batch_files:
         print(f"Processing batch file: {batch_file}")
-        df_batch = pd.read_csv(batch_file, sep=";", engine="python", encoding="latin-1", quotechar='"')
+        df_batch = pd.read_csv(
+            batch_file, sep=";", engine="python", encoding="latin-1", quotechar='"'
+        )
 
-        if 'STREET_ADDRESS_LINE_2' in df_batch.columns:
-            df_batch['STREET_ADDRESS'] = df_batch['STREET_ADDRESS_LINE_1'].fillna('') + ' ' + df_batch['STREET_ADDRESS_LINE_2'].fillna('')
-            df_batch.drop(columns=['STREET_ADDRESS_LINE_1', 'STREET_ADDRESS_LINE_2'], inplace=True)
+        if "STREET_ADDRESS_LINE_2" in df_batch.columns:
+            df_batch["STREET_ADDRESS"] = (
+                df_batch["STREET_ADDRESS_LINE_1"].fillna("")
+                + " "
+                + df_batch["STREET_ADDRESS_LINE_2"].fillna("")
+            )
+            df_batch.drop(
+                columns=["STREET_ADDRESS_LINE_1", "STREET_ADDRESS_LINE_2"], inplace=True
+            )
 
         processor = ClientDataProcessor(
             df=df_batch,
             disease_map=json.load(open("./config/disease_map.json")),
             vaccine_ref=json.load(open("./config/vaccine_reference.json")),
-            ignore_agents=["-unspecified", "unspecified", "Not Specified", "Not specified", "Not Specified-unspecified"],
+            ignore_agents=[
+                "-unspecified",
+                "unspecified",
+                "Not Specified",
+                "Not specified",
+                "Not Specified-unspecified",
+            ],
             delivery_date="2024-06-01",
-            language=language  # or 'french'
+            language=language,  # or 'french'
         )
         processor.build_notices()
         processor.save_output(Path(output_dir_final), batch_file.stem)
@@ -325,4 +379,7 @@ def test_save_output(sample_data):
     for school_name in df["SCHOOL_NAME"].unique():
         num_batches = math.ceil(len(df[df["SCHOOL_NAME"] == school_name]) / BATCH_SIZE)
         for num_batch in range(num_batches):
-            assert os.path.exists(output_dir_final / f"{school_name.replace(' ', '_').upper()}_{(num_batch + 1):0{2}d}.json")
+            assert os.path.exists(
+                output_dir_final
+                / f"{school_name.replace(' ', '_').upper()}_{(num_batch + 1):0{2}d}.json"
+            )
