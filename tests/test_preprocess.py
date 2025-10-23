@@ -92,7 +92,7 @@ def test_validate_transform_columns(sample_data):
     )  # FIXME make required_columns come from a config file
 
     for column in required_columns:
-        column = column.replace(" ", " ")
+        column = column.replace(" ", "_")
         column = column.replace("PROVINCE/TERRITORY", "PROVINCE")
         assert column in df.columns
 
