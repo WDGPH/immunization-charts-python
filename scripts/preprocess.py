@@ -27,7 +27,7 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 CONFIG_DIR = SCRIPT_DIR.parent / "config"
 DISEASE_MAP_PATH = CONFIG_DIR / "disease_map.json"
 VACCINE_REFERENCE_PATH = CONFIG_DIR / "vaccine_reference.json"
-QR_CONFIG_PATH = CONFIG_DIR / "qr_config.yaml"
+PARAMETERS_PATH = CONFIG_DIR / "parameters.yaml"
 
 LOG = logging.getLogger(__name__)
 
@@ -381,19 +381,27 @@ def _build_qr_context(
     }
 
 
-def load_qr_settings(language: str, *, config_path: Path = QR_CONFIG_PATH) -> QrSettings:
-    """Load QR configuration from yaml file."""
+def load_qr_settings(language: str, *, config_path: Path = None) -> QrSettings:
+    """Load QR configuration from parameters.yaml file.
+    
+    Reads the QR configuration section from the unified parameters.yaml file.
+    If config_path is not provided, uses the default PARAMETERS_PATH.
+    """
+    if config_path is None:
+        config_path = PARAMETERS_PATH
+    
     payload_template = DEFAULT_QR_PAYLOAD_TEMPLATE.get(language)
     allowed_placeholders = set(SUPPORTED_QR_TEMPLATE_FIELDS)
     delivery_date: Optional[str] = None
 
     if not config_path.exists():
-        LOG.info("QR configuration not found at %s; using defaults.", config_path)
+        LOG.info("Parameters file not found at %s; using defaults.", config_path)
         return QrSettings(payload_template, allowed_placeholders, delivery_date)
 
-    config_data = yaml.safe_load(config_path.read_text(encoding="utf-8")) or {}
+    params = yaml.safe_load(config_path.read_text(encoding="utf-8")) or {}
+    config_data = params.get("qr", {})
 
-    template_config = config_data.get("qr_payload_template")
+    template_config = config_data.get("payload_template")
     if isinstance(template_config, dict):
         for key in (language, LANGUAGE_LABELS.get(language)):
             if key and template_config.get(key):
@@ -403,7 +411,7 @@ def load_qr_settings(language: str, *, config_path: Path = QR_CONFIG_PATH) -> Qr
         payload_template = template_config
     elif template_config is not None:
         LOG.warning(
-            "Ignoring qr_payload_template with unsupported type %s; expected str or mapping.",
+            "Ignoring qr.payload_template with unsupported type %s; expected str or mapping.",
             type(template_config).__name__,
         )
 
@@ -412,7 +420,7 @@ def load_qr_settings(language: str, *, config_path: Path = QR_CONFIG_PATH) -> Qr
         if isinstance(overrides, Iterable) and not isinstance(overrides, (str, bytes)):
             allowed_placeholders |= {str(item) for item in overrides}
         else:
-            LOG.warning("Ignoring invalid allowed_placeholders configuration; expected a list of strings.")
+            LOG.warning("Ignoring invalid qr.allowed_placeholders configuration; expected a list of strings.")
 
     delivery_date = config_data.get("delivery_date") or delivery_date
 

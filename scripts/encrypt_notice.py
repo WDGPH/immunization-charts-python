@@ -9,7 +9,10 @@ import time
 from pathlib import Path
 from typing import List, Tuple
 
-from utils import encrypt_pdf, convert_date
+try:  # Allow both package and script style execution
+    from .utils import encrypt_pdf, convert_date
+except ImportError:  # pragma: no cover - fallback for CLI execution
+    from utils import encrypt_pdf, convert_date
 
 
 def _normalize_language(language: str) -> str:

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from pathlib import Path
+from string import Formatter
 from typing import Optional
 
 import pandas as pd
@@ -23,20 +24,22 @@ ENGLISH_MONTHS = {
 }
 ENGLISH_MONTHS_REV = {v.lower(): k for k, v in ENGLISH_MONTHS.items()}
 
-# Load encryption configuration
+# Configuration paths
 CONFIG_DIR = Path(__file__).resolve().parent.parent / "config"
-ENCRYPTION_CONFIG_PATH = CONFIG_DIR / "encryption_config.yml"
 
 _encryption_config = None
+_formatter = Formatter()
 
 def _load_encryption_config():
-    """Load encryption configuration from YAML file."""
+    """Load encryption configuration from unified parameters.yaml file."""
     global _encryption_config
     if _encryption_config is None:
         try:
-            if ENCRYPTION_CONFIG_PATH.exists():
-                with open(ENCRYPTION_CONFIG_PATH) as f:
-                    _encryption_config = yaml.safe_load(f) or {}
+            parameters_path = CONFIG_DIR / "parameters.yaml"
+            if parameters_path.exists():
+                with open(parameters_path) as f:
+                    params = yaml.safe_load(f) or {}
+                    _encryption_config = params.get("encryption", {})
             else:
                 _encryption_config = {}
         except Exception:
@@ -45,7 +48,7 @@ def _load_encryption_config():
 
 
 def get_encryption_config():
-    """Get the encryption configuration."""
+    """Get the encryption configuration from parameters.yaml."""
     return _load_encryption_config()
 
 
@@ -283,13 +286,18 @@ def compile_typst(immunization_record, outpath):
 
 def build_pdf_password(oen_partial: str, dob: str) -> str:
     """
-    Construct the password for PDF access based on encryption config.
+    Construct the password for PDF access based on encryption config template.
     
-    By default, uses date of birth in YYYYMMDD format.
-    Can be customized via config/encryption_config.yml.
+    Supports template-based password generation with placeholders such as:
+    - {client_id}: Client identifier
+    - {date_of_birth_iso}: Date in YYYY-MM-DD format
+    - {date_of_birth_iso_compact}: Date in YYYYMMDD format
+    
+    By default, uses "{date_of_birth_iso_compact}" (YYYYMMDD format).
+    Can be customized via config/parameters.yaml encryption.password.template.
     
     Args:
-        oen_partial: Client identifier (OEN)
+        oen_partial: Client identifier
         dob: Date of birth in YYYY-MM-DD format
         
     Returns:
@@ -298,26 +306,21 @@ def build_pdf_password(oen_partial: str, dob: str) -> str:
     config = get_encryption_config()
     password_config = config.get("password", {})
     
-    password_parts = []
+    # Get the template (default to compact DOB format if not specified)
+    template = password_config.get("template", "{date_of_birth_iso_compact}")
     
-    # Add client_id if configured
-    if password_config.get("include_client_id", False):
-        password_parts.append(str(oen_partial))
+    # Build the context with available placeholders
+    context = {
+        "client_id": str(oen_partial),
+        "date_of_birth_iso": dob,
+        "date_of_birth_iso_compact": dob.replace("-", ""),
+    }
     
-    # Add DOB if configured
-    if password_config.get("include_dob", True):
-        dob_format = password_config.get("dob_format", "yyyymmdd")
-        if dob_format.lower() == "yyyymmdd":
-            dob_digits = dob.replace("-", "")
-        else:
-            dob_digits = dob.replace("-", "")
-        password_parts.append(dob_digits)
-    
-    password = "".join(password_parts)
-    
-    # Default fallback: if no parts, use DOB
-    if not password:
-        password = dob.replace("-", "")
+    # Render the template
+    try:
+        password = template.format(**context)
+    except KeyError as e:
+        raise ValueError(f"Unknown placeholder in password template: {e}")
     
     return password
 
