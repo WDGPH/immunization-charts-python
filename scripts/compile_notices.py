@@ -17,7 +17,10 @@ ROOT_DIR = Path(__file__).resolve().parent.parent
 
 
 def discover_typst_files(artifact_dir: Path) -> list[Path]:
-    return sorted(artifact_dir.glob("*.typ"))
+    typst_dir = artifact_dir / "typst"
+    if not typst_dir.exists():
+        return []
+    return sorted(typst_dir.glob("*.typ"))
 
 
 def compile_file(

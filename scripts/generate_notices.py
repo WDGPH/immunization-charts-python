@@ -164,6 +164,8 @@ def generate_typst_files(
 ) -> List[Path]:
     output_dir.mkdir(parents=True, exist_ok=True)
     qr_output_dir = output_dir / "qr_codes"
+    typst_output_dir = output_dir / "typst"
+    typst_output_dir.mkdir(parents=True, exist_ok=True)
     files: List[Path] = []
     language = payload.language
     for client in payload.clients:
@@ -179,8 +181,8 @@ def generate_typst_files(
             parameters=parameters_path,
             qr_output_dir=qr_output_dir if client.qr else None,
         )
-        filename = f"{language}_client_{client.sequence}_{client.client_id}.typ"
-        file_path = output_dir / filename
+        filename = f"{language}_notice_{client.sequence}_{client.client_id}.typ"
+        file_path = typst_output_dir / filename
         file_path.write_text(typst_content, encoding="utf-8")
         files.append(file_path)
         LOG.info("Wrote %s", file_path)
