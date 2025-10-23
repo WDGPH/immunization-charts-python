@@ -57,20 +57,12 @@ from typing import Any, Dict, List, Optional, Set
 import pandas as pd
 import yaml
 
-try:  # Allow both package and script style execution
-    from .utils import (
-        convert_date_iso,
-        convert_date_string,
-        convert_date_string_french,
-        over_16_check,
-    )
-except ImportError:  # pragma: no cover - fallback for CLI execution
-    from utils import (
-        convert_date_iso,
-        convert_date_string,
-        convert_date_string_french,
-        over_16_check,
-    )
+from .utils import (
+    convert_date_iso,
+    convert_date_string,
+    convert_date_string_french,
+    over_16_check,
+)
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 CONFIG_DIR = SCRIPT_DIR.parent / "config"

@@ -54,8 +54,7 @@ The main pipeline orchestrator (`run_pipeline.py`) automates the end-to-end work
 
 **Usage Example:**
 ```bash
-cd scripts
-python3 run_pipeline.py <input_file> <language> [--output-dir PATH]
+uv run viper <input_file> <language> [--output-dir PATH]
 ```
 
 **Required Arguments:**
@@ -77,10 +76,10 @@ All pipeline behavior is controlled via `config/parameters.yaml`:
 **Examples:**
 ```bash
 # Basic usage
-python3 run_pipeline.py students.xlsx en
+uv run viper students.xlsx en
 
 # Override output directory
-python3 run_pipeline.py students.xlsx en --output-dir /tmp/output
+uv run viper students.xlsx en --output-dir /tmp/output
 ```
 
 > ℹ️ **Typst preview note:** The WDGPH code-server development environments render Typst files via Tinymist. The shared template at `scripts/conf.typ` only defines helper functions, colour tokens, and table layouts that the generated notice `.typ` files import; it doesn't emit any pages on its own, so Tinymist has nothing to preview if attempted on this file. To examine the actual markup that uses these helpers, run the pipeline with `pipeline.keep_intermediate_files: true` in `config/parameters.yaml` so the generated notice `.typ` files stay in `output/artifacts/` for manual inspection.

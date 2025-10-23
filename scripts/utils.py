@@ -5,6 +5,7 @@ generation, and encryption configuration management."""
 
 from __future__ import annotations
 
+import hashlib
 from datetime import datetime
 from pathlib import Path
 from string import Formatter
@@ -14,6 +15,13 @@ import pandas as pd
 import typst
 import yaml
 from pypdf import PdfReader, PdfWriter
+
+try:
+    import qrcode
+    from PIL import Image
+except ImportError:
+    qrcode = None  # type: ignore
+    Image = None  # type: ignore
 
 FRENCH_MONTHS = {
     1: "janvier",
@@ -304,14 +312,11 @@ def generate_qr_code(
         Absolute path to the generated PNG file.
     """
 
-    try:  # Import lazily so non-QR callers avoid mandatory installs.
-        import qrcode
-        from PIL import Image
-    except ImportError as exc:  # pragma: no cover - exercised in optional envs
+    if qrcode is None or Image is None:  # pragma: no cover - exercised in optional envs
         raise RuntimeError(
             "QR code generation requires the 'qrcode' and 'pillow' packages. "
             "Install them via 'uv sync' before enabling QR payloads."
-        ) from exc
+        )
 
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -331,8 +336,6 @@ def generate_qr_code(
     pil_bitmap = pil_image.convert("1", dither=Image.NONE)
 
     if not filename:
-        import hashlib
-
         digest = hashlib.sha1(data.encode("utf-8")).hexdigest()[:12]
         filename = f"qr_{digest}.png"
 

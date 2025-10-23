@@ -9,27 +9,18 @@ progress information.
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 import time
+import traceback
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
 # Import pipeline steps
-try:
-    from . import batch_pdfs, cleanup, compile_notices, count_pdfs
-    from . import encrypt_notice, generate_notices, prepare_output, preprocess
-    from .config_loader import load_config
-except ImportError:  # pragma: no cover - fallback for CLI execution
-    import batch_pdfs
-    import cleanup
-    import compile_notices
-    import count_pdfs
-    import encrypt_notice
-    import generate_notices
-    import prepare_output
-    import preprocess
-    from config_loader import load_config
+from . import batch_pdfs, cleanup, compile_notices, count_pdfs
+from . import encrypt_notice, generate_notices, prepare_output, preprocess
+from .config_loader import load_config
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 ROOT_DIR = SCRIPT_DIR.parent
@@ -156,8 +147,6 @@ def run_step_2_preprocess(
     df = preprocess.ensure_required_columns(df_raw)
 
     # Load configuration
-    import json
-
     disease_map_path = preprocess.DISEASE_MAP_PATH
     vaccine_reference_path = preprocess.VACCINE_REFERENCE_PATH
     disease_map = json.loads(disease_map_path.read_text(encoding="utf-8"))
@@ -494,8 +483,6 @@ def main(argv: Optional[list[str]] = None) -> int:
 
     except Exception as exc:
         print(f"\n❌ Pipeline failed: {exc}", file=sys.stderr)
-        import traceback
-
         traceback.print_exc()
         return 1
 
