@@ -22,7 +22,28 @@ dependencies = [
 [dependency-groups]
 dev = [
     "pytest",
+    "pytest-cov",
 ]
 
 [project.scripts]
 viper = "scripts.run_pipeline:main"
+
+[tool.coverage.run]
+source = ["scripts"]
+omit = ["*/__pycache__/*", "*/site-packages/*"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+]
+
+[tool.coverage.html]
+directory = "htmlcov"
+
+[tool.coverage.json]
+output = "coverage.json"
