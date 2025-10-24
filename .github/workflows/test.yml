@@ -23,18 +23,17 @@ jobs:
         uses: astral-sh/setup-uv@v7
       - name: Install dependencies
         run: uv sync --group dev
-      - name: Install sudo
-        run: apt-get update && apt-get install -y sudo
-      - name: Install Typst CLI
-        run: >
-          sudo apt-get update && \ sudo apt-get install -y
-          --no-install-recommends curl xz-utils && \ curl -fL -o
-          /tmp/typst.tar.xz \
-            https://github.com/typst/typst/releases/download/v${{ env.typst_ver }}/typst-x86_64-unknown-linux-musl.tar.xz && \
-          tar -xf /tmp/typst.tar.xz -C /tmp/ --strip-components=1 && \ chmod +x
-          /tmp/typst && \ sudo mv /tmp/typst /usr/local/bin/typst && \ typst
-          --version && \ sudo apt-get purge -y curl xz-utils && \ sudo apt-get
-          autoremove -y && \ sudo rm -rf /var/lib/apt/lists/* /tmp/typst.tar.xz
+      - name: Download and install Typst CLI locally
+        run: |
+          mkdir -p $HOME/.local/bin
+          curl -fL -o /tmp/typst.tar.xz \
+            https://github.com/typst/typst/releases/download/v${{ env.typst_ver }}/typst-x86_64-unknown-linux-musl.tar.xz
+          tar -xf /tmp/typst.tar.xz -C /tmp/ --strip-components=1
+          chmod +x /tmp/typst
+          mv /tmp/typst $HOME/.local/bin/typst
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+          typst --version
+
       - name: Run tests
         run: uv run pytest --cov --cov-branch --cov-report=xml
 
