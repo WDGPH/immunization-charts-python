@@ -1,5 +1,0 @@
-pandas
-PyYAML
-openpyxl
-pypdf
-typst
