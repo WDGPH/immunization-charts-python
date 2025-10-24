@@ -41,11 +41,14 @@ Setup: `uv sync` (or `uv sync --group dev` for tests)
 
 **Run tests:**
 ```bash
-uv run pytest                              # all tests
-uv run pytest tests/test_file.py -v        # specific file
-uv run pytest -k "pattern" --tb=short       # matching pattern
-uv run pytest --cov=scripts tests/ -x       # coverage, stop on fail
+uv run pytest                                      # all tests
+uv run pytest tests/test_file.py -v                # specific file
+uv run pytest -k "pattern" --tb=short              # matching pattern
+uv run pytest --cov=scripts tests/ -x              # coverage, stop on fail
+uv run pytest --cov=scripts tests/ --cov-report=html  # coverage with HTML report
 ```
+
+Generated coverage HTML reports are in `htmlcov/index.html`
 
 ## Workflow
 
