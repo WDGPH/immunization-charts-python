@@ -7,3 +7,10 @@ __pycache__/
 *.log
 *.tmp
 uv.lock
+
+# Code coverage
+htmlcov/
+.coverage
+.coverage.*
+.pytest_cache/
+*.cover
