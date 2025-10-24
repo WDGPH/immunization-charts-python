@@ -40,8 +40,9 @@ The pipeline follows a **sequential, stateless step architecture** where each pr
 
 This design ensures:
 - **Modularity**: Steps can be understood, tested, and modified in isolation
-- **Resilience**: Each step can be re-run independently if needed
+- **Resilience**: Each step can be re-run independently if needed (e.g., if Step 4 fails, fix the code and re-run Steps 4-9 without reprocessing)
 - **Simplicity**: No complex data structures passed between components
+- **Reproducibility**: Same input always produces same output across runs
 
 ### Data Management
 
@@ -138,15 +139,41 @@ uv run viper students.xlsx en --output-dir /tmp/output
 
 ## 🧪 Running Tests
 
-We're expanding automated checks to ensure feature additions do not impact existing functionality, and to improve the overall quality of the project. After syncing the virtual environment once with `uv sync`, you can run the current test suite using:
+The test suite is organized in three layers (see `docs/TESTING_STANDARDS.md` for details):
 
+**Quick checks (unit tests, <100ms each):**
+```bash
+uv run pytest -m unit
+```
+
+**Integration tests (step interactions, 100ms–1s each):**
+```bash
+uv run pytest -m integration
+```
+
+**End-to-end tests (full pipeline, 1s–30s each):**
+```bash
+uv run pytest -m e2e
+```
+
+**All tests:**
 ```bash
 uv run pytest
 ```
 
-You'll see a quick summary of which checks ran (right now that’s the clean-up helpers, with more on the way). A final line ending in `passed` means the suite finished successfully.
+**With coverage report:**
+```bash
+uv run pytest --cov=scripts --cov-report=html
+```
 
-> ✅ Before running the command above, make sure you've installed the `dev` group at least once (`uv sync --group dev`) so that the testing dependencies are available.
+View coverage in `htmlcov/index.html`.
+
+**For CI/local development (skip slow E2E tests):**
+```bash
+uv run pytest -m "not e2e"
+```
+
+> ✅ Before running tests, make sure you've installed the `dev` group at least once (`uv sync --group dev`) so that testing dependencies are available.
 
 ## 📂 Input Data
 

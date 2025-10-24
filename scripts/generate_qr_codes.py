@@ -10,6 +10,7 @@ configuration setting.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 from pathlib import Path
@@ -18,8 +19,14 @@ from typing import Any, Dict, List, Optional
 
 import yaml
 
+try:
+    import qrcode
+    from PIL import Image
+except ImportError:
+    qrcode = None  # type: ignore
+    Image = None  # type: ignore
+
 from .config_loader import load_config
-from .utils import generate_qr_code
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 ROOT_DIR = SCRIPT_DIR.parent
@@ -41,12 +48,68 @@ SUPPORTED_QR_TEMPLATE_FIELDS = {
     "postal_code",
     "province",
     "street_address",
-    "language",
     "language_code",
     "delivery_date",
 }
 
 _FORMATTER = Formatter()
+
+
+def generate_qr_code(
+    data: str,
+    output_dir: Path,
+    *,
+    filename: Optional[str] = None,
+) -> Path:
+    """Generate a monochrome QR code PNG and return the saved path.
+
+    Parameters
+    ----------
+    data:
+        The string payload to encode inside the QR code.
+    output_dir:
+        Directory where the QR image should be saved. The directory is created
+        if it does not already exist.
+    filename:
+        Optional file name (including extension) for the resulting PNG. When
+        omitted a deterministic name derived from the payload hash is used.
+
+    Returns
+    -------
+    Path
+        Absolute path to the generated PNG file.
+    """
+
+    if qrcode is None or Image is None:  # pragma: no cover - exercised in optional envs
+        raise RuntimeError(
+            "QR code generation requires the 'qrcode' and 'pillow' packages. "
+            "Install them via 'uv sync' before enabling QR payloads."
+        )
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    qr = qrcode.QRCode(
+        version=1,
+        error_correction=qrcode.constants.ERROR_CORRECT_L,
+        box_size=10,
+        border=4,
+    )
+    qr.add_data(data)
+    qr.make(fit=True)
+
+    image = qr.make_image(fill_color="black", back_color="white")
+    pil_image = getattr(image, "get_image", lambda: image)()
+
+    # Convert to 1-bit black/white without dithering to keep crisp edges.
+    pil_bitmap = pil_image.convert("1", dither=Image.NONE)
+
+    if not filename:
+        digest = hashlib.sha1(data.encode("utf-8")).hexdigest()[:12]
+        filename = f"qr_{digest}.png"
+
+    target_path = output_dir / filename
+    pil_bitmap.save(target_path, format="PNG", bits=1)
+    return target_path
 
 
 def read_preprocessed_artifact(path: Path) -> Dict[str, Any]:
@@ -134,8 +197,7 @@ def _build_qr_context(
         "postal_code": _string_or_empty(postal_code),
         "province": _string_or_empty(province),
         "street_address": _string_or_empty(street_address),
-        "language": "english" if language_code == "en" else "french",
-        "language_code": _string_or_empty(language_code),
+        "language_code": _string_or_empty(language_code),  # ISO code: 'en' or 'fr'
         "delivery_date": _string_or_empty(delivery_date),
     }
 
