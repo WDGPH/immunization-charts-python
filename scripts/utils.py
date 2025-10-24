@@ -1,522 +1,223 @@
 """Utility functions for immunization pipeline processing.
 
-Provides helper functions for date conversion, PDF encryption/decryption, QR code
-generation, and encryption configuration management."""
+Provides template rendering utilities shared across pipeline steps."""
 
 from __future__ import annotations
 
-import hashlib
-from datetime import datetime
-from pathlib import Path
 from string import Formatter
-from typing import Optional
+from typing import Any
 
-import pandas as pd
-import typst
-import yaml
-from pypdf import PdfReader, PdfWriter
-
-try:
-    import qrcode
-    from PIL import Image
-except ImportError:
-    qrcode = None  # type: ignore
-    Image = None  # type: ignore
-
-FRENCH_MONTHS = {
-    1: "janvier",
-    2: "février",
-    3: "mars",
-    4: "avril",
-    5: "mai",
-    6: "juin",
-    7: "juillet",
-    8: "août",
-    9: "septembre",
-    10: "octobre",
-    11: "novembre",
-    12: "décembre",
-}
-FRENCH_MONTHS_REV = {v.lower(): k for k, v in FRENCH_MONTHS.items()}
-
-ENGLISH_MONTHS = {
-    1: "Jan",
-    2: "Feb",
-    3: "Mar",
-    4: "Apr",
-    5: "May",
-    6: "Jun",
-    7: "Jul",
-    8: "Aug",
-    9: "Sep",
-    10: "Oct",
-    11: "Nov",
-    12: "Dec",
-}
-ENGLISH_MONTHS_REV = {v.lower(): k for k, v in ENGLISH_MONTHS.items()}
-
-# Configuration paths
-CONFIG_DIR = Path(__file__).resolve().parent.parent / "config"
-
-_encryption_config = None
-_formatter = Formatter()
+# Template formatter for extracting field names from format strings
+_FORMATTER = Formatter()
 
 
-def _load_encryption_config():
-    """Load encryption configuration from unified parameters.yaml file."""
-    global _encryption_config
-    if _encryption_config is None:
-        try:
-            parameters_path = CONFIG_DIR / "parameters.yaml"
-            if parameters_path.exists():
-                with open(parameters_path) as f:
-                    params = yaml.safe_load(f) or {}
-                    _encryption_config = params.get("encryption", {})
-            else:
-                _encryption_config = {}
-        except Exception:
-            _encryption_config = {}
-    return _encryption_config
 
-
-def get_encryption_config():
-    """Get the encryption configuration from parameters.yaml."""
-    return _load_encryption_config()
-
-
-def convert_date_string_french(date_str):
-    """Convert a date string from YYYY-MM-DD format to French display format.
-
+def string_or_empty(value: Any) -> str:
+    """Safely convert value to string, returning empty string for None/NaN.
+    
     Parameters
     ----------
-    date_str : str
-        Date string in YYYY-MM-DD format.
-
+    value : Any
+        Value to convert (may be None, empty string, or any type)
+    
     Returns
     -------
     str
-        Date in French format (e.g., "8 mai 2025").
+        Stringified value or empty string for None/NaN values
     """
-    date_obj = datetime.strptime(date_str, "%Y-%m-%d")
-    day = date_obj.day
-    month = FRENCH_MONTHS[date_obj.month]
-    year = date_obj.year
-
-    return f"{day} {month} {year}"
+    if value is None:
+        return ""
+    return str(value).strip()
 
 
-def convert_date_string(date_str):
-    """Convert a date to English display format.
-
+def extract_template_fields(template: str) -> set[str]:
+    """Extract placeholder names from a format string template.
+    
     Parameters
     ----------
-    date_str : str | datetime | pd.Timestamp
-        Date string in YYYY-MM-DD format or datetime-like object.
-
+    template : str
+        Format string like "https://example.com?id={client_id}&dob={date_of_birth_iso}"
+    
     Returns
     -------
-    str
-        Date in the format Mon DD, YYYY (e.g., "May 8, 2025").
-    """
-    if pd.isna(date_str):
-        return None
-
-    # If it's already a datetime or Timestamp
-    if isinstance(date_str, (pd.Timestamp, datetime)):
-        return date_str.strftime("%b %d, %Y")
-
-    # Otherwise assume string input
-    try:
-        date_obj = datetime.strptime(str(date_str).strip(), "%Y-%m-%d")
-        return date_obj.strftime("%b %d, %Y")
-    except ValueError:
-        raise ValueError(f"Unrecognized date format: {date_str}")
-
-
-def convert_date_iso(date_str):
-    """Convert a date from English display format to ISO format.
-
-    Parameters
-    ----------
-    date_str : str
-        Date in English display format (e.g., "May 8, 2025").
-
-    Returns
-    -------
-    str
-        Date in ISO format (YYYY-MM-DD).
-    """
-    date_obj = datetime.strptime(date_str, "%b %d, %Y")
-    return date_obj.strftime("%Y-%m-%d")
-
-
-def convert_date(
-    date_str: str, to_format: str = "display", lang: str = "en"
-) -> Optional[str]:
-    """Convert dates between ISO and localized display formats.
-
-    Parameters
-    ----------
-    date_str : str | datetime | pd.Timestamp
-        Date string to convert.
-    to_format : str, optional
-        Target format - 'iso' or 'display' (default: 'display').
-    lang : str, optional
-        Language code 'en' or 'fr' (default: 'en').
-
-    Returns
-    -------
-    str
-        Formatted date string according to specified format.
-
+    set[str]
+        Set of placeholder names found in template
+    
+    Raises
+    ------
+    ValueError
+        If template contains invalid format string syntax
+    
     Examples
     --------
-    convert_date('2025-05-08', 'display', 'en') -> 'May 8, 2025'
-    convert_date('2025-05-08', 'display', 'fr') -> '8 mai 2025'
-    convert_date('May 8, 2025', 'iso', 'en') -> '2025-05-08'
-    convert_date('8 mai 2025', 'iso', 'fr') -> '2025-05-08'
+    >>> extract_template_fields("{client_id}_{date_of_birth_iso}")
+    {'client_id', 'date_of_birth_iso'}
     """
-    if pd.isna(date_str):
-        return None
-
     try:
-        # Convert input to datetime object
-        if isinstance(date_str, (pd.Timestamp, datetime)):
-            date_obj = date_str
-        elif isinstance(date_str, str):
-            if "-" in date_str:  # ISO format
-                date_obj = datetime.strptime(date_str.strip(), "%Y-%m-%d")
-            else:  # Localized format
-                try:
-                    if lang == "fr":
-                        day, month, year = date_str.split()
-                        month_num = FRENCH_MONTHS_REV.get(month.lower())
-                        if not month_num:
-                            raise ValueError(f"Invalid French month: {month}")
-                        date_obj = datetime(int(year), month_num, int(day))
-                    else:
-                        month, rest = date_str.split(maxsplit=1)
-                        day, year = rest.rstrip(",").split(",")
-                        month_num = ENGLISH_MONTHS_REV.get(month.strip().lower())
-                        if not month_num:
-                            raise ValueError(f"Invalid English month: {month}")
-                        date_obj = datetime(int(year), month_num, int(day.strip()))
-                except (ValueError, KeyError) as e:
-                    raise ValueError(f"Unable to parse date string: {date_str}") from e
-        else:
-            raise ValueError(f"Unsupported date type: {type(date_str)}")
-
-        # Convert to target format
-        if to_format == "iso":
-            return date_obj.strftime("%Y-%m-%d")
-        else:  # display format
-            if lang == "fr":
-                month_name = FRENCH_MONTHS[date_obj.month]
-                return f"{date_obj.day} {month_name} {date_obj.year}"
-            else:
-                month_name = ENGLISH_MONTHS[date_obj.month]
-                return f"{month_name} {date_obj.day}, {date_obj.year}"
-
-    except Exception as e:
-        raise ValueError(f"Date conversion failed: {str(e)}") from e
+        return {
+            field_name
+            for _, field_name, _, _ in _FORMATTER.parse(template)
+            if field_name
+        }
+    except ValueError as exc:
+        raise ValueError(f"Invalid template format: {exc}") from exc
 
 
-def over_16_check(date_of_birth, delivery_date):
-    """Check if a client is over 16 years old on delivery date.
-
+def validate_and_format_template(
+    template: str,
+    context: dict[str, str],
+    allowed_fields: set[str] | None = None,
+) -> str:
+    """Format template and validate placeholders against allowed set.
+    
+    Ensures that:
+    1. All placeholders in template exist in context
+    2. All placeholders are in the allowed_fields set (if provided)
+    3. Template is successfully rendered
+    
     Parameters
     ----------
-    date_of_birth : str
-        Date of birth in YYYY-MM-DD format.
-    delivery_date : str
-        Delivery date in YYYY-MM-DD format.
-
-    Returns
-    -------
-    bool
-        True if the client is over 16 years old on delivery_date, False otherwise.
-    """
-
-    birth_datetime = datetime.strptime(date_of_birth, "%Y-%m-%d")
-    delivery_datetime = datetime.strptime(delivery_date, "%Y-%m-%d")
-
-    age = delivery_datetime.year - birth_datetime.year
-
-    # Adjust if birthday hasn't occurred yet in the DOV month
-    if (delivery_datetime.month < birth_datetime.month) or (
-        delivery_datetime.month == birth_datetime.month
-        and delivery_datetime.day < birth_datetime.day
-    ):
-        age -= 1
-
-    return age >= 16
-
-
-def calculate_age(DOB, DOV):
-    """Calculate the age in years and months.
-
-    Parameters
-    ----------
-    DOB : str
-        Date of birth in YYYY-MM-DD format.
-    DOV : str
-        Date of visit in YYYY-MM-DD or Mon DD, YYYY format.
-
+    template : str
+        Format string template with placeholders
+    context : dict[str, str]
+        Context dict with placeholder values
+    allowed_fields : set[str] | None
+        Set of allowed placeholder names. If None, allows any placeholder
+        that exists in context.
+    
     Returns
     -------
     str
-        Age string in format "YY Y MM M" (e.g., "5Y 3M").
+        Rendered template
+    
+    Raises
+    ------
+    KeyError
+        If template contains placeholders not in context
+    ValueError
+        If template contains disallowed placeholders (when allowed_fields provided)
+    
+    Examples
+    --------
+    >>> ctx = {"client_id": "12345", "date_of_birth_iso": "2015-03-15"}
+    >>> validate_and_format_template(
+    ...     "{client_id}_{date_of_birth_iso}",
+    ...     ctx,
+    ...     allowed_fields={"client_id", "date_of_birth_iso"}
+    ... )
+    '12345_2015-03-15'
     """
-    DOB_datetime = datetime.strptime(DOB, "%Y-%m-%d")
-
-    if DOV[0].isdigit():
-        DOV_datetime = datetime.strptime(DOV, "%Y-%m-%d")
-    else:
-        DOV_datetime = datetime.strptime(DOV, "%b %d, %Y")
-
-    years = DOV_datetime.year - DOB_datetime.year
-    months = DOV_datetime.month - DOB_datetime.month
-
-    if DOV_datetime.day < DOB_datetime.day:
-        months -= 1
-
-    if months < 0:
-        years -= 1
-        months += 12
-
-    return f"{years}Y {months}M"
-
-
-def generate_qr_code(
-    data: str,
-    output_dir: Path,
-    *,
-    filename: Optional[str] = None,
-) -> Path:
-    """Generate a monochrome QR code PNG and return the saved path.
-
-    Parameters
-    ----------
-    data:
-        The string payload to encode inside the QR code.
-    output_dir:
-        Directory where the QR image should be saved. The directory is created
-        if it does not already exist.
-    filename:
-        Optional file name (including extension) for the resulting PNG. When
-        omitted a deterministic name derived from the payload hash is used.
-
-    Returns
-    -------
-    Path
-        Absolute path to the generated PNG file.
-    """
-
-    if qrcode is None or Image is None:  # pragma: no cover - exercised in optional envs
-        raise RuntimeError(
-            "QR code generation requires the 'qrcode' and 'pillow' packages. "
-            "Install them via 'uv sync' before enabling QR payloads."
+    placeholders = extract_template_fields(template)
+    
+    # Check for missing placeholders in context
+    unknown_fields = placeholders - context.keys()
+    if unknown_fields:
+        raise KeyError(
+            f"Unknown placeholder(s) {sorted(unknown_fields)} in template. "
+            f"Available: {sorted(context.keys())}"
         )
-
-    output_dir.mkdir(parents=True, exist_ok=True)
-
-    qr = qrcode.QRCode(
-        version=1,
-        error_correction=qrcode.constants.ERROR_CORRECT_L,
-        box_size=10,
-        border=4,
-    )
-    qr.add_data(data)
-    qr.make(fit=True)
-
-    image = qr.make_image(fill_color="black", back_color="white")
-    pil_image = getattr(image, "get_image", lambda: image)()
-
-    # Convert to 1-bit black/white without dithering to keep crisp edges.
-    pil_bitmap = pil_image.convert("1", dither=Image.NONE)
-
-    if not filename:
-        digest = hashlib.sha1(data.encode("utf-8")).hexdigest()[:12]
-        filename = f"qr_{digest}.png"
-
-    target_path = output_dir / filename
-    pil_bitmap.save(target_path, format="PNG", bits=1)
-    return target_path
+    
+    # Check for disallowed placeholders (if whitelist provided)
+    if allowed_fields is not None:
+        disallowed = placeholders - allowed_fields
+        if disallowed:
+            raise ValueError(
+                f"Disallowed placeholder(s) {sorted(disallowed)} in template. "
+                f"Allowed: {sorted(allowed_fields)}"
+            )
+    
+    return template.format(**context)
 
 
-def compile_typst(immunization_record, outpath):
-    """Compile a Typst template to PDF output.
-
+def build_client_context(
+    client_data: dict,
+    language: str,
+    delivery_date: str | None = None,
+) -> dict[str, str]:
+    """Build template context dict from client metadata for templating.
+    
+    Extracts and formats all available client fields for use in templates,
+    supporting both QR code payloads and PDF encryption passwords.
+    
     Parameters
     ----------
-    immunization_record : str
-        Path to the Typst template file.
-    outpath : str
-        Path to output PDF file.
-    """
-    typst.compile(immunization_record, output=outpath)
-
-
-def build_pdf_password(oen_partial: str, dob: str) -> str:
-    """Construct the password for PDF access based on encryption config template.
-
-    Supports template-based password generation with placeholders:
-
-    - {client_id}: Client identifier
-    - {date_of_birth_iso}: Date in YYYY-MM-DD format
-    - {date_of_birth_iso_compact}: Date in YYYYMMDD format
-
-    By default, uses the compact DOB format (YYYYMMDD).
-
-    Parameters
-    ----------
-    oen_partial : str
-        Client identifier.
-    dob : str
-        Date of birth in YYYY-MM-DD format.
-
+    client_data : dict
+        Client dict (from preprocessed artifact) with nested structure:
+        {
+            "client_id": "...",
+            "person": {"full_name": "...", "date_of_birth_iso": "..."},
+            "school": {"name": "..."},
+            "board": {"name": "..."},
+            "contact": {"postal_code": "...", "city": "...", ...}
+        }
+    language : str
+        ISO 639-1 language code ('en' for English, 'fr' for French)
+    delivery_date : str | None
+        Optional delivery date for template rendering
+    
     Returns
     -------
-    str
-        Password string for PDF encryption.
+    dict[str, str]
+        Context dict with keys:
+        - client_id
+        - first_name, last_name, name
+        - date_of_birth (display format)
+        - date_of_birth_iso (YYYY-MM-DD)
+        - date_of_birth_iso_compact (YYYYMMDD)
+        - school, board
+        - postal_code, city, province, street_address
+        - language_code ('en' or 'fr')
+        - delivery_date (if provided)
+    
+    Examples
+    --------
+    >>> client = {
+    ...     "client_id": "12345",
+    ...     "person": {"full_name": "John Doe", "date_of_birth_iso": "2015-03-15"},
+    ...     "school": {"name": "Lincoln School"},
+    ...     "contact": {"postal_code": "M5V 3A8"}
+    ... }
+    >>> ctx = build_client_context(client, "en")
+    >>> ctx["client_id"]
+    '12345'
+    >>> ctx["first_name"]
+    'John'
     """
-    config = get_encryption_config()
-    password_config = config.get("password", {})
-
-    # Get the template (default to compact DOB format if not specified)
-    template = password_config.get("template", "{date_of_birth_iso_compact}")
-
-    # Build the context with available placeholders
+    # Extract person data (handle nested structure)
+    person = client_data.get("person", {})
+    contact = client_data.get("contact", {})
+    school = client_data.get("school", {})
+    board = client_data.get("board", {})
+    
+    # Get DOB in ISO format
+    dob_iso = person.get("date_of_birth_iso") or person.get("date_of_birth", "")
+    dob_display = person.get("date_of_birth_display", "") or dob_iso
+    
+    # Extract name components
+    full_name = person.get("full_name", "")
+    name_parts = full_name.split() if full_name else ["", ""]
+    first_name = name_parts[0] if len(name_parts) > 0 else ""
+    last_name = name_parts[-1] if len(name_parts) > 1 else ""
+    
+    # Build context dict for template rendering
     context = {
-        "client_id": str(oen_partial),
-        "date_of_birth_iso": dob,
-        "date_of_birth_iso_compact": dob.replace("-", ""),
+        "client_id": string_or_empty(client_data.get("client_id", "")),
+        "first_name": string_or_empty(first_name),
+        "last_name": string_or_empty(last_name),
+        "name": string_or_empty(full_name),
+        "date_of_birth": string_or_empty(dob_display),
+        "date_of_birth_iso": string_or_empty(dob_iso),
+        "date_of_birth_iso_compact": string_or_empty(dob_iso.replace("-", "") if dob_iso else ""),
+        "school": string_or_empty(school.get("name", "")),
+        "board": string_or_empty(board.get("name", "")),
+        "postal_code": string_or_empty(contact.get("postal_code", "")),
+        "city": string_or_empty(contact.get("city", "")),
+        "province": string_or_empty(contact.get("province", "")),
+        "street_address": string_or_empty(contact.get("street", "")),
+        "language_code": language,  # ISO code: 'en' or 'fr'
     }
-
-    # Render the template
-    try:
-        password = template.format(**context)
-    except KeyError as e:
-        raise ValueError(f"Unknown placeholder in password template: {e}")
-
-    return password
-
-
-def encrypt_pdf(file_path: str, oen_partial: str, dob: str) -> str:
-    """Encrypt a PDF with a password derived from client identifier and DOB.
-
-    Parameters
-    ----------
-    file_path : str
-        Path to the PDF file to encrypt.
-    oen_partial : str
-        Client identifier.
-    dob : str
-        Date of birth in YYYY-MM-DD format.
-
-    Returns
-    -------
-    str
-        Path to the encrypted PDF file with _encrypted suffix.
-    """
-    password = build_pdf_password(str(oen_partial), str(dob))
-    reader = PdfReader(file_path, strict=False)
-    writer = PdfWriter()
-
-    copied = False
-
-    # Prefer optimized cloning/append operations when available to avoid page-by-page copies.
-    append = getattr(writer, "append", None)
-    if append:
-        try:
-            append(reader)
-            copied = True
-        except TypeError:
-            try:
-                append(file_path)
-                copied = True
-            except Exception:
-                copied = False
-        except Exception:
-            copied = False
-
-    if not copied:
-        for attr in ("clone_reader_document_root", "cloneReaderDocumentRoot"):
-            clone_fn = getattr(writer, attr, None)
-            if clone_fn:
-                try:
-                    clone_fn(reader)
-                    copied = True
-                    break
-                except Exception:
-                    copied = False
-
-    if not copied:
-        append_from_reader = getattr(writer, "appendPagesFromReader", None)
-        if append_from_reader:
-            try:
-                append_from_reader(reader)
-                copied = True
-            except Exception:
-                copied = False
-
-    if not copied:
-        for page in reader.pages:
-            writer.add_page(page)
-
-    if reader.metadata:
-        writer.add_metadata(reader.metadata)
-
-    writer.encrypt(user_password=password, owner_password=password)
-
-    src = Path(file_path)
-    encrypted_path = src.with_name(f"{src.stem}_encrypted{src.suffix}")
-    with open(encrypted_path, "wb") as f:
-        writer.write(f)
-
-    return str(encrypted_path)
-
-
-def decrypt_pdf(encrypted_file_path: str, oen_partial: str, dob: str) -> str:
-    """Decrypt a password-protected PDF and write an unencrypted copy.
-
-    Used for internal workflows and testing.
-
-    Parameters
-    ----------
-    encrypted_file_path : str
-        Path to the encrypted PDF file.
-    oen_partial : str
-        Client identifier.
-    dob : str
-        Date of birth in YYYY-MM-DD format.
-
-    Returns
-    -------
-    str
-        Path to the decrypted PDF file with _decrypted suffix.
-    """
-    password = build_pdf_password(str(oen_partial), str(dob))
-    reader = PdfReader(encrypted_file_path)
-    if reader.is_encrypted:
-        if reader.decrypt(password) == 0:
-            raise ValueError("Failed to decrypt PDF with derived password.")
-
-    writer = PdfWriter()
-    for page in reader.pages:
-        writer.add_page(page)
-
-    if reader.metadata:
-        writer.add_metadata(reader.metadata)
-
-    enc = Path(encrypted_file_path)
-    stem = enc.stem
-    if stem.endswith("_encrypted"):
-        base = stem[: -len("_encrypted")]
-    else:
-        base = stem
-    decrypted_path = enc.with_name(f"{base}_decrypted{enc.suffix}")
-    with open(decrypted_path, "wb") as f:
-        writer.write(f)
-
-    return str(decrypted_path)
+    
+    if delivery_date:
+        context["delivery_date"] = string_or_empty(delivery_date)
+    
+    return context

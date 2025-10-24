@@ -290,15 +290,11 @@ def run_step_7_encrypt_pdfs(
     artifacts_dir = output_dir / "artifacts"
     json_file = artifacts_dir / f"preprocessed_clients_{run_id}.json"
 
-    # Convert language code to full language name
-    language_map = {"en": "english", "fr": "french"}
-    language_full = language_map.get(language.lower(), language)
-
     # Encrypt PDFs using the combined preprocessed clients JSON
     encrypt_notice.encrypt_pdfs_in_directory(
         pdf_directory=pdf_dir,
         json_file=json_file,
-        language=language_full,
+        language=language,
     )
 
 

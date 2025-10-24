@@ -24,12 +24,6 @@ from .data_models import (
     ClientRecord,
     PreprocessResult,
 )
-from .utils import (
-    convert_date_iso,
-    convert_date_string,
-    convert_date_string_french,
-    over_16_check,
-)
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 CONFIG_DIR = SCRIPT_DIR.parent / "config"
@@ -39,12 +33,243 @@ PARAMETERS_PATH = CONFIG_DIR / "parameters.yaml"
 
 LOG = logging.getLogger(__name__)
 
-LANGUAGE_LABELS = {
-    "en": "english",
-    "fr": "french",
-}
-
 _FORMATTER = Formatter()
+
+# Date conversion helpers (colocated from utils.py)
+FRENCH_MONTHS = {
+    1: "janvier",
+    2: "février",
+    3: "mars",
+    4: "avril",
+    5: "mai",
+    6: "juin",
+    7: "juillet",
+    8: "août",
+    9: "septembre",
+    10: "octobre",
+    11: "novembre",
+    12: "décembre",
+}
+FRENCH_MONTHS_REV = {v.lower(): k for k, v in FRENCH_MONTHS.items()}
+
+ENGLISH_MONTHS = {
+    1: "Jan",
+    2: "Feb",
+    3: "Mar",
+    4: "Apr",
+    5: "May",
+    6: "Jun",
+    7: "Jul",
+    8: "Aug",
+    9: "Sep",
+    10: "Oct",
+    11: "Nov",
+    12: "Dec",
+}
+ENGLISH_MONTHS_REV = {v.lower(): k for k, v in ENGLISH_MONTHS.items()}
+
+
+def convert_date_string_french(date_str):
+    """Convert a date string from YYYY-MM-DD format to French display format.
+
+    Parameters
+    ----------
+    date_str : str
+        Date string in YYYY-MM-DD format.
+
+    Returns
+    -------
+    str
+        Date in French format (e.g., "8 mai 2025").
+    """
+    date_obj = datetime.strptime(date_str, "%Y-%m-%d")
+    day = date_obj.day
+    month = FRENCH_MONTHS[date_obj.month]
+    year = date_obj.year
+
+    return f"{day} {month} {year}"
+
+
+def convert_date_string(date_str):
+    """Convert a date to English display format.
+
+    Parameters
+    ----------
+    date_str : str | datetime | pd.Timestamp
+        Date string in YYYY-MM-DD format or datetime-like object.
+
+    Returns
+    -------
+    str
+        Date in the format Mon DD, YYYY (e.g., "May 8, 2025").
+    """
+    if pd.isna(date_str):
+        return None
+
+    # If it's already a datetime or Timestamp
+    if isinstance(date_str, (pd.Timestamp, datetime)):
+        return date_str.strftime("%b %d, %Y")
+
+    # Otherwise assume string input
+    try:
+        date_obj = datetime.strptime(str(date_str).strip(), "%Y-%m-%d")
+        return date_obj.strftime("%b %d, %Y")
+    except ValueError:
+        raise ValueError(f"Unrecognized date format: {date_str}")
+
+
+def convert_date_iso(date_str):
+    """Convert a date from English display format to ISO format.
+
+    Parameters
+    ----------
+    date_str : str
+        Date in English display format (e.g., "May 8, 2025").
+
+    Returns
+    -------
+    str
+        Date in ISO format (YYYY-MM-DD).
+    """
+    date_obj = datetime.strptime(date_str, "%b %d, %Y")
+    return date_obj.strftime("%Y-%m-%d")
+
+
+def convert_date(
+    date_str: str, to_format: str = "display", lang: str = "en"
+) -> Optional[str]:
+    """Convert dates between ISO and localized display formats.
+
+    Parameters
+    ----------
+    date_str : str | datetime | pd.Timestamp
+        Date string to convert.
+    to_format : str, optional
+        Target format - 'iso' or 'display' (default: 'display').
+    lang : str, optional
+        Language code 'en' or 'fr' (default: 'en').
+
+    Returns
+    -------
+    str
+        Formatted date string according to specified format.
+
+    Examples
+    --------
+    convert_date('2025-05-08', 'display', 'en') -> 'May 8, 2025'
+    convert_date('2025-05-08', 'display', 'fr') -> '8 mai 2025'
+    convert_date('May 8, 2025', 'iso', 'en') -> '2025-05-08'
+    convert_date('8 mai 2025', 'iso', 'fr') -> '2025-05-08'
+    """
+    if pd.isna(date_str):
+        return None
+
+    try:
+        # Convert input to datetime object
+        if isinstance(date_str, (pd.Timestamp, datetime)):
+            date_obj = date_str
+        elif isinstance(date_str, str):
+            if "-" in date_str:  # ISO format
+                date_obj = datetime.strptime(date_str.strip(), "%Y-%m-%d")
+            else:  # Localized format
+                try:
+                    if lang == "fr":
+                        day, month, year = date_str.split()
+                        month_num = FRENCH_MONTHS_REV.get(month.lower())
+                        if not month_num:
+                            raise ValueError(f"Invalid French month: {month}")
+                        date_obj = datetime(int(year), month_num, int(day))
+                    else:
+                        month, rest = date_str.split(maxsplit=1)
+                        day, year = rest.rstrip(",").split(",")
+                        month_num = ENGLISH_MONTHS_REV.get(month.strip().lower())
+                        if not month_num:
+                            raise ValueError(f"Invalid English month: {month}")
+                        date_obj = datetime(int(year), month_num, int(day.strip()))
+                except (ValueError, KeyError) as e:
+                    raise ValueError(f"Unable to parse date string: {date_str}") from e
+        else:
+            raise ValueError(f"Unsupported date type: {type(date_str)}")
+
+        # Convert to target format
+        if to_format == "iso":
+            return date_obj.strftime("%Y-%m-%d")
+        else:  # display format
+            if lang == "fr":
+                month_name = FRENCH_MONTHS[date_obj.month]
+                return f"{date_obj.day} {month_name} {date_obj.year}"
+            else:
+                month_name = ENGLISH_MONTHS[date_obj.month]
+                return f"{month_name} {date_obj.day}, {date_obj.year}"
+
+    except Exception as e:
+        raise ValueError(f"Date conversion failed: {str(e)}") from e
+
+
+def over_16_check(date_of_birth, delivery_date):
+    """Check if a client is over 16 years old on delivery date.
+
+    Parameters
+    ----------
+    date_of_birth : str
+        Date of birth in YYYY-MM-DD format.
+    delivery_date : str
+        Delivery date in YYYY-MM-DD format.
+
+    Returns
+    -------
+    bool
+        True if the client is over 16 years old on delivery_date, False otherwise.
+    """
+
+    birth_datetime = datetime.strptime(date_of_birth, "%Y-%m-%d")
+    delivery_datetime = datetime.strptime(delivery_date, "%Y-%m-%d")
+
+    age = delivery_datetime.year - birth_datetime.year
+
+    # Adjust if birthday hasn't occurred yet in the DOV month
+    if (delivery_datetime.month < birth_datetime.month) or (
+        delivery_datetime.month == birth_datetime.month
+        and delivery_datetime.day < birth_datetime.day
+    ):
+        age -= 1
+
+    return age >= 16
+
+
+def calculate_age(DOB, DOV):
+    """Calculate the age in years and months.
+
+    Parameters
+    ----------
+    DOB : str
+        Date of birth in YYYY-MM-DD format.
+    DOV : str
+        Date of visit in YYYY-MM-DD or Mon DD, YYYY format.
+
+    Returns
+    -------
+    str
+        Age string in format "YY Y MM M" (e.g., "5Y 3M").
+    """
+    DOB_datetime = datetime.strptime(DOB, "%Y-%m-%d")
+
+    if DOV[0].isdigit():
+        DOV_datetime = datetime.strptime(DOV, "%Y-%m-%d")
+    else:
+        DOV_datetime = datetime.strptime(DOV, "%b %d, %Y")
+
+    years = DOV_datetime.year - DOB_datetime.year
+    months = DOV_datetime.month - DOB_datetime.month
+
+    if DOV_datetime.day < DOB_datetime.day:
+        months -= 1
+
+    if months < 0:
+        years -= 1
+        months += 12
+
+    return f"{years}Y {months}M"
 
 IGNORE_AGENTS = [
     "-unspecified",
