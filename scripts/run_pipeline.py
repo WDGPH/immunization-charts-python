@@ -32,7 +32,7 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 ROOT_DIR = SCRIPT_DIR.parent
 DEFAULT_INPUT_DIR = ROOT_DIR / "input"
 DEFAULT_OUTPUT_DIR = ROOT_DIR / "output"
-DEFAULT_ASSETS_DIR = ROOT_DIR / "assets"
+DEFAULT_TEMPLATES_ASSETS_DIR = ROOT_DIR / "templates" / "assets"
 DEFAULT_CONFIG_DIR = ROOT_DIR / "config"
 
 
@@ -454,7 +454,7 @@ def main(argv: Optional[list[str]] = None) -> int:
         run_step_4_generate_notices(
             output_dir,
             run_id,
-            DEFAULT_ASSETS_DIR,
+            DEFAULT_TEMPLATES_ASSETS_DIR,
             config_dir,
         )
         step_duration = time.time() - step_start

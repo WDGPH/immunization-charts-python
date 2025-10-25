@@ -8,6 +8,8 @@
 
 The main package is `scripts/`, containing the 9-step pipeline orchestrator and supporting modules. This is a deliberate architectural choice—**do not refactor into a different package structure** without explicit guidance. All entry points (`viper` CLI) and imports (`from scripts import ...`) depend on this naming. The module organization follows pipeline steps 1–9, not functional categories.
 
+Template modules are in the `templates/` package (`en_template.py`, `fr_template.py`), imported as `from templates import ...` by the pipeline. This separation keeps typesetting logic distinct from orchestration.
+
 ## Dependency Management
 
 **Tight control via `uv` lockfile, not runtime fallbacks.** Dependencies are pinned in `uv.lock`. Write code for the specific, tested versions in that lockfile—not for theoretical version compatibility. Document version requirements in `pyproject.toml` only when necessary. **Do not add runtime fallbacks** (e.g., try PyPDF method A, fallback to method B) to support multiple versions. If a dependency needs a version bump, update `pyproject.toml`, run `uv sync`, test, and commit the new lockfile. The lockfile is the single source of truth.

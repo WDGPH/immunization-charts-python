@@ -64,7 +64,9 @@ The `scripts/` package is organized by pipeline function, not by layer. Each ste
 | 8 | `batch_pdfs.py` | PDF batching & grouping (optional) |
 | 9 | `cleanup.py` | Intermediate file cleanup |
 
-**Supporting modules:** `run_pipeline.py` (orchestrator), `config_loader.py`, `data_models.py`, `enums.py`, `utils.py`, `generate_mock_template_en.py`, `generate_mock_template_fr.py`. For module structure questions, see `docs/CODE_ANALYSIS_STANDARDS.md`.
+**Supporting modules:** `run_pipeline.py` (orchestrator), `config_loader.py`, `data_models.py`, `enums.py`, `utils.py`. 
+
+**Template modules** (in `templates/` package): `en_template.py`, `fr_template.py` (Typst template rendering). For module structure questions, see `docs/CODE_ANALYSIS_STANDARDS.md`.
 
 ### Orchestration Model
 
