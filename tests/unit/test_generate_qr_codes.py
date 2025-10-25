@@ -41,12 +41,14 @@ class TestLoadQrSettings:
         """
         config_path = tmp_test_dir / "config.yaml"
         config_path.write_text(
-            yaml.dump({
-                "qr": {
-                    "payload_template": "https://example.com/update?client_id={client_id}"
-                },
-                "delivery_date": "2025-04-08",
-            })
+            yaml.dump(
+                {
+                    "qr": {
+                        "payload_template": "https://example.com/update?client_id={client_id}"
+                    },
+                    "delivery_date": "2025-04-08",
+                }
+            )
         )
 
         template, delivery_date = generate_qr_codes.load_qr_settings(config_path)
@@ -54,7 +56,9 @@ class TestLoadQrSettings:
         assert template == "https://example.com/update?client_id={client_id}"
         assert delivery_date == "2025-04-08"
 
-    def test_load_qr_settings_missing_template_raises_error(self, tmp_test_dir: Path) -> None:
+    def test_load_qr_settings_missing_template_raises_error(
+        self, tmp_test_dir: Path
+    ) -> None:
         """Verify error when payload_template is missing from config.
 
         Real-world significance:
@@ -78,11 +82,7 @@ class TestLoadQrSettings:
         """
         config_path = tmp_test_dir / "config.yaml"
         config_path.write_text(
-            yaml.dump({
-                "qr": {
-                    "payload_template": {"en": "url", "fr": "url"}
-                }
-            })
+            yaml.dump({"qr": {"payload_template": {"en": "url", "fr": "url"}}})
         )
 
         with pytest.raises(ValueError, match="must be a string"):
@@ -107,11 +107,9 @@ class TestLoadQrSettings:
         """
         config_path = tmp_test_dir / "config.yaml"
         config_path.write_text(
-            yaml.dump({
-                "qr": {
-                    "payload_template": "https://example.com?id={client_id}"
-                }
-            })
+            yaml.dump(
+                {"qr": {"payload_template": "https://example.com?id={client_id}"}}
+            )
         )
 
         template, delivery_date = generate_qr_codes.load_qr_settings(config_path)
@@ -215,25 +213,52 @@ class TestBuildQrContext:
         """
         # Both names
         context = generate_qr_codes._build_qr_context(
-            client_id="1", first_name="Alice", last_name="Smith",
-            dob_display="", dob_iso=None, school="", city="", postal_code="",
-            province="", street_address="", language_code="en", delivery_date=None,
+            client_id="1",
+            first_name="Alice",
+            last_name="Smith",
+            dob_display="",
+            dob_iso=None,
+            school="",
+            city="",
+            postal_code="",
+            province="",
+            street_address="",
+            language_code="en",
+            delivery_date=None,
         )
         assert context["name"] == "Alice Smith"
 
         # Only first name
         context = generate_qr_codes._build_qr_context(
-            client_id="2", first_name="Bob", last_name="",
-            dob_display="", dob_iso=None, school="", city="", postal_code="",
-            province="", street_address="", language_code="en", delivery_date=None,
+            client_id="2",
+            first_name="Bob",
+            last_name="",
+            dob_display="",
+            dob_iso=None,
+            school="",
+            city="",
+            postal_code="",
+            province="",
+            street_address="",
+            language_code="en",
+            delivery_date=None,
         )
         assert context["name"] == "Bob"
 
         # Only last name
         context = generate_qr_codes._build_qr_context(
-            client_id="3", first_name="", last_name="Jones",
-            dob_display="", dob_iso=None, school="", city="", postal_code="",
-            province="", street_address="", language_code="en", delivery_date=None,
+            client_id="3",
+            first_name="",
+            last_name="Jones",
+            dob_display="",
+            dob_iso=None,
+            school="",
+            city="",
+            postal_code="",
+            province="",
+            street_address="",
+            language_code="en",
+            delivery_date=None,
         )
         assert context["name"] == "Jones"
 
@@ -416,7 +441,9 @@ class TestFormatQrPayload:
 class TestGenerateQrCodes:
     """Unit tests for generate_qr_codes orchestration function."""
 
-    def test_generate_qr_codes_disabled_returns_empty(self, tmp_output_structure) -> None:
+    def test_generate_qr_codes_disabled_returns_empty(
+        self, tmp_output_structure
+    ) -> None:
         """Verify QR generation skipped when disabled in config.
 
         Real-world significance:
@@ -436,14 +463,17 @@ class TestGenerateQrCodes:
         config_path.write_text(yaml.dump(config))
 
         result = generate_qr_codes.generate_qr_codes(
-            artifact_path.parent / f"preprocessed_clients_{artifact.run_id}_{artifact.language}.json",
+            artifact_path.parent
+            / f"preprocessed_clients_{artifact.run_id}_{artifact.language}.json",
             tmp_output_structure["root"],
             config_path,
         )
 
         assert result == []
 
-    def test_generate_qr_codes_no_clients_returns_empty(self, tmp_output_structure) -> None:
+    def test_generate_qr_codes_no_clients_returns_empty(
+        self, tmp_output_structure
+    ) -> None:
         """Verify empty list returned when artifact has no clients.
 
         Real-world significance:
@@ -477,9 +507,7 @@ class TestGenerateQrCodes:
 
         assert result == []
 
-    def test_generate_qr_codes_creates_subdirectory(
-        self, tmp_output_structure
-    ) -> None:
+    def test_generate_qr_codes_creates_subdirectory(self, tmp_output_structure) -> None:
         """Verify qr_codes subdirectory is created.
 
         Real-world significance:
@@ -505,7 +533,8 @@ class TestGenerateQrCodes:
         with patch("scripts.generate_qr_codes.generate_qr_code") as mock_gen:
             mock_gen.return_value = Path("dummy.png")
             generate_qr_codes.generate_qr_codes(
-                artifact_path.parent / f"preprocessed_clients_{artifact.run_id}_{artifact.language}.json",
+                artifact_path.parent
+                / f"preprocessed_clients_{artifact.run_id}_{artifact.language}.json",
                 tmp_output_structure["root"],
                 config_path,
             )
@@ -531,7 +560,8 @@ class TestGenerateQrCodes:
 
         with pytest.raises(RuntimeError, match="Cannot generate QR codes"):
             generate_qr_codes.generate_qr_codes(
-                artifact_path.parent / f"preprocessed_clients_{artifact.run_id}_{artifact.language}.json",
+                artifact_path.parent
+                / f"preprocessed_clients_{artifact.run_id}_{artifact.language}.json",
                 tmp_output_structure["root"],
                 config_path,
             )

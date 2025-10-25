@@ -49,7 +49,9 @@ def get_encryption_config():
     return _load_encryption_config()
 
 
-def encrypt_pdf(file_path: str, context_or_oen: str | dict, dob: str | None = None) -> str:
+def encrypt_pdf(
+    file_path: str, context_or_oen: str | dict, dob: str | None = None
+) -> str:
     """Encrypt a PDF with a password derived from client context.
 
     Supports two calling patterns:
@@ -98,7 +100,7 @@ def encrypt_pdf(file_path: str, context_or_oen: str | dict, dob: str | None = No
             password = template.format(**context)
         except KeyError as e:
             raise ValueError(f"Unknown placeholder in password template: {e}")
-    
+
     reader = PdfReader(file_path, strict=False)
     writer = PdfWriter()
 
@@ -120,7 +122,7 @@ def encrypt_pdf(file_path: str, context_or_oen: str | dict, dob: str | None = No
 
 def _load_notice_metadata(json_path: Path, language: str) -> tuple:
     """Load client data and context from JSON notice metadata.
-    
+
     Returns both the client data dict and the context for password template rendering.
     """
     try:
@@ -133,7 +135,7 @@ def _load_notice_metadata(json_path: Path, language: str) -> tuple:
 
     first_key = next(iter(payload))
     record = payload[first_key]
-    
+
     # Ensure record has required fields for context building
     if not isinstance(record, dict):
         raise ValueError(f"Invalid client record format in {json_path.name}")

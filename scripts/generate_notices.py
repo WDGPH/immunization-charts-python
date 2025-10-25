@@ -26,6 +26,7 @@ ROOT_DIR = SCRIPT_DIR.parent
 LOG = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
+
 # Colocated from utils.py
 def compile_typst(immunization_record, outpath):
     """Compile a Typst template to PDF output.
@@ -50,7 +51,7 @@ def read_artifact(path: Path) -> ArtifactPayload:
     """Read and deserialize the preprocessed artifact JSON."""
     payload_dict = json.loads(path.read_text(encoding="utf-8"))
     clients = []
-    
+
     for client_dict in payload_dict["clients"]:
         client = ClientRecord(
             sequence=client_dict["sequence"],
@@ -67,7 +68,7 @@ def read_artifact(path: Path) -> ArtifactPayload:
             qr=client_dict.get("qr"),
         )
         clients.append(client)
-    
+
     return ArtifactPayload(
         run_id=payload_dict["run_id"],
         language=payload_dict["language"],

@@ -204,9 +204,7 @@ class TestNoticeToCompileArtifactContract:
             if client.qr:
                 assert "filename" in client.qr
 
-    def test_vaccines_due_list_for_notice_rendering(
-        self, tmp_test_dir: Path
-    ) -> None:
+    def test_vaccines_due_list_for_notice_rendering(self, tmp_test_dir: Path) -> None:
         """Verify vaccines_due_list is populated for notice template iteration.
 
         Real-world significance:
@@ -273,7 +271,9 @@ class TestQrPayloadGeneration:
         - ISO date format (2015-06-15) is unambiguous vs regional formats
         - Used in many backend systems for DOB verification
         """
-        config_qr_template = "https://example.com/update?client_id={client_id}&dob={date_of_birth_iso}"
+        config_qr_template = (
+            "https://example.com/update?client_id={client_id}&dob={date_of_birth_iso}"
+        )
 
         client = sample_input.create_test_client_record(
             client_id="C99999",

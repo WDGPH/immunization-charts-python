@@ -231,7 +231,9 @@ def disease_map_file(tmp_test_dir: Path, default_disease_map: Dict[str, str]) ->
 
 
 @pytest.fixture
-def vaccine_reference_file(tmp_test_dir: Path, default_vaccine_reference: Dict[str, list]) -> Path:
+def vaccine_reference_file(
+    tmp_test_dir: Path, default_vaccine_reference: Dict[str, list]
+) -> Path:
     """Create a temporary vaccine reference file.
 
     Real-world significance:

@@ -31,7 +31,9 @@ from scripts import prepare_output
 class TestPurgeOutputDirectory:
     """Unit tests for directory purging logic."""
 
-    def test_purge_removes_all_files_except_logs(self, tmp_output_structure: dict) -> None:
+    def test_purge_removes_all_files_except_logs(
+        self, tmp_output_structure: dict
+    ) -> None:
         """Verify purge removes files but preserves log directory.
 
         Real-world significance:
@@ -81,7 +83,9 @@ class TestPurgeOutputDirectory:
         # Verify entire artifacts directory is removed
         assert not tmp_output_structure["artifacts"].exists()
 
-    def test_purge_with_symlink_to_logs_preserves_it(self, tmp_output_structure: dict) -> None:
+    def test_purge_with_symlink_to_logs_preserves_it(
+        self, tmp_output_structure: dict
+    ) -> None:
         """Verify purge doesn't remove symlinks to log directory.
 
         Real-world significance:
@@ -170,7 +174,9 @@ class TestPrepareOutputDirectory:
 
         assert result is True
 
-    def test_prepare_aborts_when_user_declines(self, tmp_output_structure: dict) -> None:
+    def test_prepare_aborts_when_user_declines(
+        self, tmp_output_structure: dict
+    ) -> None:
         """Verify cleanup is skipped when user declines prompt.
 
         Real-world significance:
@@ -228,7 +234,9 @@ class TestIsLogDirectory:
 
         assert result is False
 
-    def test_is_log_directory_handles_missing_candidate(self, tmp_test_dir: Path) -> None:
+    def test_is_log_directory_handles_missing_candidate(
+        self, tmp_test_dir: Path
+    ) -> None:
         """Verify missing candidate file is handled gracefully.
 
         Real-world significance:

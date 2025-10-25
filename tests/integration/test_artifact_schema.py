@@ -57,7 +57,9 @@ class TestArtifactSchema:
         - Artifacts must be persistent across pipeline runs
         - Must survive round-trip serialization without data loss
         """
-        original = sample_input.create_test_artifact_payload(num_clients=3, run_id="test_001")
+        original = sample_input.create_test_artifact_payload(
+            num_clients=3, run_id="test_001"
+        )
 
         # Write artifact
         artifact_path = sample_input.write_test_artifact(original, tmp_path)

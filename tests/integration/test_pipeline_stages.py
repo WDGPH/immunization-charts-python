@@ -66,9 +66,7 @@ class TestPreprocessToQrStepIntegration:
             assert "school" in client_dict
             assert "contact" in client_dict
 
-    def test_client_sequence_ordered_for_qr_files(
-        self, tmp_test_dir: Path
-    ) -> None:
+    def test_client_sequence_ordered_for_qr_files(self, tmp_test_dir: Path) -> None:
         """Verify client sequences are deterministic for QR filename generation.
 
         Real-world significance:
@@ -78,7 +76,7 @@ class TestPreprocessToQrStepIntegration:
         """
         clients = [
             sample_input.create_test_client_record(
-                sequence=f"{i+1:05d}",
+                sequence=f"{i + 1:05d}",
                 client_id=f"C{i:05d}",
                 language="en",
             )
@@ -98,9 +96,7 @@ class TestPreprocessToQrStepIntegration:
         sequences = [c.sequence for c in artifact.clients]
         assert sequences == ["00001", "00002", "00003", "00004", "00005"]
 
-    def test_language_consistency_preprocess_to_qr(
-        self, tmp_test_dir: Path
-    ) -> None:
+    def test_language_consistency_preprocess_to_qr(self, tmp_test_dir: Path) -> None:
         """Verify language is preserved and consistent across steps.
 
         Real-world significance:
@@ -166,9 +162,7 @@ class TestQrToNoticeGenerationIntegration:
         except KeyError as e:
             pytest.fail(f"Template refers to missing field: {e}")
 
-    def test_qr_filename_reference_in_artifact(
-        self, tmp_test_dir: Path
-    ) -> None:
+    def test_qr_filename_reference_in_artifact(self, tmp_test_dir: Path) -> None:
         """Verify artifact can reference QR file generated in Step 3.
 
         Real-world significance:
@@ -244,9 +238,7 @@ class TestNoticeToCompileIntegration:
         assert template_vars["client_last_name"] == "Zephyr"
         assert len(template_vars["vaccines_list"]) == 3
 
-    def test_typst_file_structure_consistency(
-        self, tmp_test_dir: Path
-    ) -> None:
+    def test_typst_file_structure_consistency(self, tmp_test_dir: Path) -> None:
         """Verify .typ files can be structured for Typst compilation.
 
         Real-world significance:
@@ -286,9 +278,7 @@ DOB: 2015-06-15
 class TestCompilationToPdfValidation:
     """Integration tests for Typst compilation → PDF validation workflow."""
 
-    def test_pdf_page_count_validation_structure(
-        self, tmp_test_dir: Path
-    ) -> None:
+    def test_pdf_page_count_validation_structure(self, tmp_test_dir: Path) -> None:
         """Verify PDF validation can record page counts for compiled files.
 
         Real-world significance:
@@ -403,9 +393,7 @@ class TestEncryptionToBatchingWorkflow:
         assert pdf_data["client"]["school"]  # For group_by="school"
         assert pdf_data["client"]["board"]  # For group_by="board"
 
-    def test_batching_manifest_generation_from_pdfs(
-        self, tmp_test_dir: Path
-    ) -> None:
+    def test_batching_manifest_generation_from_pdfs(self, tmp_test_dir: Path) -> None:
         """Verify batching creates manifest of grouped PDFs.
 
         Real-world significance:

@@ -63,12 +63,10 @@ def create_test_pdf(path: Path, num_pages: int = 1) -> None:
     writer = PdfWriter()
     for _ in range(num_pages):
         writer.add_blank_page(width=612, height=792)
-    
+
     path.parent.mkdir(parents=True, exist_ok=True)
-    with open(path, 'wb') as f:
+    with open(path, "wb") as f:
         writer.write(f)
-
-
 
 
 @pytest.mark.unit
@@ -191,7 +189,9 @@ class TestLoadArtifact:
         - Batching step depends on artifact created by preprocess step
         """
         run_id = "test_001"
-        artifact = sample_input.create_test_artifact_payload(num_clients=2, run_id=run_id)
+        artifact = sample_input.create_test_artifact_payload(
+            num_clients=2, run_id=run_id
+        )
         artifact_dir = tmp_path / "artifacts"
         artifact_dir.mkdir()
 
@@ -224,7 +224,9 @@ class TestBuildClientLookup:
         Real-world significance:
         - Lookup allows fast PDF-to-client metadata association
         """
-        artifact = sample_input.create_test_artifact_payload(num_clients=3, run_id="test")
+        artifact = sample_input.create_test_artifact_payload(
+            num_clients=3, run_id="test"
+        )
         artifact_dict = artifact_to_dict(artifact)
         lookup = batch_pdfs.build_client_lookup(artifact_dict)
 
@@ -240,7 +242,9 @@ class TestBuildClientLookup:
         Real-world significance:
         - Downstream code needs complete client metadata
         """
-        artifact = sample_input.create_test_artifact_payload(num_clients=1, run_id="test")
+        artifact = sample_input.create_test_artifact_payload(
+            num_clients=1, run_id="test"
+        )
         artifact_dict = artifact_to_dict(artifact)
         lookup = batch_pdfs.build_client_lookup(artifact_dict)
 
@@ -298,7 +302,9 @@ class TestDiscoverPdfs:
             "en_notice_00003_client3.pdf",
         ]
 
-    def test_discover_pdfs_missing_directory_returns_empty(self, tmp_path: Path) -> None:
+    def test_discover_pdfs_missing_directory_returns_empty(
+        self, tmp_path: Path
+    ) -> None:
         """Verify discover_pdfs returns empty list for missing directory.
 
         Real-world significance:
@@ -312,13 +318,17 @@ class TestDiscoverPdfs:
 class TestBuildPdfRecords:
     """Unit tests for build_pdf_records function."""
 
-    def test_build_pdf_records_creates_records_with_metadata(self, tmp_path: Path) -> None:
+    def test_build_pdf_records_creates_records_with_metadata(
+        self, tmp_path: Path
+    ) -> None:
         """Verify build_pdf_records creates PdfRecord for each PDF.
 
         Real-world significance:
         - Records capture PDF metadata needed for batching
         """
-        artifact = sample_input.create_test_artifact_payload(num_clients=2, run_id="test")
+        artifact = sample_input.create_test_artifact_payload(
+            num_clients=2, run_id="test"
+        )
         artifact_dict = artifact_to_dict(artifact)
         pdf_dir = tmp_path / "pdf_individual"
         pdf_dir.mkdir()
@@ -344,7 +354,9 @@ class TestBuildPdfRecords:
         Real-world significance:
         - Consistent batch ordering
         """
-        artifact = sample_input.create_test_artifact_payload(num_clients=3, run_id="test")
+        artifact = sample_input.create_test_artifact_payload(
+            num_clients=3, run_id="test"
+        )
         artifact_dict = artifact_to_dict(artifact)
         pdf_dir = tmp_path / "pdf_individual"
         pdf_dir.mkdir()
@@ -368,7 +380,9 @@ class TestBuildPdfRecords:
         Real-world significance:
         - Invalid PDFs don't crash batching, only logged as warning
         """
-        artifact = sample_input.create_test_artifact_payload(num_clients=1, run_id="test")
+        artifact = sample_input.create_test_artifact_payload(
+            num_clients=1, run_id="test"
+        )
         artifact_dict = artifact_to_dict(artifact)
         pdf_dir = tmp_path / "pdf_individual"
         pdf_dir.mkdir()
@@ -394,7 +408,9 @@ class TestBuildPdfRecords:
         Real-world significance:
         - PDF without matching client metadata indicates data corruption
         """
-        artifact = sample_input.create_test_artifact_payload(num_clients=1, run_id="test")
+        artifact = sample_input.create_test_artifact_payload(
+            num_clients=1, run_id="test"
+        )
         artifact_dict = artifact_to_dict(artifact)
         pdf_dir = tmp_path / "pdf_individual"
         pdf_dir.mkdir()
@@ -418,7 +434,9 @@ class TestEnsureIds:
         Real-world significance:
         - School/board identifiers required for grouped batching
         """
-        artifact = sample_input.create_test_artifact_payload(num_clients=2, run_id="test")
+        artifact = sample_input.create_test_artifact_payload(
+            num_clients=2, run_id="test"
+        )
         artifact_dict = artifact_to_dict(artifact)
         pdf_dir = tmp_path / "pdf_individual"
         pdf_dir.mkdir()
@@ -433,7 +451,9 @@ class TestEnsureIds:
         records = batch_pdfs.build_pdf_records(tmp_path, "en", clients)
 
         # Should not raise
-        batch_pdfs.ensure_ids(records, attr="school", log_path=tmp_path / "preprocess.log")
+        batch_pdfs.ensure_ids(
+            records, attr="school", log_path=tmp_path / "preprocess.log"
+        )
 
     def test_ensure_ids_raises_for_missing_identifiers(self, tmp_path: Path) -> None:
         """Verify ensure_ids raises error if any client lacks identifier.
@@ -441,7 +461,9 @@ class TestEnsureIds:
         Real-world significance:
         - Cannot group by school if school ID is missing
         """
-        artifact = sample_input.create_test_artifact_payload(num_clients=1, run_id="test")
+        artifact = sample_input.create_test_artifact_payload(
+            num_clients=1, run_id="test"
+        )
         artifact_dict = artifact_to_dict(artifact)
         # Remove school ID
         artifact_dict["clients"][0]["school"]["id"] = None
@@ -457,7 +479,9 @@ class TestEnsureIds:
         records = batch_pdfs.build_pdf_records(tmp_path, "en", clients)
 
         with pytest.raises(ValueError, match="Missing school"):
-            batch_pdfs.ensure_ids(records, attr="school", log_path=tmp_path / "preprocess.log")
+            batch_pdfs.ensure_ids(
+                records, attr="school", log_path=tmp_path / "preprocess.log"
+            )
 
 
 @pytest.mark.unit
@@ -470,7 +494,9 @@ class TestGroupRecords:
         Real-world significance:
         - School-based batching requires grouping by school identifier
         """
-        artifact = sample_input.create_test_artifact_payload(num_clients=4, run_id="test")
+        artifact = sample_input.create_test_artifact_payload(
+            num_clients=4, run_id="test"
+        )
         artifact_dict = artifact_to_dict(artifact)
         pdf_dir = tmp_path / "pdf_individual"
         pdf_dir.mkdir()
@@ -497,7 +523,9 @@ class TestGroupRecords:
         Real-world significance:
         - Consistent batch ordering across runs
         """
-        artifact = sample_input.create_test_artifact_payload(num_clients=3, run_id="test")
+        artifact = sample_input.create_test_artifact_payload(
+            num_clients=3, run_id="test"
+        )
         artifact_dict = artifact_to_dict(artifact)
         pdf_dir = tmp_path / "pdf_individual"
         pdf_dir.mkdir()
@@ -532,7 +560,9 @@ class TestPlanBatches:
         Real-world significance:
         - Default batching strategy chunks PDFs by fixed size
         """
-        artifact = sample_input.create_test_artifact_payload(num_clients=5, run_id="test")
+        artifact = sample_input.create_test_artifact_payload(
+            num_clients=5, run_id="test"
+        )
         artifact_dict = artifact_to_dict(artifact)
         pdf_dir = tmp_path / "pdf_individual"
         pdf_dir.mkdir()
@@ -567,14 +597,18 @@ class TestPlanBatches:
         Real-world significance:
         - School-based batching groups records by school first
         """
-        artifact = sample_input.create_test_artifact_payload(num_clients=6, run_id="test")
+        artifact = sample_input.create_test_artifact_payload(
+            num_clients=6, run_id="test"
+        )
         artifact_dict = artifact_to_dict(artifact)
         pdf_dir = tmp_path / "pdf_individual"
         pdf_dir.mkdir()
 
         # Assign 2 schools, 3 clients each
         for i, client in enumerate(artifact.clients):
-            artifact_dict["clients"][i]["school"]["id"] = "school_a" if i < 3 else "school_b"
+            artifact_dict["clients"][i]["school"]["id"] = (
+                "school_a" if i < 3 else "school_b"
+            )
             seq = client.sequence
             cid = client.client_id
             pdf_path = pdf_dir / f"en_notice_{seq}_{cid}.pdf"
@@ -602,13 +636,17 @@ class TestPlanBatches:
         Real-world significance:
         - Board-based batching groups by board identifier
         """
-        artifact = sample_input.create_test_artifact_payload(num_clients=4, run_id="test")
+        artifact = sample_input.create_test_artifact_payload(
+            num_clients=4, run_id="test"
+        )
         artifact_dict = artifact_to_dict(artifact)
         pdf_dir = tmp_path / "pdf_individual"
         pdf_dir.mkdir()
 
         for i, client in enumerate(artifact.clients):
-            artifact_dict["clients"][i]["board"]["id"] = "board_x" if i < 2 else "board_y"
+            artifact_dict["clients"][i]["board"]["id"] = (
+                "board_x" if i < 2 else "board_y"
+            )
             seq = client.sequence
             cid = client.client_id
             pdf_path = pdf_dir / f"en_notice_{seq}_{cid}.pdf"
@@ -629,13 +667,17 @@ class TestPlanBatches:
 
         assert all(p.batch_type == BatchType.BOARD_GROUPED for p in plans)
 
-    def test_plan_batches_returns_empty_for_zero_batch_size(self, tmp_path: Path) -> None:
+    def test_plan_batches_returns_empty_for_zero_batch_size(
+        self, tmp_path: Path
+    ) -> None:
         """Verify plan_batches returns empty list when batch_size is 0.
 
         Real-world significance:
         - Batching disabled (batch_size=0) skips grouping
         """
-        artifact = sample_input.create_test_artifact_payload(num_clients=3, run_id="test")
+        artifact = sample_input.create_test_artifact_payload(
+            num_clients=3, run_id="test"
+        )
         artifact_dict = artifact_to_dict(artifact)
         pdf_dir = tmp_path / "pdf_individual"
         pdf_dir.mkdir()
@@ -712,7 +754,9 @@ class TestWriteBatch:
         Real-world significance:
         - Batch operation produces both PDF and metadata
         """
-        artifact = sample_input.create_test_artifact_payload(num_clients=2, run_id="test")
+        artifact = sample_input.create_test_artifact_payload(
+            num_clients=2, run_id="test"
+        )
         artifact_dict = artifact_to_dict(artifact)
         pdf_dir = tmp_path / "pdf_individual"
         pdf_dir.mkdir()
@@ -765,7 +809,9 @@ class TestWriteBatch:
         Real-world significance:
         - Manifest records batch composition for audit/tracking
         """
-        artifact = sample_input.create_test_artifact_payload(num_clients=1, run_id="test_run")
+        artifact = sample_input.create_test_artifact_payload(
+            num_clients=1, run_id="test_run"
+        )
         artifact_dict = artifact_to_dict(artifact)
         pdf_dir = tmp_path / "pdf_individual"
         pdf_dir.mkdir()
@@ -830,7 +876,9 @@ class TestBatchPdfs:
         Real-world significance:
         - Batching is optional feature (skip if disabled in config)
         """
-        artifact = sample_input.create_test_artifact_payload(num_clients=2, run_id="test")
+        artifact = sample_input.create_test_artifact_payload(
+            num_clients=2, run_id="test"
+        )
         artifact_dir = tmp_path / "artifacts"
         artifact_dir.mkdir()
 
@@ -873,7 +921,9 @@ class TestBatchPdfs:
         Real-world significance:
         - Batching must process same language as artifact
         """
-        artifact = sample_input.create_test_artifact_payload(num_clients=1, language="en", run_id="test")
+        artifact = sample_input.create_test_artifact_payload(
+            num_clients=1, language="en", run_id="test"
+        )
         artifact_dir = tmp_path / "artifacts"
         artifact_dir.mkdir()
 
@@ -898,7 +948,9 @@ class TestBatchPdfs:
         Real-world significance:
         - No PDFs generated means nothing to batch
         """
-        artifact = sample_input.create_test_artifact_payload(num_clients=1, run_id="test")
+        artifact = sample_input.create_test_artifact_payload(
+            num_clients=1, run_id="test"
+        )
         artifact_dir = tmp_path / "artifacts"
         artifact_dir.mkdir()
 

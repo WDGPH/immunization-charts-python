@@ -170,7 +170,9 @@ class TestPrintFunctions:
 class TestPipelineSteps:
     """Unit tests for individual pipeline step functions."""
 
-    def test_run_step_1_prepare_output_success(self, tmp_output_structure: dict) -> None:
+    def test_run_step_1_prepare_output_success(
+        self, tmp_output_structure: dict
+    ) -> None:
         """Verify Step 1: prepare output runs successfully.
 
         Real-world significance:
@@ -186,7 +188,9 @@ class TestPipelineSteps:
             )
             assert result is True
 
-    def test_run_step_1_prepare_output_user_cancels(self, tmp_output_structure: dict) -> None:
+    def test_run_step_1_prepare_output_user_cancels(
+        self, tmp_output_structure: dict
+    ) -> None:
         """Verify Step 1 aborts if user declines cleanup.
 
         Real-world significance:
@@ -202,7 +206,9 @@ class TestPipelineSteps:
             )
             assert result is False
 
-    def test_run_step_2_preprocess(self, tmp_test_dir: Path, tmp_output_structure: dict) -> None:
+    def test_run_step_2_preprocess(
+        self, tmp_test_dir: Path, tmp_output_structure: dict
+    ) -> None:
         """Verify Step 2: preprocess returns client count.
 
         Real-world significance:
@@ -219,7 +225,9 @@ class TestPipelineSteps:
                 mock_preprocess.build_preprocess_result.return_value = mock_result
                 mock_preprocess.read_input.return_value = MagicMock()
                 mock_preprocess.ensure_required_columns.return_value = MagicMock()
-                mock_preprocess.configure_logging.return_value = tmp_test_dir / "log.txt"
+                mock_preprocess.configure_logging.return_value = (
+                    tmp_test_dir / "log.txt"
+                )
 
                 with patch("builtins.print"):
                     total = run_pipeline.run_step_2_preprocess(
@@ -244,7 +252,9 @@ class TestPipelineSteps:
         # Create config with qr disabled
         config_file.write_text("qr:\n  enabled: false\n")
 
-        with patch("scripts.run_pipeline.load_config", return_value={"qr": {"enabled": False}}):
+        with patch(
+            "scripts.run_pipeline.load_config", return_value={"qr": {"enabled": False}}
+        ):
             with patch("builtins.print"):
                 result = run_pipeline.run_step_3_generate_qr_codes(
                     output_dir=tmp_output_structure["root"],

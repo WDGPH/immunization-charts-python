@@ -172,13 +172,7 @@ class TestGetConfigValue:
         - Used to access qr.enabled, encryption.password.template, etc.
         - Cleaner and safer than nested bracket access
         """
-        config = {
-            "section": {
-                "subsection": {
-                    "key": "nested_value"
-                }
-            }
-        }
+        config = {"section": {"subsection": {"key": "nested_value"}}}
 
         result = config_loader.get_config_value(config, "section.subsection.key")
 
@@ -219,7 +213,9 @@ class TestGetConfigValue:
         """
         config = {"section": {"key": "value"}}
 
-        result = config_loader.get_config_value(config, "section.missing.key", default="fallback")
+        result = config_loader.get_config_value(
+            config, "section.missing.key", default="fallback"
+        )
 
         assert result == "fallback"
 
@@ -232,7 +228,9 @@ class TestGetConfigValue:
         """
         config = {"section": "not_a_dict"}
 
-        result = config_loader.get_config_value(config, "section.key", default="fallback")
+        result = config_loader.get_config_value(
+            config, "section.key", default="fallback"
+        )
 
         assert result == "fallback"
 
@@ -257,7 +255,9 @@ class TestGetConfigValue:
         """
         config = {"section": {"key": None}}
 
-        result = config_loader.get_config_value(config, "section.key", default="default")
+        result = config_loader.get_config_value(
+            config, "section.key", default="default"
+        )
 
         assert result == "default"
 
@@ -275,7 +275,7 @@ class TestGetConfigValue:
             "nested": {
                 "zero": 0,
                 "false": False,
-            }
+            },
         }
 
         assert config_loader.get_config_value(config, "zero") == 0
@@ -291,10 +291,7 @@ class TestGetConfigValue:
         - chart_diseases_header and ignore_agents are lists in config
         - Must preserve list structure
         """
-        config = {
-            "items": ["a", "b", "c"],
-            "nested": {"items": [1, 2, 3]}
-        }
+        config = {"items": ["a", "b", "c"], "nested": {"items": [1, 2, 3]}}
 
         items = config_loader.get_config_value(config, "items")
         assert items == ["a", "b", "c"]

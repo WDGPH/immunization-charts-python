@@ -2,7 +2,7 @@
 
 Tests cover:
 - Complete pipeline runs for English input
-- Complete pipeline runs for French input  
+- Complete pipeline runs for French input
 - Optional feature integration (encryption, batching, QR codes)
 - Edge cases and minimal data
 
@@ -47,9 +47,9 @@ class TestFullPipelineExecution:
         input_file = project_root / "input" / "e2e_test_clients.xlsx"
         df = create_test_input_dataframe(num_clients=3)
         df.to_excel(input_file, index=False, engine="openpyxl")
-        
+
         yield input_file
-        
+
         # Cleanup
         if input_file.exists():
             input_file.unlink()
@@ -86,7 +86,11 @@ class TestFullPipelineExecution:
 
             # Merge overrides
             for key, value in config_overrides.items():
-                if isinstance(value, dict) and key in config and isinstance(config[key], dict):
+                if (
+                    isinstance(value, dict)
+                    and key in config
+                    and isinstance(config[key], dict)
+                ):
                     config[key].update(value)
                 else:
                     config[key] = value
@@ -104,10 +108,14 @@ class TestFullPipelineExecution:
             str(input_file.parent),
         ]
 
-        result = subprocess.run(cmd, cwd=str(project_root), capture_output=True, text=True)
+        result = subprocess.run(
+            cmd, cwd=str(project_root), capture_output=True, text=True
+        )
         return result
 
-    def test_full_pipeline_english(self, tmp_path: Path, pipeline_input_file: Path, project_root: Path) -> None:
+    def test_full_pipeline_english(
+        self, tmp_path: Path, pipeline_input_file: Path, project_root: Path
+    ) -> None:
         """Test complete pipeline execution with English language.
 
         Real-world significance:
@@ -129,7 +137,9 @@ class TestFullPipelineExecution:
         pdfs = list((output_dir / "pdf_individual").glob("en_notice_*.pdf"))
         assert len(pdfs) == 3, f"Expected 3 PDFs but found {len(pdfs)}"
 
-    def test_full_pipeline_french(self, tmp_path: Path, pipeline_input_file: Path, project_root: Path) -> None:
+    def test_full_pipeline_french(
+        self, tmp_path: Path, pipeline_input_file: Path, project_root: Path
+    ) -> None:
         """Test complete pipeline execution with French language.
 
         Real-world significance:
@@ -176,7 +186,10 @@ class TestFullPipelineExecution:
 
             assert result.returncode == 0, f"Pipeline failed: {result.stderr}"
             assert "Step 3: Generating QR codes" in result.stdout
-            assert "disabled" in result.stdout.lower() or "skipped" in result.stdout.lower()
+            assert (
+                "disabled" in result.stdout.lower()
+                or "skipped" in result.stdout.lower()
+            )
 
             # Verify PDFs still exist
             output_dir = project_root / "output"
@@ -217,7 +230,9 @@ class TestFullPipelineExecution:
 
             # Verify PDFs exist (encrypted)
             output_dir = project_root / "output"
-            pdfs = list((output_dir / "pdf_individual").glob("en_notice_*_encrypted.pdf"))
+            pdfs = list(
+                (output_dir / "pdf_individual").glob("en_notice_*_encrypted.pdf")
+            )
             assert len(pdfs) == 3, f"Expected 3 encrypted PDFs but found {len(pdfs)}"
         finally:
             # Restore original config
@@ -253,7 +268,9 @@ class TestFullPipelineExecution:
 
             assert result.returncode == 0, f"Pipeline failed: {result.stderr}"
             assert "Batching" in result.stdout
-            assert "created" in result.stdout.lower() or "batch" in result.stdout.lower()
+            assert (
+                "created" in result.stdout.lower() or "batch" in result.stdout.lower()
+            )
 
             # Verify batched PDFs exist
             output_dir = project_root / "output"
@@ -300,7 +317,9 @@ class TestFullPipelineExecution:
             if input_file.exists():
                 input_file.unlink()
 
-    def test_pipeline_validates_output_artifacts(self, tmp_path: Path, pipeline_input_file: Path, project_root: Path) -> None:
+    def test_pipeline_validates_output_artifacts(
+        self, tmp_path: Path, pipeline_input_file: Path, project_root: Path
+    ) -> None:
         """Test that pipeline creates valid output artifacts.
 
         Real-world significance:

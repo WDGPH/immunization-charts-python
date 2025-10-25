@@ -14,7 +14,7 @@ from typing import Any, Dict, List, Optional, Sequence
 @dataclass(frozen=True)
 class ClientRecord:
     """Unified client record across all pipeline steps.
-    
+
     Fields:
     - person: Dict with full_name, date_of_birth, date_of_birth_display, date_of_birth_iso, age, over_16
     - school: Dict with name, code (optional)
@@ -24,6 +24,7 @@ class ClientRecord:
     - metadata: Custom metadata dict
     - received: List of vaccine records received
     """
+
     sequence: str
     client_id: str
     language: str
@@ -41,6 +42,7 @@ class ClientRecord:
 @dataclass(frozen=True)
 class PreprocessResult:
     """Result of preprocessing step."""
+
     clients: List[ClientRecord]
     warnings: List[str]
 
@@ -48,6 +50,7 @@ class PreprocessResult:
 @dataclass(frozen=True)
 class ArtifactPayload:
     """Preprocessed artifact with metadata."""
+
     run_id: str
     language: str
     clients: List[ClientRecord]
@@ -60,10 +63,9 @@ class ArtifactPayload:
 @dataclass(frozen=True)
 class PdfRecord:
     """Compiled PDF with client metadata."""
+
     sequence: str
     client_id: str
     pdf_path: Path
     page_count: int
     client: Dict[str, Any]
-
-

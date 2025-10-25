@@ -162,8 +162,6 @@ def _format_qr_payload(template: str, context: Dict[str, str]) -> str:
     return template.format(**context)
 
 
-
-
 def _build_qr_context(
     *,
     client_id: str,
@@ -372,7 +370,9 @@ def main(
     """
     generated = generate_qr_codes(artifact_path, output_dir, config_path)
     if generated:
-        print(f"Generated {len(generated)} QR code PNG file(s) in {output_dir}/qr_codes/")
+        print(
+            f"Generated {len(generated)} QR code PNG file(s) in {output_dir}/qr_codes/"
+        )
     return len(generated)
 
 
