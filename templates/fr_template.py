@@ -15,7 +15,7 @@ TEMPLATE_PREFIX = """// --- CCEYA NOTICE TEMPLATE (TEST VERSION) --- //
 // Date Last Updated: 2025-09-16
 // ----------------------------------------- //
 
-#import "/scripts/conf.typ"
+#import "/templates/conf.typ"
 
 // General document formatting 
 #set text(fill: black)
@@ -140,7 +140,36 @@ def render_notice(
     signature_path: str,
     parameters_path: str,
 ) -> str:
-    """Render the Typst document for a single French notice."""
+    """Render the Typst document for a single French notice.
+
+    Parameters
+    ----------
+    context : Mapping[str, str]
+        Dictionary containing template placeholder values. Must include:
+        - client_row: Row identifier
+        - client_data: Client information dict
+        - vaccines_due_str: Formatted string of vaccines due
+        - vaccines_due_array: Array of vaccines due
+        - received: Received vaccine data
+        - num_rows: Number of table rows
+
+    logo_path : str
+        Absolute path to logo image file
+    signature_path : str
+        Absolute path to signature image file
+    parameters_path : str
+        Absolute path to parameters YAML file
+
+    Returns
+    -------
+    str
+        Rendered Typst template with all placeholders replaced
+
+    Raises
+    ------
+    KeyError
+        If any required context keys are missing
+    """
     required_keys = (
         "client_row",
         "client_data",

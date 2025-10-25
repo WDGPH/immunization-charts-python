@@ -17,8 +17,9 @@ from .data_models import (
     ArtifactPayload,
     ClientRecord,
 )
-from .generate_mock_template_en import render_notice as render_notice_en
-from .generate_mock_template_fr import render_notice as render_notice_fr
+
+from templates.en_template import render_notice as render_notice_en
+from templates.fr_template import render_notice as render_notice_fr
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 ROOT_DIR = SCRIPT_DIR.parent

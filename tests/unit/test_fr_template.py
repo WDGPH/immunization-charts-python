@@ -1,48 +1,54 @@
-"""Unit tests for generate_mock_template_en module - English Typst template generation.
+"""Unit tests for fr_template module - French Typst template generation.
 
 Tests cover:
-- Template rendering with client context
+- Template rendering with client context (French version)
 - Placeholder substitution (logo, signature, parameters paths)
 - Required context key validation
 - Error handling for missing context keys
 - Template output structure
-- Language-specific content (English)
+- Language-specific content (French)
 
 Real-world significance:
-- Renders Typst templates for English-language notices
+- Renders Typst templates for French-language notices
 - Part of notice generation pipeline (Step 4)
 - Each client gets custom template with QR code, vaccines due, etc.
 - Template errors prevent PDF compilation
+- Must match English template structure for consistency
 """
 
 from __future__ import annotations
 
 import pytest
 
-from scripts import generate_mock_template_en
+from templates.fr_template import (
+    DYNAMIC_BLOCK,
+    TEMPLATE_PREFIX,
+    render_notice,
+)
 
 
 @pytest.mark.unit
 class TestRenderNotice:
-    """Unit tests for render_notice function."""
+    """Unit tests for render_notice function (French)."""
 
     def test_render_notice_with_valid_context(self) -> None:
-        """Verify template renders successfully with all required keys.
+        """Verify French template renders successfully with all required keys.
 
         Real-world significance:
         - Template must accept valid context from generate_notices
         - Output should be valid Typst code
+        - French version should have same structure as English
         """
         context = {
-            "client_row": '("001", "C00001", "John Doe")',
-            "client_data": '{name: "John Doe", dob: "2015-03-15"}',
-            "vaccines_due_str": '"MMR, DPT"',
-            "vaccines_due_array": '("MMR", "DPT")',
-            "received": '(("MMR", "2020-05-15"), ("DPT", "2019-03-15"))',
+            "client_row": '("001", "C00001", "Jean Dupont")',
+            "client_data": '{name: "Jean Dupont", dob: "2015-03-15"}',
+            "vaccines_due_str": '"RRO, DPT"',
+            "vaccines_due_array": '("RRO", "DPT")',
+            "received": '(("RRO", "2020-05-15"), ("DPT", "2019-03-15"))',
             "num_rows": "2",
         }
 
-        result = generate_mock_template_en.render_notice(
+        result = render_notice(
             context,
             logo_path="/path/to/logo.png",
             signature_path="/path/to/signature.png",
@@ -55,7 +61,7 @@ class TestRenderNotice:
         assert "immunization_notice" in result
 
     def test_render_notice_missing_client_row_raises_error(self) -> None:
-        """Verify error when client_row context missing.
+        """Verify error when client_row context missing (French).
 
         Real-world significance:
         - Missing required field should fail loudly
@@ -71,7 +77,7 @@ class TestRenderNotice:
         }
 
         with pytest.raises(KeyError, match="Missing context keys"):
-            generate_mock_template_en.render_notice(
+            render_notice(
                 context,
                 logo_path="/path/to/logo.png",
                 signature_path="/path/to/signature.png",
@@ -79,7 +85,7 @@ class TestRenderNotice:
             )
 
     def test_render_notice_missing_multiple_keys_raises_error(self) -> None:
-        """Verify error lists all missing keys.
+        """Verify error lists all missing keys (French).
 
         Real-world significance:
         - User can see which fields are missing
@@ -91,7 +97,7 @@ class TestRenderNotice:
         }
 
         with pytest.raises(KeyError, match="Missing context keys"):
-            generate_mock_template_en.render_notice(
+            render_notice(
                 context,
                 logo_path="/path/to/logo.png",
                 signature_path="/path/to/signature.png",
@@ -99,7 +105,7 @@ class TestRenderNotice:
             )
 
     def test_render_notice_substitutes_logo_path(self) -> None:
-        """Verify logo path is substituted in template.
+        """Verify logo path is substituted in template (French).
 
         Real-world significance:
         - Logo path must match actual file location
@@ -115,7 +121,7 @@ class TestRenderNotice:
         }
 
         logo_path = "/custom/logo/path.png"
-        result = generate_mock_template_en.render_notice(
+        result = render_notice(
             context,
             logo_path=logo_path,
             signature_path="/sig.png",
@@ -125,7 +131,7 @@ class TestRenderNotice:
         assert logo_path in result
 
     def test_render_notice_substitutes_signature_path(self) -> None:
-        """Verify signature path is substituted in template.
+        """Verify signature path is substituted in template (French).
 
         Real-world significance:
         - Signature path must match actual file location
@@ -141,7 +147,7 @@ class TestRenderNotice:
         }
 
         signature_path = "/custom/signature.png"
-        result = generate_mock_template_en.render_notice(
+        result = render_notice(
             context,
             logo_path="/logo.png",
             signature_path=signature_path,
@@ -151,7 +157,7 @@ class TestRenderNotice:
         assert signature_path in result
 
     def test_render_notice_substitutes_parameters_path(self) -> None:
-        """Verify parameters path is substituted in template.
+        """Verify parameters path is substituted in template (French).
 
         Real-world significance:
         - Typst template needs to read config from parameters.yaml
@@ -167,7 +173,7 @@ class TestRenderNotice:
         }
 
         parameters_path = "/etc/config/parameters.yaml"
-        result = generate_mock_template_en.render_notice(
+        result = render_notice(
             context,
             logo_path="/logo.png",
             signature_path="/sig.png",
@@ -177,7 +183,7 @@ class TestRenderNotice:
         assert parameters_path in result
 
     def test_render_notice_includes_template_prefix(self) -> None:
-        """Verify output includes template header and imports.
+        """Verify output includes template header and imports (French).
 
         Real-world significance:
         - Typst setup code must be included
@@ -192,7 +198,7 @@ class TestRenderNotice:
             "num_rows": "0",
         }
 
-        result = generate_mock_template_en.render_notice(
+        result = render_notice(
             context,
             logo_path="/logo.png",
             signature_path="/sig.png",
@@ -200,10 +206,10 @@ class TestRenderNotice:
         )
 
         # Should include import statement
-        assert '#import "/scripts/conf.typ"' in result
+        assert '#import "/templates/conf.typ"' in result
 
     def test_render_notice_includes_dynamic_block(self) -> None:
-        """Verify output includes dynamic content section.
+        """Verify output includes dynamic content section (French).
 
         Real-world significance:
         - Dynamic block contains client-specific data
@@ -212,13 +218,13 @@ class TestRenderNotice:
         context = {
             "client_row": '("001", "C00001")',
             "client_data": "{}",
-            "vaccines_due_str": '"MMR"',
-            "vaccines_due_array": '("MMR")',
+            "vaccines_due_str": '"RRO"',
+            "vaccines_due_array": '("RRO")',
             "received": "()",
             "num_rows": "1",
         }
 
-        result = generate_mock_template_en.render_notice(
+        result = render_notice(
             context,
             logo_path="/logo.png",
             signature_path="/sig.png",
@@ -231,22 +237,22 @@ class TestRenderNotice:
         assert '("001", "C00001")' in result  # Actual value should be in output
 
     def test_render_notice_with_complex_client_data(self) -> None:
-        """Verify template handles complex client data structures.
+        """Verify template handles complex client data structures (French).
 
         Real-world significance:
         - Client data might have nested structures
         - Template must accept and preserve complex Typst data structures
         """
         context = {
-            "client_row": '("seq_001", "OEN_12345", "Alice Johnson")',
-            "client_data": '(name: "Alice Johnson", dob: "2015-03-15", address: "123 Main St")',
-            "vaccines_due_str": '"Measles, Mumps, Rubella"',
-            "vaccines_due_array": '("Measles", "Mumps", "Rubella")',
-            "received": '(("Measles", "2020-05-01"), ("Mumps", "2020-05-01"))',
+            "client_row": '("seq_001", "OEN_12345", "Alice Dupont")',
+            "client_data": '(name: "Alice Dupont", dob: "2015-03-15", address: "123 Rue Main")',
+            "vaccines_due_str": '"Rougeole, Oreillons, Rubéole"',
+            "vaccines_due_array": '("Rougeole", "Oreillons", "Rubéole")',
+            "received": '(("Rougeole", "2020-05-01"), ("Oreillons", "2020-05-01"))',
             "num_rows": "5",
         }
 
-        result = generate_mock_template_en.render_notice(
+        result = render_notice(
             context,
             logo_path="/logo.png",
             signature_path="/sig.png",
@@ -254,12 +260,12 @@ class TestRenderNotice:
         )
 
         # Verify complex values are included
-        assert "Alice Johnson" in result
-        assert "Measles" in result
-        assert "Mumps" in result
+        assert "Alice Dupont" in result
+        assert "Rougeole" in result
+        assert "Oreillons" in result
 
     def test_render_notice_empty_vaccines_handled(self) -> None:
-        """Verify template handles no vaccines due (empty arrays).
+        """Verify template handles no vaccines due (empty arrays) (French).
 
         Real-world significance:
         - Child might have all required vaccines
@@ -274,7 +280,7 @@ class TestRenderNotice:
             "num_rows": "0",
         }
 
-        result = generate_mock_template_en.render_notice(
+        result = render_notice(
             context,
             logo_path="/logo.png",
             signature_path="/sig.png",
@@ -285,52 +291,94 @@ class TestRenderNotice:
         assert isinstance(result, str)
         assert len(result) > 0
 
+    def test_render_notice_french_content(self) -> None:
+        """Verify French-language content is rendered.
+
+        Real-world significance:
+        - Output must be in French for French-language processing
+        - Key terms like "Dossier d'immunisation" must appear
+        """
+        context = {
+            "client_row": "()",
+            "client_data": "{}",
+            "vaccines_due_str": '""',
+            "vaccines_due_array": "()",
+            "received": "()",
+            "num_rows": "0",
+        }
+
+        result = render_notice(
+            context,
+            logo_path="/logo.png",
+            signature_path="/sig.png",
+            parameters_path="/params.yaml",
+        )
+
+        # Should contain French text markers
+        assert "Dossier d'immunisation" in result
+        assert "Sincères salutations" in result
+
 
 @pytest.mark.unit
 class TestTemplateConstants:
-    """Unit tests for template constant definitions."""
+    """Unit tests for template constant definitions (French)."""
 
     def test_template_prefix_contains_imports(self) -> None:
-        """Verify TEMPLATE_PREFIX includes required imports.
+        """Verify TEMPLATE_PREFIX includes required imports (French).
 
         Real-world significance:
         - Typst must import conf.typ helpers
         - Setup code must be present
         """
-        assert (
-            '#import "/scripts/conf.typ"' in generate_mock_template_en.TEMPLATE_PREFIX
-        )
+        assert '#import "/templates/conf.typ"' in TEMPLATE_PREFIX
 
     def test_template_prefix_contains_function_definitions(self) -> None:
-        """Verify TEMPLATE_PREFIX defines helper functions.
+        """Verify TEMPLATE_PREFIX defines helper functions (French).
 
         Real-world significance:
         - immunization_notice() function must be defined
         - Functions used in dynamic block must exist
         """
-        assert "immunization_notice" in generate_mock_template_en.TEMPLATE_PREFIX
+        assert "immunization_notice" in TEMPLATE_PREFIX
 
     def test_dynamic_block_contains_placeholders(self) -> None:
-        """Verify DYNAMIC_BLOCK has all substitution placeholders.
+        """Verify DYNAMIC_BLOCK has all substitution placeholders (French).
 
         Real-world significance:
         - Each placeholder corresponds to a context key
         - Missing placeholder = lost data in output
         """
-        dynamic = generate_mock_template_en.DYNAMIC_BLOCK
-        assert "__CLIENT_ROW__" in dynamic
-        assert "__CLIENT_DATA__" in dynamic
-        assert "__VACCINES_DUE_STR__" in dynamic
-        assert "__VACCINES_DUE_ARRAY__" in dynamic
-        assert "__RECEIVED__" in dynamic
-        assert "__NUM_ROWS__" in dynamic
+        assert "__CLIENT_ROW__" in DYNAMIC_BLOCK
+        assert "__CLIENT_DATA__" in DYNAMIC_BLOCK
+        assert "__VACCINES_DUE_STR__" in DYNAMIC_BLOCK
+        assert "__VACCINES_DUE_ARRAY__" in DYNAMIC_BLOCK
+        assert "__RECEIVED__" in DYNAMIC_BLOCK
+        assert "__NUM_ROWS__" in DYNAMIC_BLOCK
 
     def test_template_prefix_contains_placeholder_markers(self) -> None:
-        """Verify TEMPLATE_PREFIX has path placeholders to substitute.
+        """Verify TEMPLATE_PREFIX has path placeholders to substitute (French).
 
         Real-world significance:
         - Logo, signature, and parameters paths must be replaceable
         """
-        assert "__LOGO_PATH__" in generate_mock_template_en.TEMPLATE_PREFIX
-        assert "__SIGNATURE_PATH__" in generate_mock_template_en.TEMPLATE_PREFIX
-        assert "__PARAMETERS_PATH__" in generate_mock_template_en.TEMPLATE_PREFIX
+        assert "__LOGO_PATH__" in TEMPLATE_PREFIX
+        assert "__SIGNATURE_PATH__" in TEMPLATE_PREFIX
+        assert "__PARAMETERS_PATH__" in TEMPLATE_PREFIX
+
+    def test_french_template_uses_french_client_info_function(self) -> None:
+        """Verify French template calls French-specific functions.
+
+        Real-world significance:
+        - French template must call conf.client_info_tbl_fr not _en
+        - Ensures French-language notice generation
+        """
+        assert "conf.client_info_tbl_fr" in TEMPLATE_PREFIX
+
+    def test_french_template_has_french_disease_headers(self) -> None:
+        """Verify French template references French disease headers.
+
+        Real-world significance:
+        - French notices must use French disease terminology
+        - "Dossier d'immunisation" vs "Immunization Record"
+        """
+        assert "Dossier d'immunisation" in TEMPLATE_PREFIX
