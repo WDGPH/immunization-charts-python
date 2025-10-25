@@ -38,7 +38,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(mess
 @dataclass(frozen=True)
 class BatchConfig:
     """Configuration for PDF batching operation.
-    
+
     Attributes
     ----------
     output_dir : Path
@@ -52,6 +52,7 @@ class BatchConfig:
     run_id : str
         Pipeline run identifier
     """
+
     output_dir: Path
     language: str
     batch_size: int
@@ -62,7 +63,7 @@ class BatchConfig:
 @dataclass(frozen=True)
 class BatchPlan:
     """Plan for a single batch of PDFs.
-    
+
     Attributes
     ----------
     batch_type : BatchType
@@ -76,6 +77,7 @@ class BatchPlan:
     clients : List[PdfRecord]
         List of PDFs and metadata in this batch
     """
+
     batch_type: BatchType
     batch_identifier: str | None
     batch_number: int
@@ -86,7 +88,7 @@ class BatchPlan:
 @dataclass(frozen=True)
 class BatchResult:
     """Result of a completed batch operation.
-    
+
     Attributes
     ----------
     pdf_path : Path
@@ -96,6 +98,7 @@ class BatchResult:
     batch_plan : BatchPlan
         The plan used to create this batch
     """
+
     pdf_path: Path
     manifest_path: Path
     batch_plan: BatchPlan
@@ -202,12 +205,12 @@ def build_client_lookup(
     artifact: Dict[str, object],
 ) -> Dict[tuple[str, str], dict]:
     """Build a lookup table from artifact clients dict.
-    
+
     Parameters
     ----------
     artifact : Dict[str, object]
         Preprocessed artifact dictionary
-        
+
     Returns
     -------
     Dict[tuple[str, str], dict]
@@ -285,7 +288,7 @@ def plan_batches(
     config: BatchConfig, records: List[PdfRecord], log_path: Path
 ) -> List[BatchPlan]:
     """Plan how to group PDFs into batches based on configuration.
-    
+
     Parameters
     ----------
     config : BatchConfig
@@ -294,7 +297,7 @@ def plan_batches(
         List of PDF records to batch
     log_path : Path
         Path to logging file
-        
+
     Returns
     -------
     List[BatchPlan]

@@ -314,7 +314,7 @@ class TestBuildTemplateContext:
         """
         client = sample_input.create_test_client_record(
             first_name="Jean-Paul",
-            last_name='O\'Neill',
+            last_name="O'Neill",
         )
 
         context = generate_notices.build_template_context(client)
@@ -329,9 +329,7 @@ class TestBuildTemplateContext:
         - Vaccine history appears in notices
         - Must include all received doses
         """
-        client = sample_input.create_test_client_record(
-            has_received_vaccines=True
-        )
+        client = sample_input.create_test_client_record(has_received_vaccines=True)
 
         context = generate_notices.build_template_context(client)
 
@@ -345,9 +343,7 @@ class TestBuildTemplateContext:
         - Some students may have no recorded vaccinations
         - Should not crash; num_rows should be 0
         """
-        client = sample_input.create_test_client_record(
-            has_received_vaccines=False
-        )
+        client = sample_input.create_test_client_record(has_received_vaccines=False)
 
         context = generate_notices.build_template_context(client)
 

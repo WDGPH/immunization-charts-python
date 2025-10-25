@@ -25,6 +25,25 @@ source .venv/bin/activate
 
 > ℹ️ `uv sync` only installs the core runtime packages by default. If you're planning to run tests or other dev tools, include the development group once via `uv sync --group dev` (or `uv sync --all-groups` if you prefer everything).
 
+### Code Quality & Pre-commit Hooks
+
+To enable automatic code linting and formatting on every commit, initialize pre-commit hooks:
+
+```bash
+uv sync --group dev                 # Install development tools (pre-commit, pytest, etc.)
+uv run pre-commit install           # Initialize git hooks
+```
+
+Now, whenever you commit changes, the pre-commit hook automatically:
+- **Lints** your code with `ruff check --fix` (auto-fixes issues when possible)
+- **Formats** your code with `ruff format` (enforces consistent style)
+
+If any check fails, your commit is blocked until you fix the issues. You can also run checks manually anytime:
+
+```bash
+uv run pre-commit run --all-files   # Check all files
+```
+
 ## 🛠️ Pipeline Overview & Architecture
 
 This section describes how the pipeline orchestrates data flow and manages state across processing steps.

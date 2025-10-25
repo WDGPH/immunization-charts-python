@@ -47,7 +47,10 @@ class TestReadInput:
         df_read = preprocess.read_input(input_path)
 
         assert len(df_read) == 3
-        assert "SCHOOL NAME" in df_read.columns or "SCHOOL_NAME" in str(df_read.columns).upper()
+        assert (
+            "SCHOOL NAME" in df_read.columns
+            or "SCHOOL_NAME" in str(df_read.columns).upper()
+        )
 
     def test_read_input_missing_file_raises_error(self, tmp_test_dir: Path) -> None:
         """Verify error when input file doesn't exist.
@@ -60,7 +63,9 @@ class TestReadInput:
         with pytest.raises(FileNotFoundError):
             preprocess.read_input(missing_path)
 
-    def test_read_input_unsupported_file_type_raises_error(self, tmp_test_dir: Path) -> None:
+    def test_read_input_unsupported_file_type_raises_error(
+        self, tmp_test_dir: Path
+    ) -> None:
         """Verify error for unsupported file types.
 
         Real-world significance:
@@ -97,20 +102,22 @@ class TestEnsureRequiredColumns:
         - Input files may have inconsistent column naming
         - Pipeline must handle variations in Excel headers
         """
-        df = pd.DataFrame({
-            "  SCHOOL NAME  ": ["Test School"],
-            "  CLIENT ID  ": ["C001"],
-            "first name": ["Alice"],
-            "last name": ["Zephyr"],
-            "date of birth": ["2015-01-01"],
-            "city": ["Guelph"],
-            "postal code": ["N1H 2T2"],
-            "province/territory": ["ON"],
-            "overdue disease": ["Measles"],
-            "imms given": [""],
-            "street address line 1": ["123 Main"],
-            "street address line 2": [""],
-        })
+        df = pd.DataFrame(
+            {
+                "  SCHOOL NAME  ": ["Test School"],
+                "  CLIENT ID  ": ["C001"],
+                "first name": ["Alice"],
+                "last name": ["Zephyr"],
+                "date of birth": ["2015-01-01"],
+                "city": ["Guelph"],
+                "postal code": ["N1H 2T2"],
+                "province/territory": ["ON"],
+                "overdue disease": ["Measles"],
+                "imms given": [""],
+                "street address line 1": ["123 Main"],
+                "street address line 2": [""],
+            }
+        )
 
         result = preprocess.ensure_required_columns(df)
 
@@ -124,11 +131,13 @@ class TestEnsureRequiredColumns:
         - Missing critical columns (e.g., OVERDUE DISEASE) means input is invalid
         - Must fail early with clear error
         """
-        df = pd.DataFrame({
-            "SCHOOL NAME": ["Test"],
-            "CLIENT ID": ["C001"],
-            # Missing required columns
-        })
+        df = pd.DataFrame(
+            {
+                "SCHOOL NAME": ["Test"],
+                "CLIENT ID": ["C001"],
+                # Missing required columns
+            }
+        )
 
         with pytest.raises(ValueError, match="Missing required columns"):
             preprocess.ensure_required_columns(df)
@@ -148,7 +157,7 @@ class TestNormalizeDataFrame:
         df = sample_input.create_test_input_dataframe(num_clients=3)
         normalized = preprocess.ensure_required_columns(df)
         normalized.loc[0, "STREET_ADDRESS_LINE_2"] = None
-        normalized.loc[1, "POSTAL_CODE"] = float('nan')
+        normalized.loc[1, "POSTAL_CODE"] = float("nan")
 
         result = preprocess.normalize_dataframe(normalized)
 
@@ -233,11 +242,15 @@ class TestDateConversion:
         - Must support ISO↔display conversions for both languages
         """
         # English: ISO → display
-        display_en = preprocess.convert_date("2025-05-08", to_format="display", lang="en")
+        display_en = preprocess.convert_date(
+            "2025-05-08", to_format="display", lang="en"
+        )
         assert display_en == "May 8, 2025"
 
         # French: ISO → display
-        display_fr = preprocess.convert_date("2025-05-08", to_format="display", lang="fr")
+        display_fr = preprocess.convert_date(
+            "2025-05-08", to_format="display", lang="fr"
+        )
         assert display_fr == "8 mai 2025"
 
     def test_convert_date_handles_nan(self) -> None:
@@ -412,20 +425,37 @@ class TestBuildPreprocessResult:
         - Must be deterministic across pipeline runs
         - Affects sequence number assignment
         """
-        df = pd.DataFrame({
-            "SCHOOL NAME": ["Zebra School", "Zebra School", "Apple School", "Apple School"],
-            "CLIENT ID": ["C002", "C001", "C004", "C003"],
-            "FIRST NAME": ["Bob", "Alice", "Diana", "Chloe"],
-            "LAST NAME": ["Smith", "Smith", "Jones", "Jones"],
-            "DATE OF BIRTH": ["2015-01-01", "2015-01-02", "2015-01-03", "2015-01-04"],
-            "CITY": ["Town", "Town", "Town", "Town"],
-            "POSTAL CODE": ["N1H 2T2", "N1H 2T2", "N1H 2T2", "N1H 2T2"],
-            "PROVINCE/TERRITORY": ["ON", "ON", "ON", "ON"],
-            "OVERDUE DISEASE": ["Measles", "Measles", "Measles", "Measles"],
-            "IMMS GIVEN": ["", "", "", ""],
-            "STREET ADDRESS LINE 1": ["123 Main", "123 Main", "123 Main", "123 Main"],
-            "STREET ADDRESS LINE 2": ["", "", "", ""],
-        })
+        df = pd.DataFrame(
+            {
+                "SCHOOL NAME": [
+                    "Zebra School",
+                    "Zebra School",
+                    "Apple School",
+                    "Apple School",
+                ],
+                "CLIENT ID": ["C002", "C001", "C004", "C003"],
+                "FIRST NAME": ["Bob", "Alice", "Diana", "Chloe"],
+                "LAST NAME": ["Smith", "Smith", "Jones", "Jones"],
+                "DATE OF BIRTH": [
+                    "2015-01-01",
+                    "2015-01-02",
+                    "2015-01-03",
+                    "2015-01-04",
+                ],
+                "CITY": ["Town", "Town", "Town", "Town"],
+                "POSTAL CODE": ["N1H 2T2", "N1H 2T2", "N1H 2T2", "N1H 2T2"],
+                "PROVINCE/TERRITORY": ["ON", "ON", "ON", "ON"],
+                "OVERDUE DISEASE": ["Measles", "Measles", "Measles", "Measles"],
+                "IMMS GIVEN": ["", "", "", ""],
+                "STREET ADDRESS LINE 1": [
+                    "123 Main",
+                    "123 Main",
+                    "123 Main",
+                    "123 Main",
+                ],
+                "STREET ADDRESS LINE 2": ["", "", "", ""],
+            }
+        )
         normalized = preprocess.ensure_required_columns(df)
 
         result = preprocess.build_preprocess_result(
@@ -485,20 +515,22 @@ class TestBuildPreprocessResult:
         - Should auto-generate board ID and log warning
         - Allows pipeline to proceed without failing
         """
-        df = pd.DataFrame({
-            "SCHOOL NAME": ["Test School"],
-            "CLIENT ID": ["C001"],
-            "FIRST NAME": ["Alice"],
-            "LAST NAME": ["Zephyr"],
-            "DATE OF BIRTH": ["2015-01-01"],
-            "CITY": ["Guelph"],
-            "POSTAL CODE": ["N1H 2T2"],
-            "PROVINCE/TERRITORY": ["ON"],
-            "OVERDUE DISEASE": ["Measles"],
-            "IMMS GIVEN": [""],
-            "STREET ADDRESS LINE 1": ["123 Main"],
-            "STREET ADDRESS LINE 2": [""],
-        })
+        df = pd.DataFrame(
+            {
+                "SCHOOL NAME": ["Test School"],
+                "CLIENT ID": ["C001"],
+                "FIRST NAME": ["Alice"],
+                "LAST NAME": ["Zephyr"],
+                "DATE OF BIRTH": ["2015-01-01"],
+                "CITY": ["Guelph"],
+                "POSTAL CODE": ["N1H 2T2"],
+                "PROVINCE/TERRITORY": ["ON"],
+                "OVERDUE DISEASE": ["Measles"],
+                "IMMS GIVEN": [""],
+                "STREET ADDRESS LINE 1": ["123 Main"],
+                "STREET ADDRESS LINE 2": [""],
+            }
+        )
         normalized = preprocess.ensure_required_columns(df)
 
         result = preprocess.build_preprocess_result(

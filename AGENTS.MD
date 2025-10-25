@@ -34,6 +34,25 @@ from .config_loader import load_config
 
 Use type hints, f-strings, docstrings, dataclasses. Avoid wildcard imports. See `docs/CODE_ANALYSIS_STANDARDS.md` for docstring depth and real-world significance guidance.
 
+## Code Quality & Pre-commit Hooks
+
+**Setup:** One-time initialization to enable automatic code checks on every commit:
+```bash
+uv sync --group dev                 # Install pre-commit (includes pytest, pytest-cov)
+uv run pre-commit install           # Initialize git hooks
+```
+
+**Manual checks anytime:**
+```bash
+uv run pre-commit run --all-files   # Run ruff linting and formatting on all files
+```
+
+The pre-commit hook (configured in `.pre-commit-config.yaml`) runs automatically on each `git commit`:
+- **`ruff check --fix`**: Lint issues (auto-fixes when possible)
+- **`ruff format`**: Code formatting (black-like style)
+
+If either check fails, your commit is blocked until issues are resolved. This ensures consistent code quality across all contributions.
+
 ## Running Tests (Quick Reference for AI Agents)
 
 **Setup:** `uv sync --group dev` (one-time, installs pytest and testing dependencies)

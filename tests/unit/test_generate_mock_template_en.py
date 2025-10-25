@@ -63,7 +63,7 @@ class TestRenderNotice:
         """
         context = {
             # Missing client_row
-            "client_data": '{}',
+            "client_data": "{}",
             "vaccines_due_str": '""',
             "vaccines_due_array": "()",
             "received": "()",
@@ -297,7 +297,9 @@ class TestTemplateConstants:
         - Typst must import conf.typ helpers
         - Setup code must be present
         """
-        assert '#import "/scripts/conf.typ"' in generate_mock_template_en.TEMPLATE_PREFIX
+        assert (
+            '#import "/scripts/conf.typ"' in generate_mock_template_en.TEMPLATE_PREFIX
+        )
 
     def test_template_prefix_contains_function_definitions(self) -> None:
         """Verify TEMPLATE_PREFIX defines helper functions.

@@ -271,6 +271,7 @@ def calculate_age(DOB, DOV):
 
     return f"{years}Y {months}M"
 
+
 IGNORE_AGENTS = [
     "-unspecified",
     "unspecified",
@@ -523,13 +524,13 @@ def build_preprocess_result(
     ignore_agents: List[str],
 ) -> PreprocessResult:
     """Process and normalize client data into structured artifact.
-    
+
     Calculates per-client age at time of delivery for determining
     communication recipient (parent vs. student).
     """
     warnings: set[str] = set()
     working = normalize_dataframe(df)
-    
+
     # Load delivery_date from parameters.yaml for age calculations only
     params = {}
     if PARAMETERS_PATH.exists():
@@ -658,7 +659,7 @@ def write_artifact(
 ) -> Path:
     """Write preprocessed result to JSON artifact file."""
     output_dir.mkdir(parents=True, exist_ok=True)
-    
+
     # Create ArtifactPayload with rich metadata
     artifact_payload = ArtifactPayload(
         run_id=run_id,
@@ -668,7 +669,7 @@ def write_artifact(
         created_at=datetime.now(timezone.utc).isoformat(),
         total_clients=len(result.clients),
     )
-    
+
     # Serialize to JSON (clients are dataclasses, so convert to dict)
     payload_dict = {
         "run_id": artifact_payload.run_id,
@@ -711,7 +712,7 @@ def write_artifact(
             for client in artifact_payload.clients
         ],
     }
-    
+
     artifact_path = output_dir / f"preprocessed_clients_{run_id}.json"
     artifact_path.write_text(json.dumps(payload_dict, indent=2), encoding="utf-8")
     LOG.info("Wrote normalized artifact to %s", artifact_path)

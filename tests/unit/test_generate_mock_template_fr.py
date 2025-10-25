@@ -201,7 +201,9 @@ class TestFrenchTemplateConstants:
         - Typst must import conf.typ helpers
         - Same imports as English version
         """
-        assert '#import "/scripts/conf.typ"' in generate_mock_template_fr.TEMPLATE_PREFIX
+        assert (
+            '#import "/scripts/conf.typ"' in generate_mock_template_fr.TEMPLATE_PREFIX
+        )
 
     def test_template_prefix_contains_function_definitions(self) -> None:
         """Verify TEMPLATE_PREFIX defines helper functions (French).

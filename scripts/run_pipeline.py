@@ -19,7 +19,13 @@ from typing import Optional
 
 # Import pipeline steps
 from . import batch_pdfs, cleanup, compile_notices, count_pdfs
-from . import encrypt_notice, generate_notices, generate_qr_codes, prepare_output, preprocess
+from . import (
+    encrypt_notice,
+    generate_notices,
+    generate_qr_codes,
+    prepare_output,
+    preprocess,
+)
 from .config_loader import load_config
 
 SCRIPT_DIR = Path(__file__).resolve().parent
@@ -206,7 +212,9 @@ def run_step_3_generate_qr_codes(
         parameters_path,
     )
     if generated:
-        print(f"Generated {len(generated)} QR code PNG file(s) in {artifacts_dir}/qr_codes/")
+        print(
+            f"Generated {len(generated)} QR code PNG file(s) in {artifacts_dir}/qr_codes/"
+        )
     return len(generated)
 
 

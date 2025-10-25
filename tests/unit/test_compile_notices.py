@@ -68,7 +68,9 @@ class TestDiscoverTypstFiles:
 
         assert result == []
 
-    def test_discover_typst_files_missing_directory(self, tmp_output_structure: dict) -> None:
+    def test_discover_typst_files_missing_directory(
+        self, tmp_output_structure: dict
+    ) -> None:
         """Verify empty list when typst directory doesn't exist.
 
         Real-world significance:
@@ -100,7 +102,9 @@ class TestDiscoverTypstFiles:
         assert len(result) == 1
         assert result[0].name == "notice_00001.typ"
 
-    def test_discover_typst_files_sorted_order(self, tmp_output_structure: dict) -> None:
+    def test_discover_typst_files_sorted_order(
+        self, tmp_output_structure: dict
+    ) -> None:
         """Verify files are returned in sorted order.
 
         Real-world significance:
@@ -125,7 +129,9 @@ class TestDiscoverTypstFiles:
 class TestCompileFile:
     """Unit tests for compile_file function."""
 
-    def test_compile_file_invokes_typst_command(self, tmp_output_structure: Path) -> None:
+    def test_compile_file_invokes_typst_command(
+        self, tmp_output_structure: Path
+    ) -> None:
         """Verify typst CLI is invoked with correct parameters.
 
         Real-world significance:
@@ -235,7 +241,9 @@ class TestCompileTypstFiles:
 
         assert pdf_dir.exists()
 
-    def test_compile_typst_files_returns_count(self, tmp_output_structure: dict) -> None:
+    def test_compile_typst_files_returns_count(
+        self, tmp_output_structure: dict
+    ) -> None:
         """Verify count of compiled files is returned.
 
         Real-world significance:
@@ -261,7 +269,9 @@ class TestCompileTypstFiles:
 
         assert count == 2
 
-    def test_compile_typst_files_no_files_returns_zero(self, tmp_output_structure: dict) -> None:
+    def test_compile_typst_files_no_files_returns_zero(
+        self, tmp_output_structure: dict
+    ) -> None:
         """Verify zero is returned when no Typst files found.
 
         Real-world significance:
@@ -284,7 +294,9 @@ class TestCompileTypstFiles:
 
         assert count == 0
 
-    def test_compile_typst_files_compiles_all_files(self, tmp_output_structure: dict) -> None:
+    def test_compile_typst_files_compiles_all_files(
+        self, tmp_output_structure: dict
+    ) -> None:
         """Verify all discovered files are compiled.
 
         Real-world significance:
@@ -317,7 +329,9 @@ class TestCompileTypstFiles:
 class TestCompileWithConfig:
     """Unit tests for compile_with_config function."""
 
-    def test_compile_with_config_uses_default_config(self, tmp_output_structure: dict) -> None:
+    def test_compile_with_config_uses_default_config(
+        self, tmp_output_structure: dict
+    ) -> None:
         """Verify config is loaded and used for compilation.
 
         Real-world significance:

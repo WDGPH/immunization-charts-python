@@ -73,7 +73,9 @@ def create_test_input_dataframe(
             "Wellington Board of Education",
             "Ontario Public Schools",
         ][:num_clients],
-        "CITY": ["Guelph", "Guelph", "Wellington", "Wellington", "Toronto"][:num_clients],
+        "CITY": ["Guelph", "Guelph", "Wellington", "Wellington", "Toronto"][
+            :num_clients
+        ],
         "POSTAL CODE": ["N1H 2T2", "N1H 2T3", "N1K 1B2", "N1K 1B3", "M5V 3A8"][
             :num_clients
         ],
@@ -254,7 +256,7 @@ def create_test_preprocess_result(
     """
     clients = [
         create_test_client_record(
-            sequence=f"{i+1:05d}",
+            sequence=f"{i + 1:05d}",
             client_id=f"C{i:05d}",
             language=language,
             first_name=["Alice", "Benoit", "Chloe"][i % 3],
@@ -265,7 +267,10 @@ def create_test_preprocess_result(
 
     warnings = []
     if include_warnings:
-        warnings = ["Missing board name for client C00002", "Invalid postal code for C00003"]
+        warnings = [
+            "Missing board name for client C00002",
+            "Invalid postal code for C00003",
+        ]
 
     return data_models.PreprocessResult(clients=clients, warnings=warnings)
 

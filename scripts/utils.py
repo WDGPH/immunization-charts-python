@@ -11,15 +11,14 @@ from typing import Any
 _FORMATTER = Formatter()
 
 
-
 def string_or_empty(value: Any) -> str:
     """Safely convert value to string, returning empty string for None/NaN.
-    
+
     Parameters
     ----------
     value : Any
         Value to convert (may be None, empty string, or any type)
-    
+
     Returns
     -------
     str
@@ -32,22 +31,22 @@ def string_or_empty(value: Any) -> str:
 
 def extract_template_fields(template: str) -> set[str]:
     """Extract placeholder names from a format string template.
-    
+
     Parameters
     ----------
     template : str
         Format string like "https://example.com?id={client_id}&dob={date_of_birth_iso}"
-    
+
     Returns
     -------
     set[str]
         Set of placeholder names found in template
-    
+
     Raises
     ------
     ValueError
         If template contains invalid format string syntax
-    
+
     Examples
     --------
     >>> extract_template_fields("{client_id}_{date_of_birth_iso}")
@@ -69,12 +68,12 @@ def validate_and_format_template(
     allowed_fields: set[str] | None = None,
 ) -> str:
     """Format template and validate placeholders against allowed set.
-    
+
     Ensures that:
     1. All placeholders in template exist in context
     2. All placeholders are in the allowed_fields set (if provided)
     3. Template is successfully rendered
-    
+
     Parameters
     ----------
     template : str
@@ -84,19 +83,19 @@ def validate_and_format_template(
     allowed_fields : set[str] | None
         Set of allowed placeholder names. If None, allows any placeholder
         that exists in context.
-    
+
     Returns
     -------
     str
         Rendered template
-    
+
     Raises
     ------
     KeyError
         If template contains placeholders not in context
     ValueError
         If template contains disallowed placeholders (when allowed_fields provided)
-    
+
     Examples
     --------
     >>> ctx = {"client_id": "12345", "date_of_birth_iso": "2015-03-15"}
@@ -108,7 +107,7 @@ def validate_and_format_template(
     '12345_2015-03-15'
     """
     placeholders = extract_template_fields(template)
-    
+
     # Check for missing placeholders in context
     unknown_fields = placeholders - context.keys()
     if unknown_fields:
@@ -116,7 +115,7 @@ def validate_and_format_template(
             f"Unknown placeholder(s) {sorted(unknown_fields)} in template. "
             f"Available: {sorted(context.keys())}"
         )
-    
+
     # Check for disallowed placeholders (if whitelist provided)
     if allowed_fields is not None:
         disallowed = placeholders - allowed_fields
@@ -125,7 +124,7 @@ def validate_and_format_template(
                 f"Disallowed placeholder(s) {sorted(disallowed)} in template. "
                 f"Allowed: {sorted(allowed_fields)}"
             )
-    
+
     return template.format(**context)
 
 
@@ -135,10 +134,10 @@ def build_client_context(
     delivery_date: str | None = None,
 ) -> dict[str, str]:
     """Build template context dict from client metadata for templating.
-    
+
     Extracts and formats all available client fields for use in templates,
     supporting both QR code payloads and PDF encryption passwords.
-    
+
     Parameters
     ----------
     client_data : dict
@@ -154,7 +153,7 @@ def build_client_context(
         ISO 639-1 language code ('en' for English, 'fr' for French)
     delivery_date : str | None
         Optional delivery date for template rendering
-    
+
     Returns
     -------
     dict[str, str]
@@ -168,7 +167,7 @@ def build_client_context(
         - postal_code, city, province, street_address
         - language_code ('en' or 'fr')
         - delivery_date (if provided)
-    
+
     Examples
     --------
     >>> client = {
@@ -188,17 +187,17 @@ def build_client_context(
     contact = client_data.get("contact", {})
     school = client_data.get("school", {})
     board = client_data.get("board", {})
-    
+
     # Get DOB in ISO format
     dob_iso = person.get("date_of_birth_iso") or person.get("date_of_birth", "")
     dob_display = person.get("date_of_birth_display", "") or dob_iso
-    
+
     # Extract name components
     full_name = person.get("full_name", "")
     name_parts = full_name.split() if full_name else ["", ""]
     first_name = name_parts[0] if len(name_parts) > 0 else ""
     last_name = name_parts[-1] if len(name_parts) > 1 else ""
-    
+
     # Build context dict for template rendering
     context = {
         "client_id": string_or_empty(client_data.get("client_id", "")),
@@ -207,7 +206,9 @@ def build_client_context(
         "name": string_or_empty(full_name),
         "date_of_birth": string_or_empty(dob_display),
         "date_of_birth_iso": string_or_empty(dob_iso),
-        "date_of_birth_iso_compact": string_or_empty(dob_iso.replace("-", "") if dob_iso else ""),
+        "date_of_birth_iso_compact": string_or_empty(
+            dob_iso.replace("-", "") if dob_iso else ""
+        ),
         "school": string_or_empty(school.get("name", "")),
         "board": string_or_empty(board.get("name", "")),
         "postal_code": string_or_empty(contact.get("postal_code", "")),
@@ -216,8 +217,8 @@ def build_client_context(
         "street_address": string_or_empty(contact.get("street", "")),
         "language_code": language,  # ISO code: 'en' or 'fr'
     }
-    
+
     if delivery_date:
         context["delivery_date"] = string_or_empty(delivery_date)
-    
+
     return context

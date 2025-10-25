@@ -32,9 +32,9 @@ def create_test_pdf(path: Path, num_pages: int = 1) -> None:
     writer = PdfWriter()
     for _ in range(num_pages):
         writer.add_blank_page(width=612, height=792)
-    
+
     path.parent.mkdir(parents=True, exist_ok=True)
-    with open(path, 'wb') as f:
+    with open(path, "wb") as f:
         writer.write(f)
 
 
@@ -85,7 +85,9 @@ class TestDiscoverPdfs:
         with pytest.raises(FileNotFoundError):
             count_pdfs.discover_pdfs(tmp_test_dir / "nonexistent.pdf")
 
-    def test_discover_pdfs_ignores_non_pdf_files(self, tmp_output_structure: dict) -> None:
+    def test_discover_pdfs_ignores_non_pdf_files(
+        self, tmp_output_structure: dict
+    ) -> None:
         """Verify only .pdf files are returned.
 
         Real-world significance:
@@ -159,7 +161,9 @@ class TestFilterByLanguage:
         assert len(result) == 2
         assert all(p.name.startswith("fr_") for p in result)
 
-    def test_filter_by_language_none_returns_all(self, tmp_output_structure: dict) -> None:
+    def test_filter_by_language_none_returns_all(
+        self, tmp_output_structure: dict
+    ) -> None:
         """Verify all PDFs returned when language is None.
 
         Real-world significance:

@@ -26,7 +26,9 @@ import pytest
 class TestConfigDrivenBehavior:
     """Integration tests for config controlling pipeline behavior."""
 
-    def test_qr_enabled_flag_exists_in_config(self, default_config: Dict[str, Any]) -> None:
+    def test_qr_enabled_flag_exists_in_config(
+        self, default_config: Dict[str, Any]
+    ) -> None:
         """Verify QR enabled flag is present in default config.
 
         Real-world significance:
@@ -37,7 +39,9 @@ class TestConfigDrivenBehavior:
         assert "enabled" in default_config["qr"]
         assert isinstance(default_config["qr"]["enabled"], bool)
 
-    def test_encryption_enabled_flag_exists_in_config(self, default_config: Dict[str, Any]) -> None:
+    def test_encryption_enabled_flag_exists_in_config(
+        self, default_config: Dict[str, Any]
+    ) -> None:
         """Verify encryption enabled flag is present in default config.
 
         Real-world significance:
@@ -48,7 +52,9 @@ class TestConfigDrivenBehavior:
         assert "enabled" in default_config["encryption"]
         assert isinstance(default_config["encryption"]["enabled"], bool)
 
-    def test_batching_enabled_flag_exists_in_config(self, default_config: Dict[str, Any]) -> None:
+    def test_batching_enabled_flag_exists_in_config(
+        self, default_config: Dict[str, Any]
+    ) -> None:
         """Verify batching enabled flag is present in default config.
 
         Real-world significance:
@@ -59,7 +65,9 @@ class TestConfigDrivenBehavior:
         assert "enabled" in default_config["batching"]
         assert isinstance(default_config["batching"]["enabled"], bool)
 
-    def test_pipeline_config_section_exists(self, default_config: Dict[str, Any]) -> None:
+    def test_pipeline_config_section_exists(
+        self, default_config: Dict[str, Any]
+    ) -> None:
         """Verify pipeline section with behavior flags exists.
 
         Real-world significance:
@@ -82,7 +90,9 @@ class TestConfigDrivenBehavior:
         assert isinstance(default_config["batching"]["batch_size"], int)
         assert default_config["batching"]["batch_size"] >= 0
 
-    def test_chart_diseases_header_configuration(self, default_config: Dict[str, Any]) -> None:
+    def test_chart_diseases_header_configuration(
+        self, default_config: Dict[str, Any]
+    ) -> None:
         """Verify chart diseases header is configurable list.
 
         Real-world significance:
@@ -132,7 +142,9 @@ class TestQrEnabledBehavior:
 
         assert config_qr_disabled["qr"]["enabled"] is False
 
-    def test_qr_payload_template_configured(self, default_config: Dict[str, Any]) -> None:
+    def test_qr_payload_template_configured(
+        self, default_config: Dict[str, Any]
+    ) -> None:
         """Verify QR payload template is configurable.
 
         Real-world significance:
@@ -148,7 +160,9 @@ class TestQrEnabledBehavior:
 class TestEncryptionBehavior:
     """Integration tests for PDF encryption configuration."""
 
-    def test_encryption_enabled_true_config(self, default_config: Dict[str, Any]) -> None:
+    def test_encryption_enabled_true_config(
+        self, default_config: Dict[str, Any]
+    ) -> None:
         """Verify config can enable PDF encryption.
 
         Real-world significance:
@@ -160,7 +174,9 @@ class TestEncryptionBehavior:
 
         assert config_encrypted["encryption"]["enabled"] is True
 
-    def test_encryption_enabled_false_config(self, default_config: Dict[str, Any]) -> None:
+    def test_encryption_enabled_false_config(
+        self, default_config: Dict[str, Any]
+    ) -> None:
         """Verify config can disable PDF encryption.
 
         Real-world significance:
@@ -172,7 +188,9 @@ class TestEncryptionBehavior:
 
         assert config_unencrypted["encryption"]["enabled"] is False
 
-    def test_encryption_password_template_configured(self, default_config: Dict[str, Any]) -> None:
+    def test_encryption_password_template_configured(
+        self, default_config: Dict[str, Any]
+    ) -> None:
         """Verify encryption password template is configurable.
 
         Real-world significance:
@@ -188,7 +206,9 @@ class TestEncryptionBehavior:
 class TestBatchingBehavior:
     """Integration tests for PDF batching configuration."""
 
-    def test_batching_batch_size_zero_disables_batching(self, default_config: Dict[str, Any]) -> None:
+    def test_batching_batch_size_zero_disables_batching(
+        self, default_config: Dict[str, Any]
+    ) -> None:
         """Verify batch_size=0 disables batching.
 
         Real-world significance:
@@ -200,7 +220,9 @@ class TestBatchingBehavior:
 
         assert config["batching"]["batch_size"] == 0
 
-    def test_batching_batch_size_positive_enables_batching(self, default_config: Dict[str, Any]) -> None:
+    def test_batching_batch_size_positive_enables_batching(
+        self, default_config: Dict[str, Any]
+    ) -> None:
         """Verify positive batch_size enables batching.
 
         Real-world significance:
@@ -266,7 +288,9 @@ class TestPipelineCleanupBehavior:
 
         assert config["pipeline"]["keep_intermediate_files"] is True
 
-    def test_keep_intermediate_files_false(self, default_config: Dict[str, Any]) -> None:
+    def test_keep_intermediate_files_false(
+        self, default_config: Dict[str, Any]
+    ) -> None:
         """Verify intermediate files can be removed.
 
         Real-world significance:

@@ -99,15 +99,19 @@ class TestPasswordGeneration:
             "school": "Lincoln School",
         }
 
-        with patch.object(encrypt_notice, "get_encryption_config", return_value={
-            "password": {"template": "{date_of_birth_iso_compact}"}
-        }):
+        with patch.object(
+            encrypt_notice,
+            "get_encryption_config",
+            return_value={"password": {"template": "{date_of_birth_iso_compact}"}},
+        ):
             encrypted_path = encrypt_notice.encrypt_pdf(str(pdf_path), context)
 
         assert Path(encrypted_path).exists()
         assert "_encrypted" in Path(encrypted_path).name
 
-    def test_encrypt_pdf_with_custom_password_template(self, tmp_test_dir: Path) -> None:
+    def test_encrypt_pdf_with_custom_password_template(
+        self, tmp_test_dir: Path
+    ) -> None:
         """Verify password generation from custom template.
 
         Real-world significance:
@@ -126,13 +130,19 @@ class TestPasswordGeneration:
             "date_of_birth_iso_compact": "20150315",
         }
 
-        with patch.object(encrypt_notice, "get_encryption_config", return_value={
-            "password": {"template": "{client_id}_{date_of_birth_iso_compact}"}
-        }):
+        with patch.object(
+            encrypt_notice,
+            "get_encryption_config",
+            return_value={
+                "password": {"template": "{client_id}_{date_of_birth_iso_compact}"}
+            },
+        ):
             encrypted_path = encrypt_notice.encrypt_pdf(str(pdf_path), context)
             assert Path(encrypted_path).exists()
 
-    def test_encrypt_pdf_with_missing_template_placeholder(self, tmp_test_dir: Path) -> None:
+    def test_encrypt_pdf_with_missing_template_placeholder(
+        self, tmp_test_dir: Path
+    ) -> None:
         """Verify error when password template uses unknown placeholder.
 
         Real-world significance:
@@ -151,9 +161,11 @@ class TestPasswordGeneration:
             "date_of_birth_iso_compact": "20150315",
         }
 
-        with patch.object(encrypt_notice, "get_encryption_config", return_value={
-            "password": {"template": "{unknown_field}"}
-        }):
+        with patch.object(
+            encrypt_notice,
+            "get_encryption_config",
+            return_value={"password": {"template": "{unknown_field}"}},
+        ):
             with pytest.raises(ValueError, match="Unknown placeholder"):
                 encrypt_notice.encrypt_pdf(str(pdf_path), context)
 
@@ -171,15 +183,19 @@ class TestPasswordGeneration:
         with open(pdf_path, "wb") as f:
             writer.write(f)
 
-        with patch.object(encrypt_notice, "get_encryption_config", return_value={
-            "password": {"template": "{date_of_birth_iso_compact}"}
-        }):
+        with patch.object(
+            encrypt_notice,
+            "get_encryption_config",
+            return_value={"password": {"template": "{date_of_birth_iso_compact}"}},
+        ):
             encrypted_path = encrypt_notice.encrypt_pdf(
                 str(pdf_path), "12345", dob="2015-03-15"
             )
             assert Path(encrypted_path).exists()
 
-    def test_encrypt_pdf_legacy_mode_missing_dob_raises_error(self, tmp_test_dir: Path) -> None:
+    def test_encrypt_pdf_legacy_mode_missing_dob_raises_error(
+        self, tmp_test_dir: Path
+    ) -> None:
         """Verify error when legacy mode called without DOB.
 
         Real-world significance:
@@ -230,14 +246,18 @@ class TestEncryptNotice:
         }
         json_path.write_text(json.dumps(client_data))
 
-        with patch.object(encrypt_notice, "get_encryption_config", return_value={
-            "password": {"template": "{date_of_birth_iso_compact}"}
-        }):
+        with patch.object(
+            encrypt_notice,
+            "get_encryption_config",
+            return_value={"password": {"template": "{date_of_birth_iso_compact}"}},
+        ):
             encrypted_path = encrypt_notice.encrypt_notice(json_path, pdf_path, "en")
             assert Path(encrypted_path).exists()
             assert "_encrypted" in Path(encrypted_path).name
 
-    def test_encrypt_notice_missing_json_file_raises_error(self, tmp_test_dir: Path) -> None:
+    def test_encrypt_notice_missing_json_file_raises_error(
+        self, tmp_test_dir: Path
+    ) -> None:
         """Verify error when JSON metadata file missing.
 
         Real-world significance:
@@ -297,22 +317,33 @@ class TestEncryptNotice:
             writer.write(f)
 
         json_path = tmp_test_dir / "metadata.json"
-        json_path.write_text(json.dumps({
-            "12345": {
-                "client_id": "12345",
-                "person": {"full_name": "John Doe", "date_of_birth_iso": "2015-03-15"},
-                "contact": {}
-            }
-        }))
+        json_path.write_text(
+            json.dumps(
+                {
+                    "12345": {
+                        "client_id": "12345",
+                        "person": {
+                            "full_name": "John Doe",
+                            "date_of_birth_iso": "2015-03-15",
+                        },
+                        "contact": {},
+                    }
+                }
+            )
+        )
 
         # Create encrypted file that's newer than source
-        encrypted_path = pdf_path.with_name(f"{pdf_path.stem}_encrypted{pdf_path.suffix}")
+        encrypted_path = pdf_path.with_name(
+            f"{pdf_path.stem}_encrypted{pdf_path.suffix}"
+        )
         with open(encrypted_path, "wb") as f:
             f.write(b"already encrypted")
 
-        with patch.object(encrypt_notice, "get_encryption_config", return_value={
-            "password": {"template": "{date_of_birth_iso_compact}"}
-        }):
+        with patch.object(
+            encrypt_notice,
+            "get_encryption_config",
+            return_value={"password": {"template": "{date_of_birth_iso_compact}"}},
+        ):
             result = encrypt_notice.encrypt_notice(json_path, pdf_path, "en")
             # Should return existing encrypted file
             assert result == str(encrypted_path)
@@ -322,7 +353,9 @@ class TestEncryptNotice:
 class TestEncryptPdfsInDirectory:
     """Unit tests for encrypting multiple PDFs in a directory."""
 
-    def test_encrypt_pdfs_in_directory_processes_all_files(self, tmp_test_dir: Path) -> None:
+    def test_encrypt_pdfs_in_directory_processes_all_files(
+        self, tmp_test_dir: Path
+    ) -> None:
         """Verify all PDFs in directory are encrypted.
 
         Real-world significance:
@@ -335,7 +368,7 @@ class TestEncryptPdfsInDirectory:
 
         # Create test PDFs
         for i in range(1, 4):
-            pdf_path = pdf_dir / f"en_client_0000{i}_{100+i}.pdf"
+            pdf_path = pdf_dir / f"en_client_0000{i}_{100 + i}.pdf"
             writer = PdfWriter()
             writer.add_blank_page(width=612, height=792)
             with open(pdf_path, "wb") as f:
@@ -346,21 +379,23 @@ class TestEncryptPdfsInDirectory:
         metadata = {
             "clients": [
                 {
-                    "client_id": f"{100+i}",
+                    "client_id": f"{100 + i}",
                     "person": {
                         "full_name": f"Client {i}",
                         "date_of_birth_iso": "2015-03-15",
                     },
-                    "contact": {}
+                    "contact": {},
                 }
                 for i in range(1, 4)
             ]
         }
         json_path.write_text(json.dumps(metadata))
 
-        with patch.object(encrypt_notice, "get_encryption_config", return_value={
-            "password": {"template": "{date_of_birth_iso_compact}"}
-        }):
+        with patch.object(
+            encrypt_notice,
+            "get_encryption_config",
+            return_value={"password": {"template": "{date_of_birth_iso_compact}"}},
+        ):
             encrypt_notice.encrypt_pdfs_in_directory(pdf_dir, json_path, "en")
 
         # Verify encrypted files exist
@@ -391,9 +426,11 @@ class TestEncryptPdfsInDirectory:
         json_path = tmp_test_dir / "metadata.json"
         json_path.write_text(json.dumps({"clients": []}))
 
-        with patch.object(encrypt_notice, "get_encryption_config", return_value={
-            "password": {"template": "{date_of_birth_iso_compact}"}
-        }):
+        with patch.object(
+            encrypt_notice,
+            "get_encryption_config",
+            return_value={"password": {"template": "{date_of_birth_iso_compact}"}},
+        ):
             with patch("scripts.encrypt_notice.encrypt_pdf") as mock_encrypt:
                 encrypt_notice.encrypt_pdfs_in_directory(pdf_dir, json_path, "en")
                 # encrypt_pdf should not be called for _encrypted files
@@ -419,15 +456,19 @@ class TestEncryptPdfsInDirectory:
         json_path = tmp_test_dir / "metadata.json"
         json_path.write_text(json.dumps({"clients": []}))
 
-        with patch.object(encrypt_notice, "get_encryption_config", return_value={
-            "password": {"template": "{date_of_birth_iso_compact}"}
-        }):
+        with patch.object(
+            encrypt_notice,
+            "get_encryption_config",
+            return_value={"password": {"template": "{date_of_birth_iso_compact}"}},
+        ):
             with patch("scripts.encrypt_notice.encrypt_pdf") as mock_encrypt:
                 encrypt_notice.encrypt_pdfs_in_directory(pdf_dir, json_path, "en")
                 # encrypt_pdf should not be called for conf.pdf
                 mock_encrypt.assert_not_called()
 
-    def test_encrypt_pdfs_missing_directory_raises_error(self, tmp_test_dir: Path) -> None:
+    def test_encrypt_pdfs_missing_directory_raises_error(
+        self, tmp_test_dir: Path
+    ) -> None:
         """Verify error when PDF directory doesn't exist.
 
         Real-world significance:
@@ -456,7 +497,9 @@ class TestEncryptPdfsInDirectory:
         with pytest.raises(FileNotFoundError):
             encrypt_notice.encrypt_pdfs_in_directory(pdf_dir, json_path, "en")
 
-    def test_encrypt_pdfs_deletes_unencrypted_after_success(self, tmp_test_dir: Path) -> None:
+    def test_encrypt_pdfs_deletes_unencrypted_after_success(
+        self, tmp_test_dir: Path
+    ) -> None:
         """Verify unencrypted PDF is deleted after successful encryption.
 
         Real-world significance:
@@ -474,17 +517,28 @@ class TestEncryptPdfsInDirectory:
             writer.write(f)
 
         json_path = tmp_test_dir / "metadata.json"
-        json_path.write_text(json.dumps({
-            "clients": [{
-                "client_id": "101",
-                "person": {"full_name": "John", "date_of_birth_iso": "2015-03-15"},
-                "contact": {}
-            }]
-        }))
+        json_path.write_text(
+            json.dumps(
+                {
+                    "clients": [
+                        {
+                            "client_id": "101",
+                            "person": {
+                                "full_name": "John",
+                                "date_of_birth_iso": "2015-03-15",
+                            },
+                            "contact": {},
+                        }
+                    ]
+                }
+            )
+        )
 
-        with patch.object(encrypt_notice, "get_encryption_config", return_value={
-            "password": {"template": "{date_of_birth_iso_compact}"}
-        }):
+        with patch.object(
+            encrypt_notice,
+            "get_encryption_config",
+            return_value={"password": {"template": "{date_of_birth_iso_compact}"}},
+        ):
             encrypt_notice.encrypt_pdfs_in_directory(pdf_dir, json_path, "en")
 
         # Original should be deleted
@@ -493,7 +547,9 @@ class TestEncryptPdfsInDirectory:
         encrypted = pdf_dir / "en_client_00001_101_encrypted.pdf"
         assert encrypted.exists()
 
-    def test_encrypt_pdfs_handles_file_extraction_errors(self, tmp_test_dir: Path) -> None:
+    def test_encrypt_pdfs_handles_file_extraction_errors(
+        self, tmp_test_dir: Path
+    ) -> None:
         """Verify graceful handling of file extraction errors.
 
         Real-world significance:
@@ -513,9 +569,11 @@ class TestEncryptPdfsInDirectory:
         json_path = tmp_test_dir / "metadata.json"
         json_path.write_text(json.dumps({"clients": []}))
 
-        with patch.object(encrypt_notice, "get_encryption_config", return_value={
-            "password": {"template": "{date_of_birth_iso_compact}"}
-        }):
+        with patch.object(
+            encrypt_notice,
+            "get_encryption_config",
+            return_value={"password": {"template": "{date_of_birth_iso_compact}"}},
+        ):
             # Should not crash
             encrypt_notice.encrypt_pdfs_in_directory(pdf_dir, json_path, "en")
 
@@ -553,17 +611,28 @@ class TestEncryptPdfsInDirectory:
             writer.write(f)
 
         json_path = tmp_test_dir / "metadata.json"
-        json_path.write_text(json.dumps({
-            "clients": [{
-                "client_id": "101",
-                "person": {"full_name": "John", "date_of_birth_iso": "2015-03-15"},
-                "contact": {}
-            }]
-        }))
+        json_path.write_text(
+            json.dumps(
+                {
+                    "clients": [
+                        {
+                            "client_id": "101",
+                            "person": {
+                                "full_name": "John",
+                                "date_of_birth_iso": "2015-03-15",
+                            },
+                            "contact": {},
+                        }
+                    ]
+                }
+            )
+        )
 
-        with patch.object(encrypt_notice, "get_encryption_config", return_value={
-            "password": {"template": "{date_of_birth_iso_compact}"}
-        }):
+        with patch.object(
+            encrypt_notice,
+            "get_encryption_config",
+            return_value={"password": {"template": "{date_of_birth_iso_compact}"}},
+        ):
             with patch("builtins.print") as mock_print:
                 encrypt_notice.encrypt_pdfs_in_directory(pdf_dir, json_path, "en")
                 # Should print start and completion messages
@@ -574,7 +643,9 @@ class TestEncryptPdfsInDirectory:
 class TestLoadNoticeMetadata:
     """Unit tests for _load_notice_metadata function."""
 
-    def test_load_notice_metadata_extracts_client_data(self, tmp_test_dir: Path) -> None:
+    def test_load_notice_metadata_extracts_client_data(
+        self, tmp_test_dir: Path
+    ) -> None:
         """Verify client data and context extraction from JSON.
 
         Real-world significance:
@@ -582,14 +653,21 @@ class TestLoadNoticeMetadata:
         - Must extract nested fields correctly
         """
         json_path = tmp_test_dir / "metadata.json"
-        json_path.write_text(json.dumps({
-            "12345": {
-                "client_id": "12345",
-                "person": {"full_name": "John Doe", "date_of_birth_iso": "2015-03-15"},
-                "school": {"name": "Lincoln"},
-                "contact": {"postal_code": "M5V"}
-            }
-        }))
+        json_path.write_text(
+            json.dumps(
+                {
+                    "12345": {
+                        "client_id": "12345",
+                        "person": {
+                            "full_name": "John Doe",
+                            "date_of_birth_iso": "2015-03-15",
+                        },
+                        "school": {"name": "Lincoln"},
+                        "contact": {"postal_code": "M5V"},
+                    }
+                }
+            )
+        )
 
         record, context = encrypt_notice._load_notice_metadata(json_path, "en")
 
@@ -642,9 +720,11 @@ class TestPdfEncryptionIntegration:
 
         context = {"date_of_birth_iso_compact": "20150315"}
 
-        with patch.object(encrypt_notice, "get_encryption_config", return_value={
-            "password": {"template": "{date_of_birth_iso_compact}"}
-        }):
+        with patch.object(
+            encrypt_notice,
+            "get_encryption_config",
+            return_value={"password": {"template": "{date_of_birth_iso_compact}"}},
+        ):
             encrypted_path = encrypt_notice.encrypt_pdf(str(pdf_path), context)
 
         # Verify encrypted PDF can be read and has metadata
@@ -667,9 +747,11 @@ class TestPdfEncryptionIntegration:
 
         context = {"date_of_birth_iso_compact": "20150315"}
 
-        with patch.object(encrypt_notice, "get_encryption_config", return_value={
-            "password": {"template": "{date_of_birth_iso_compact}"}
-        }):
+        with patch.object(
+            encrypt_notice,
+            "get_encryption_config",
+            return_value={"password": {"template": "{date_of_birth_iso_compact}"}},
+        ):
             encrypted_path = encrypt_notice.encrypt_pdf(str(pdf_path), context)
 
         # Verify encrypted PDF can be opened

@@ -5,6 +5,7 @@ from enum import Enum
 
 class BatchStrategy(Enum):
     """Batch grouping strategy."""
+
     SIZE = "size"
     SCHOOL = "school"
     BOARD = "board"
@@ -14,12 +15,12 @@ class BatchStrategy(Enum):
         """Convert string to BatchStrategy. Defaults to SIZE if None."""
         if value is None:
             return cls.SIZE
-        
+
         value_lower = value.lower()
         for strategy in cls:
             if strategy.value == value_lower:
                 return strategy
-        
+
         raise ValueError(
             f"Unknown batch strategy: {value}. "
             f"Valid options: {', '.join(s.value for s in cls)}"
@@ -28,6 +29,7 @@ class BatchStrategy(Enum):
 
 class BatchType(Enum):
     """Type descriptor for batch operation."""
+
     SIZE_BASED = "size_based"
     SCHOOL_GROUPED = "school_grouped"
     BOARD_GROUPED = "board_grouped"

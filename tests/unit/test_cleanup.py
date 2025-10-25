@@ -19,10 +19,8 @@ Real-world significance:
 from __future__ import annotations
 
 from pathlib import Path
-from unittest.mock import patch
 
 import pytest
-import yaml
 
 from scripts import cleanup
 
@@ -76,7 +74,9 @@ class TestSafeDelete:
 
         assert not missing_file.exists()
 
-    def test_safe_delete_missing_directory_doesnt_error(self, tmp_test_dir: Path) -> None:
+    def test_safe_delete_missing_directory_doesnt_error(
+        self, tmp_test_dir: Path
+    ) -> None:
         """Verify no error when directory already missing.
 
         Real-world significance:
@@ -161,7 +161,9 @@ class TestRemoveFilesWithExt:
 class TestCleanupWithConfig:
     """Unit tests for cleanup_with_config function."""
 
-    def test_cleanup_removes_configured_directories(self, tmp_output_structure: dict) -> None:
+    def test_cleanup_removes_configured_directories(
+        self, tmp_output_structure: dict
+    ) -> None:
         """Verify configured directories are removed.
 
         Real-world significance:
@@ -173,15 +175,14 @@ class TestCleanupWithConfig:
 
         # Create test structure
         (tmp_output_structure["artifacts"] / "typst").mkdir()
-        (tmp_output_structure["artifacts"] / "typst" / "notice_00001.typ").write_text("typ")
+        (tmp_output_structure["artifacts"] / "typst" / "notice_00001.typ").write_text(
+            "typ"
+        )
         (tmp_output_structure["metadata"] / "page_counts.json").write_text("data")
 
         config_path = output_dir / "parameters.yaml"
         config_path.write_text(
-            "cleanup:\n"
-            "  remove_directories:\n"
-            "    - artifacts\n"
-            "    - metadata\n"
+            "cleanup:\n  remove_directories:\n    - artifacts\n    - metadata\n"
         )
 
         cleanup.cleanup_with_config(output_dir, config_path)
@@ -190,7 +191,9 @@ class TestCleanupWithConfig:
         assert not tmp_output_structure["metadata"].exists()
         assert tmp_output_structure["pdf_individual"].exists()
 
-    def test_cleanup_with_missing_config_uses_defaults(self, tmp_output_structure: dict) -> None:
+    def test_cleanup_with_missing_config_uses_defaults(
+        self, tmp_output_structure: dict
+    ) -> None:
         """Verify cleanup works with missing config (uses defaults).
 
         Real-world significance:
@@ -218,10 +221,7 @@ class TestCleanupWithConfig:
         (tmp_output_structure["artifacts"] / "test.json").write_text("data")
 
         config_path = output_dir / "parameters.yaml"
-        config_path.write_text(
-            "cleanup:\n"
-            "  remove_directories: []\n"
-        )
+        config_path.write_text("cleanup:\n  remove_directories: []\n")
 
         cleanup.cleanup_with_config(output_dir, config_path)
 
@@ -240,10 +240,7 @@ class TestCleanupWithConfig:
 
         config_path = output_dir / "parameters.yaml"
         config_path.write_text(
-            "cleanup:\n"
-            "  remove_directories:\n"
-            "    - nonexistent_dir\n"
-            "    - artifacts\n"
+            "cleanup:\n  remove_directories:\n    - nonexistent_dir\n    - artifacts\n"
         )
 
         # Should not raise
@@ -279,11 +276,7 @@ class TestMain:
         (tmp_output_structure["artifacts"] / "test.json").write_text("data")
 
         config_path = output_dir / "parameters.yaml"
-        config_path.write_text(
-            "cleanup:\n"
-            "  remove_directories:\n"
-            "    - artifacts\n"
-        )
+        config_path.write_text("cleanup:\n  remove_directories:\n    - artifacts\n")
 
         cleanup.main(output_dir, config_path)
 
@@ -308,7 +301,9 @@ class TestMain:
 class TestCleanupIntegration:
     """Unit tests for cleanup workflow integration."""
 
-    def test_cleanup_preserves_pdfs_removes_typ(self, tmp_output_structure: dict) -> None:
+    def test_cleanup_preserves_pdfs_removes_typ(
+        self, tmp_output_structure: dict
+    ) -> None:
         """Verify complete cleanup workflow: remove .typ, keep PDFs.
 
         Real-world significance:
@@ -321,21 +316,21 @@ class TestCleanupIntegration:
 
         # Create test files
         (tmp_output_structure["artifacts"] / "notice_00001.typ").write_text("template")
-        (tmp_output_structure["pdf_individual"] / "notice_00001.pdf").write_text("pdf content")
+        (tmp_output_structure["pdf_individual"] / "notice_00001.pdf").write_text(
+            "pdf content"
+        )
 
         config_path = output_dir / "parameters.yaml"
-        config_path.write_text(
-            "cleanup:\n"
-            "  remove_directories:\n"
-            "    - artifacts\n"
-        )
+        config_path.write_text("cleanup:\n  remove_directories:\n    - artifacts\n")
 
         cleanup.cleanup_with_config(output_dir, config_path)
 
         assert not (tmp_output_structure["artifacts"] / "notice_00001.typ").exists()
         assert (tmp_output_structure["pdf_individual"] / "notice_00001.pdf").exists()
 
-    def test_cleanup_multiple_calls_idempotent(self, tmp_output_structure: dict) -> None:
+    def test_cleanup_multiple_calls_idempotent(
+        self, tmp_output_structure: dict
+    ) -> None:
         """Verify cleanup can be called multiple times safely.
 
         Real-world significance:
@@ -345,11 +340,7 @@ class TestCleanupIntegration:
         output_dir = tmp_output_structure["root"]
 
         config_path = output_dir / "parameters.yaml"
-        config_path.write_text(
-            "cleanup:\n"
-            "  remove_directories:\n"
-            "    - artifacts\n"
-        )
+        config_path.write_text("cleanup:\n  remove_directories:\n    - artifacts\n")
 
         # First call
         cleanup.cleanup_with_config(output_dir, config_path)
