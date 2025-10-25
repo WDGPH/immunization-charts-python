@@ -23,6 +23,7 @@ dependencies = [
 dev = [
     "pytest",
     "pytest-cov",
+    "pre-commit",
 ]
 
 [project.scripts]
