@@ -48,6 +48,24 @@ uv run pre-commit run --all-files   # Check all files
 
 This section describes how the pipeline orchestrates data flow and manages state across processing steps.
 
+### Module Organization
+
+The `scripts/` package is organized by pipeline function, not by layer. Each step has its own module:
+
+| Step | Module | Purpose |
+|------|--------|---------|
+| 1 | `prepare_output.py` | Output directory setup |
+| 2 | `preprocess.py` | Data validation & normalization → JSON artifact |
+| 3 | `generate_qr_codes.py` | QR code PNG generation (optional) |
+| 4 | `generate_notices.py` | Typst template rendering |
+| 5 | `compile_notices.py` | Typst → PDF compilation |
+| 6 | `count_pdfs.py` | PDF validation & page counts |
+| 7 | `encrypt_notice.py` | PDF encryption (optional) |
+| 8 | `batch_pdfs.py` | PDF batching & grouping (optional) |
+| 9 | `cleanup.py` | Intermediate file cleanup |
+
+**Supporting modules:** `run_pipeline.py` (orchestrator), `config_loader.py`, `data_models.py`, `enums.py`, `utils.py`, `generate_mock_template_en.py`, `generate_mock_template_fr.py`. For module structure questions, see `docs/CODE_ANALYSIS_STANDARDS.md`.
+
 ### Orchestration Model
 
 The pipeline follows a **sequential, stateless step architecture** where each processing step:
