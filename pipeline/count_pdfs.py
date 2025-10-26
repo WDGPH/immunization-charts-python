@@ -11,6 +11,23 @@ from pypdf import PdfReader
 
 
 def discover_pdfs(target: Path) -> List[Path]:
+    """Discover all PDF files at the given target path.
+
+    Parameters
+    ----------
+    target : Path
+        Either a directory containing PDFs or a single PDF file.
+
+    Returns
+    -------
+    List[Path]
+        Sorted list of PDF file paths.
+
+    Raises
+    ------
+    FileNotFoundError
+        If target is neither a PDF file nor a directory containing PDFs.
+    """
     if target.is_dir():
         return sorted(target.glob("*.pdf"))
     if target.is_file() and target.suffix.lower() == ".pdf":
@@ -19,6 +36,20 @@ def discover_pdfs(target: Path) -> List[Path]:
 
 
 def filter_by_language(files: Iterable[Path], language: str | None) -> List[Path]:
+    """Filter PDF files by language prefix in filename.
+
+    Parameters
+    ----------
+    files : Iterable[Path]
+        PDF file paths to filter.
+    language : str | None
+        Language code to filter by (e.g., 'en' or 'fr'). If None, returns all files.
+
+    Returns
+    -------
+    List[Path]
+        Filtered list of PDF paths, or all files if language is None.
+    """
     if not language:
         return list(files)
     prefix = f"{language}_"
@@ -26,6 +57,19 @@ def filter_by_language(files: Iterable[Path], language: str | None) -> List[Path
 
 
 def summarize_pdfs(files: Iterable[Path]) -> Tuple[List[Tuple[Path, int]], Counter]:
+    """Count pages in each PDF and summarize distribution.
+
+    Parameters
+    ----------
+    files : Iterable[Path]
+        PDF file paths to analyze.
+
+    Returns
+    -------
+    Tuple[List[Tuple[Path, int]], Counter]
+        - List of (path, page_count) tuples for each PDF
+        - Counter object with distribution of page counts
+    """
     results: List[Tuple[Path, int]] = []
     buckets: Counter = Counter()
     for path in files:
@@ -43,6 +87,19 @@ def print_summary(
     language: str | None,
     verbose: bool,
 ) -> None:
+    """Print a human-readable summary of PDF page counts.
+
+    Parameters
+    ----------
+    results : List[Tuple[Path, int]]
+        List of (path, page_count) tuples.
+    buckets : Counter
+        Counter with distribution of page counts.
+    language : str | None
+        Optional language label for output.
+    verbose : bool
+        If True, print per-file details instead of just summary.
+    """
     total = len(results)
     if total == 0:
         scope = f" for language '{language}'" if language else ""
@@ -72,6 +129,19 @@ def write_json(
     target: Path,
     language: str | None,
 ) -> None:
+    """Write PDF page count summary to a JSON file.
+
+    Parameters
+    ----------
+    results : List[Tuple[Path, int]]
+        List of (path, page_count) tuples.
+    buckets : Counter
+        Counter with page count distribution.
+    target : Path
+        Output JSON file path.
+    language : str | None
+        Optional language label to include in JSON.
+    """
     payload = {
         "language": language,
         "total_pdfs": len(results),

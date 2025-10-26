@@ -12,7 +12,23 @@ class BatchStrategy(Enum):
 
     @classmethod
     def from_string(cls, value: str | None) -> "BatchStrategy":
-        """Convert string to BatchStrategy. Defaults to SIZE if None."""
+        """Convert string to BatchStrategy.
+
+        Parameters
+        ----------
+        value : str | None
+            Batch strategy name ('size', 'school', 'board'), or None for default.
+
+        Returns
+        -------
+        BatchStrategy
+            Corresponding BatchStrategy enum, defaults to SIZE if value is None.
+
+        Raises
+        ------
+        ValueError
+            If value is not a valid strategy name.
+        """
         if value is None:
             return cls.SIZE
 
@@ -36,7 +52,21 @@ class BatchType(Enum):
 
     @classmethod
     def from_strategy(cls, strategy: "BatchStrategy") -> "BatchType":
-        """Convert BatchStrategy to corresponding BatchType."""
+        """Convert BatchStrategy to corresponding BatchType.
+
+        Maps the grouping strategy to the batch type descriptor used in batch
+        manifest records and filenames.
+
+        Parameters
+        ----------
+        strategy : BatchStrategy
+            Batch strategy enum value.
+
+        Returns
+        -------
+        BatchType
+            Corresponding batch type descriptor.
+        """
         mapping = {
             BatchStrategy.SIZE: cls.SIZE_BASED,
             BatchStrategy.SCHOOL: cls.SCHOOL_GROUPED,

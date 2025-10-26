@@ -185,6 +185,30 @@ T = TypeVar("T")
 
 
 def chunked(iterable: Sequence[T], size: int) -> Iterator[List[T]]:
+    """Split an iterable into fixed-size chunks.
+
+    Parameters
+    ----------
+    iterable : Sequence[T]
+        Sequence to chunk.
+    size : int
+        Maximum number of items per chunk (must be positive).
+
+    Returns
+    -------
+    Iterator[List[T]]
+        Iterator yielding lists of up to `size` items.
+
+    Raises
+    ------
+    ValueError
+        If size is not positive.
+
+    Examples
+    --------
+    >>> list(chunked([1, 2, 3, 4, 5], 2))
+    [[1, 2], [3, 4], [5]]
+    """
     if size <= 0:
         raise ValueError("chunk size must be positive")
     for index in range(0, len(iterable), size):
@@ -192,11 +216,53 @@ def chunked(iterable: Sequence[T], size: int) -> Iterator[List[T]]:
 
 
 def slugify(value: str) -> str:
+    """Convert a string to a URL-safe slug format.
+
+    Converts spaces and special characters to underscores, removes consecutive
+    underscores, and lowercases the result. Used for generating batch filenames
+    from school/board names.
+
+    Parameters
+    ----------
+    value : str
+        String to slugify (e.g., school or board name).
+
+    Returns
+    -------
+    str
+        Slugified string, or 'unknown' if value is empty/whitespace.
+
+    Examples
+    --------
+    >>> slugify("Lincoln High School")
+    'lincoln_high_school'
+    >>> slugify("Bd. Métropolitain")
+    'bd_m_tropolitain'
+    """
     cleaned = re.sub(r"[^A-Za-z0-9]+", "_", value.strip())
     return re.sub(r"_+", "_", cleaned).strip("_").lower() or "unknown"
 
 
 def load_artifact(output_dir: Path, run_id: str) -> Dict[str, object]:
+    """Load the preprocessed artifact JSON from the output directory.
+
+    Parameters
+    ----------
+    output_dir : Path
+        Root output directory containing artifacts.
+    run_id : str
+        Pipeline run identifier matching the artifact filename.
+
+    Returns
+    -------
+    Dict[str, object]
+        Parsed preprocessed artifact with clients and metadata.
+
+    Raises
+    ------
+    FileNotFoundError
+        If the preprocessed artifact file does not exist.
+    """
     artifact_path = output_dir / "artifacts" / f"preprocessed_clients_{run_id}.json"
     if not artifact_path.exists():
         raise FileNotFoundError(f"Preprocessed artifact not found at {artifact_path}")
@@ -230,6 +296,21 @@ def build_client_lookup(
 
 
 def discover_pdfs(output_dir: Path, language: str) -> List[Path]:
+    """Discover all individual PDF files for a given language.
+
+    Parameters
+    ----------
+    output_dir : Path
+        Root output directory.
+    language : str
+        Language prefix to match (e.g., 'en' or 'fr').
+
+    Returns
+    -------
+    List[Path]
+        Sorted list of PDF file paths matching the language, or empty list
+        if pdf_individual directory doesn't exist.
+    """
     pdf_dir = output_dir / "pdf_individual"
     if not pdf_dir.exists():
         return []
@@ -239,6 +320,30 @@ def discover_pdfs(output_dir: Path, language: str) -> List[Path]:
 def build_pdf_records(
     output_dir: Path, language: str, clients: Dict[tuple[str, str], dict]
 ) -> List[PdfRecord]:
+    """Build a list of PdfRecord objects from discovered PDF files.
+
+    Discovers PDFs, extracts metadata from filenames, looks up client data,
+    and constructs PdfRecord objects with page counts and client metadata.
+
+    Parameters
+    ----------
+    output_dir : Path
+        Root output directory.
+    language : str
+        Language prefix to filter PDFs.
+    clients : Dict[tuple[str, str], dict]
+        Lookup table of client data keyed by (sequence, client_id).
+
+    Returns
+    -------
+    List[PdfRecord]
+        Sorted list of PdfRecord objects by sequence.
+
+    Raises
+    ------
+    KeyError
+        If a PDF filename has no matching client in the lookup table.
+    """
     pdf_paths = discover_pdfs(output_dir, language)
     records: List[PdfRecord] = []
     for pdf_path in pdf_paths:

@@ -17,6 +17,18 @@ ROOT_DIR = Path(__file__).resolve().parent.parent
 
 
 def discover_typst_files(artifact_dir: Path) -> list[Path]:
+    """Discover all Typst template files in the artifact directory.
+
+    Parameters
+    ----------
+    artifact_dir : Path
+        Directory containing pipeline artifacts (should have a 'typst' subdirectory).
+
+    Returns
+    -------
+    list[Path]
+        Sorted list of Typst (.typ) file paths, or empty list if directory doesn't exist.
+    """
     typst_dir = artifact_dir / "typst"
     if not typst_dir.exists():
         return []
@@ -32,6 +44,23 @@ def compile_file(
     root_dir: Path,
     verbose: bool,
 ) -> None:
+    """Compile a single Typst template file to PDF.
+
+    Parameters
+    ----------
+    typ_path : Path
+        Path to the .typ Typst template file to compile.
+    pdf_dir : Path
+        Directory where the compiled PDF should be written.
+    typst_bin : str
+        Path or name of the typst binary to use for compilation.
+    font_path : Path | None
+        Optional path to directory containing custom fonts.
+    root_dir : Path
+        Root directory for relative path resolution in Typst compilation.
+    verbose : bool
+        If True, print compilation status message.
+    """
     pdf_path = pdf_dir / f"{typ_path.stem}.pdf"
     command = [typst_bin, "compile"]
     if font_path:
@@ -51,6 +80,28 @@ def compile_typst_files(
     root_dir: Path,
     verbose: bool,
 ) -> int:
+    """Compile all discovered Typst template files sequentially to PDFs.
+
+    Parameters
+    ----------
+    artifact_dir : Path
+        Directory containing Typst artifacts.
+    pdf_dir : Path
+        Output directory for compiled PDFs.
+    typst_bin : str
+        Path or name of the typst binary.
+    font_path : Path | None
+        Optional custom fonts directory.
+    root_dir : Path
+        Root directory for relative path resolution.
+    verbose : bool
+        If True, print per-file compilation status.
+
+    Returns
+    -------
+    int
+        Number of files successfully compiled.
+    """
     pdf_dir.mkdir(parents=True, exist_ok=True)
     typ_files = discover_typst_files(artifact_dir)
     if not typ_files:

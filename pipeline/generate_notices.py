@@ -49,7 +49,18 @@ LANGUAGE_RENDERERS = {
 
 
 def read_artifact(path: Path) -> ArtifactPayload:
-    """Read and deserialize the preprocessed artifact JSON."""
+    """Read and deserialize the preprocessed artifact JSON.
+
+    Parameters
+    ----------
+    path : Path
+        Path to the preprocessed artifact JSON file.
+
+    Returns
+    -------
+    ArtifactPayload
+        Parsed artifact with clients and metadata.
+    """
     payload_dict = json.loads(path.read_text(encoding="utf-8"))
     clients = []
 
@@ -81,10 +92,54 @@ def read_artifact(path: Path) -> ArtifactPayload:
 
 
 def _escape_string(value: str) -> str:
+    """Escape special characters in a string for Typst template output.
+
+    Escapes backslashes, quotes, and newlines to ensure the string can be
+    safely embedded in a Typst template.
+
+    Parameters
+    ----------
+    value : str
+        String to escape.
+
+    Returns
+    -------
+    str
+        Escaped string safe for Typst embedding.
+    """
     return value.replace("\\", "\\\\").replace('"', '\\"').replace("\n", "\\n")
 
 
 def _to_typ_value(value) -> str:
+    """Convert a Python value to its Typst template representation.
+
+    Handles strings (with escaping), booleans, None, numbers, sequences (tuples),
+    and mappings (dicts) by converting them to Typst syntax.
+
+    Parameters
+    ----------
+    value : Any
+        Python value to convert.
+
+    Returns
+    -------
+    str
+        Typst-compatible representation of the value.
+
+    Raises
+    ------
+    TypeError
+        If value type is not supported.
+
+    Examples
+    --------
+    >>> _to_typ_value("hello")
+    '"hello"'
+    >>> _to_typ_value(True)
+    'true'
+    >>> _to_typ_value([1, 2, 3])
+    '(1, 2, 3)'
+    """
     if isinstance(value, str):
         return f'"{_escape_string(value)}"'
     if isinstance(value, bool):

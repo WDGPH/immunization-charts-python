@@ -10,7 +10,13 @@ from .config_loader import load_config
 
 
 def safe_delete(path: Path):
-    """Safely delete a file or directory if it exists."""
+    """Safely delete a file or directory if it exists.
+
+    Parameters
+    ----------
+    path : Path
+        File or directory to delete.
+    """
     if path.exists():
         if path.is_dir():
             shutil.rmtree(path)
@@ -19,7 +25,15 @@ def safe_delete(path: Path):
 
 
 def remove_files_with_ext(base_dir: Path, extensions):
-    """Remove files with specified extensions in the given directory."""
+    """Remove files with specified extensions in the given directory.
+
+    Parameters
+    ----------
+    base_dir : Path
+        Directory to clean.
+    extensions : Iterable[str]
+        File extensions to remove (without leading dots, e.g., ['typ', 'json']).
+    """
     if not base_dir.exists():
         return
     for ext in extensions:
