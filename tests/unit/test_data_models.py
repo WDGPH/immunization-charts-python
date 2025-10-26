@@ -69,7 +69,7 @@ class TestClientRecord:
         )
 
         with pytest.raises(Exception):  # FrozenInstanceError or AttributeError
-            client.sequence = "00002"
+            client.sequence = "00002"  # type: ignore[misc]
 
     def test_client_record_optional_qr_field(self) -> None:
         """Verify ClientRecord has optional qr field.

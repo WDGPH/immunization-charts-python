@@ -236,6 +236,7 @@ class TestNoticeToCompileIntegration:
         # All fields should be present
         assert template_vars["client_first_name"] == "Alice"
         assert template_vars["client_last_name"] == "Zephyr"
+        assert template_vars["vaccines_list"] is not None
         assert len(template_vars["vaccines_list"]) == 3
 
     def test_typst_file_structure_consistency(self, tmp_test_dir: Path) -> None:
@@ -390,6 +391,7 @@ class TestEncryptionToBatchingWorkflow:
 
         # Verify batching can use this data
         assert pdf_data["sequence"]
+        assert isinstance(pdf_data["client"], dict)
         assert pdf_data["client"]["school"]  # For group_by="school"
         assert pdf_data["client"]["board"]  # For group_by="board"
 

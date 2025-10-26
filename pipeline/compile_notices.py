@@ -135,4 +135,8 @@ def main(artifact_dir: Path, output_dir: Path, config_path: Path | None = None) 
 
 
 if __name__ == "__main__":
-    main()
+    # This script is now called only from orchestrator.py
+    # and should not be invoked directly
+    raise RuntimeError(
+        "compile_notices.py should not be invoked directly. Use orchestrator.py instead."
+    )

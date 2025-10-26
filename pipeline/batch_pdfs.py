@@ -23,7 +23,7 @@ from dataclasses import dataclass
 from hashlib import sha256
 from itertools import islice
 from pathlib import Path
-from typing import Dict, Iterator, List, Sequence
+from typing import Dict, Iterator, List, Sequence, TypeVar
 
 from pypdf import PdfReader, PdfWriter
 
@@ -181,7 +181,10 @@ def main(
     return results
 
 
-def chunked(iterable: Sequence[PdfRecord], size: int) -> Iterator[List[PdfRecord]]:
+T = TypeVar("T")
+
+
+def chunked(iterable: Sequence[T], size: int) -> Iterator[List[T]]:
     if size <= 0:
         raise ValueError("chunk size must be positive")
     for index in range(0, len(iterable), size):
@@ -216,12 +219,13 @@ def build_client_lookup(
     Dict[tuple[str, str], dict]
         Lookup table keyed by (sequence, client_id)
     """
-    clients = artifact.get("clients", [])
+    clients_obj = artifact.get("clients", [])
+    clients = clients_obj if isinstance(clients_obj, list) else []
     lookup: Dict[tuple[str, str], dict] = {}
-    for client in clients:
-        sequence = client.get("sequence")
-        client_id = client.get("client_id")
-        lookup[(sequence, client_id)] = client
+    for client in clients:  # type: ignore[var-annotated]
+        sequence = client.get("sequence")  # type: ignore[attr-defined]
+        client_id = client.get("client_id")  # type: ignore[attr-defined]
+        lookup[(sequence, client_id)] = client  # type: ignore[typeddict-item]
     return lookup
 
 

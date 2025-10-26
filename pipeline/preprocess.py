@@ -567,12 +567,12 @@ def build_preprocess_result(
     sorted_df["SEQUENCE"] = [f"{idx + 1:05d}" for idx in range(len(sorted_df))]
 
     clients: List[ClientRecord] = []
-    for row in sorted_df.itertuples(index=False):
-        client_id = str(row.CLIENT_ID)
-        sequence = row.SEQUENCE
+    for row in sorted_df.itertuples(index=False):  # type: ignore[attr-defined]
+        client_id = str(row.CLIENT_ID)  # type: ignore[attr-defined]
+        sequence = row.SEQUENCE  # type: ignore[attr-defined]
         dob_iso = (
-            row.DATE_OF_BIRTH.strftime("%Y-%m-%d")
-            if pd.notna(row.DATE_OF_BIRTH)
+            row.DATE_OF_BIRTH.strftime("%Y-%m-%d")  # type: ignore[attr-defined]
+            if pd.notna(row.DATE_OF_BIRTH)  # type: ignore[attr-defined]
             else None
         )
         if dob_iso is None:
@@ -583,20 +583,20 @@ def build_preprocess_result(
             if language == "fr" and dob_iso
             else convert_date_string(dob_iso)
         )
-        vaccines_due = process_vaccines_due(row.OVERDUE_DISEASE, language, disease_map)
+        vaccines_due = process_vaccines_due(row.OVERDUE_DISEASE, language, disease_map)  # type: ignore[attr-defined]
         vaccines_due_list = [
             item.strip() for item in vaccines_due.split(",") if item.strip()
         ]
-        received_grouped = process_received_agents(row.IMMS_GIVEN, ignore_agents)
+        received_grouped = process_received_agents(row.IMMS_GIVEN, ignore_agents)  # type: ignore[attr-defined]
         received = enrich_grouped_records(received_grouped, vaccine_reference, language)
 
-        postal_code = row.POSTAL_CODE if row.POSTAL_CODE else "Not provided"
+        postal_code = row.POSTAL_CODE if row.POSTAL_CODE else "Not provided"  # type: ignore[attr-defined]
         address_line = " ".join(
-            filter(None, [row.STREET_ADDRESS_LINE_1, row.STREET_ADDRESS_LINE_2])
+            filter(None, [row.STREET_ADDRESS_LINE_1, row.STREET_ADDRESS_LINE_2])  # type: ignore[attr-defined]
         ).strip()
 
-        if not pd.isna(row.AGE):
-            over_16 = bool(row.AGE >= 16)
+        if not pd.isna(row.AGE):  # type: ignore[attr-defined]
+            over_16 = bool(row.AGE >= 16)  # type: ignore[attr-defined]
         elif dob_iso and delivery_date:
             over_16 = over_16_check(dob_iso, delivery_date)
         else:
@@ -604,29 +604,29 @@ def build_preprocess_result(
 
         person = {
             "full_name": " ".join(
-                filter(None, [row.FIRST_NAME, row.LAST_NAME])
+                filter(None, [row.FIRST_NAME, row.LAST_NAME])  # type: ignore[attr-defined]
             ).strip(),
             "date_of_birth": dob_iso or "",
             "date_of_birth_display": formatted_dob or "",
             "date_of_birth_iso": dob_iso or "",
-            "age": str(row.AGE) if not pd.isna(row.AGE) else "",
+            "age": str(row.AGE) if not pd.isna(row.AGE) else "",  # type: ignore[attr-defined]
             "over_16": over_16,
         }
 
         school = {
-            "name": row.SCHOOL_NAME,
-            "id": row.SCHOOL_ID,
+            "name": row.SCHOOL_NAME,  # type: ignore[attr-defined]
+            "id": row.SCHOOL_ID,  # type: ignore[attr-defined]
         }
 
         board = {
-            "name": row.BOARD_NAME or "",
-            "id": row.BOARD_ID,
+            "name": row.BOARD_NAME or "",  # type: ignore[attr-defined]
+            "id": row.BOARD_ID,  # type: ignore[attr-defined]
         }
 
         contact = {
             "street": address_line,
-            "city": row.CITY,
-            "province": row.PROVINCE,
+            "city": row.CITY,  # type: ignore[attr-defined]
+            "province": row.PROVINCE,  # type: ignore[attr-defined]
             "postal_code": postal_code,
         }
 
@@ -642,7 +642,7 @@ def build_preprocess_result(
             vaccines_due_list=vaccines_due_list if vaccines_due_list else None,
             received=received if received else None,
             metadata={
-                "unique_id": row.UNIQUE_ID or None,
+                "unique_id": row.UNIQUE_ID or None,  # type: ignore[attr-defined]
             },
         )
 

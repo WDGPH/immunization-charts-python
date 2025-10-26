@@ -502,6 +502,7 @@ class TestBuildPreprocessResult:
         # Should have DTaP expanded to component diseases
         assert len(result.clients) == 1
         client = result.clients[0]
+        assert client.received is not None
         assert len(client.received) > 0
         assert "Diphtheria" in str(client.received[0].get("diseases", []))
 
