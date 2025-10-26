@@ -4,6 +4,14 @@
 
 **Pre-v1.0:** No backward compatibility constraints. Question every class, module, and abstraction: "Is this worth its weight?" Favor simple code over extensibility. Use dicts and native Python structures freely. Colocate utilities in the step that uses them; only truly reused functions belong in `utils.py`. No argument parsers per file—interaction patterns are fixed (see Workflow).
 
+## Command Execution Discipline
+
+**Run each command once.** Avoid "let me try again" patterns that duplicate execution:
+
+- **Use `2>&1` from the start** if you need stderr captured (don't run once without it, then again with it)
+- **Investigate, don't re-run**: If a command appears to hang or fail, check state (read files, inspect git status) rather than reflexively re-running
+- **Check actual results**: After a potentially interrupted command, verify the actual state before deciding if re-execution is needed
+
 ## Package Structure
 
 The main package is `pipeline/`, containing the 9-step pipeline orchestrator and supporting modules. This is a deliberate architectural choice—**do not refactor into a different package structure** without explicit guidance. All entry points (`viper` CLI) and imports (`from pipeline import ...`) depend on this naming. The module organization follows pipeline steps 1–9, not functional categories.
@@ -60,6 +68,21 @@ The pre-commit hook (configured in `.pre-commit-config.yaml`) runs automatically
 - **`ruff format`**: Code formatting (black-like style)
 
 If either check fails, your commit is blocked until issues are resolved. This ensures consistent code quality across all contributions.
+
+## Type Checking with `ty`
+
+**Type validation:** Run the type checker to catch static type errors before testing:
+```bash
+uv run ty check                     # check all files for type errors
+```
+
+Use `ty` to verify:
+- Function signatures match argument types
+- Optional types are properly narrowed
+- Dict/object attributes are correct
+- No unresolved imports or module members
+
+All type errors must be resolved (except where `type: ignore` comments are justified with explanation). Type checking is part of code quality standards and should be run regularly during development.
 
 ## Running Tests (Quick Reference for AI Agents)
 
