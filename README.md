@@ -214,6 +214,39 @@ uv run pytest -m "not e2e"
 
 > ✅ Before running tests, make sure you've installed the `dev` group at least once (`uv sync --group dev`) so that testing dependencies are available.
 
+## 🏷️ Template Field Reference
+
+Both QR code payloads and PDF password generation use **centralized template field validation** through the `TemplateField` enum (see `pipeline/enums.py`). This ensures consistent, safe placeholder handling across all template rendering steps.
+
+### Available Template Fields
+
+| Field | Format | Example | Notes |
+|-------|--------|---------|-------|
+| `client_id` | String | `12345` | Unique client identifier |
+| `first_name` | String | `John` | Client's given name |
+| `last_name` | String | `Doe` | Client's family name |
+| `name` | String | `John Doe` | Full name (auto-combined) |
+| `date_of_birth` | Localized date | `Jan 1, 2020` or `1 janvier 2020` | Formatted per language |
+| `date_of_birth_iso` | ISO 8601 | `2020-01-01` | YYYY-MM-DD format |
+| `date_of_birth_iso_compact` | Compact ISO | `20200101` | YYYYMMDD format (no hyphens) |
+| `school` | String | `Lincoln School` | School name |
+| `board` | String | `TDSB` | School board name |
+| `street_address` | String | `123 Main St` | Full street address |
+| `city` | String | `Toronto` | City/municipality |
+| `province` | String | `ON` | Province/territory |
+| `postal_code` | String | `M5V 3A8` | Postal/ZIP code |
+| `language_code` | String | `en` or `fr` | ISO 639-1 language code |
+| `delivery_date` | Date string | `2025-04-08` | From `delivery_date` config parameter |
+
+### Template Validation
+
+All template placeholders are **validated at runtime**:
+- ✅ Placeholders must exist in the generated context
+- ✅ Placeholders must be in the allowed field list (no typos like `{client_ID}`)
+- ✅ Invalid placeholders raise clear error messages with allowed fields listed
+
+This prevents silent failures from configuration typos and ensures templates are correct before processing.
+
 ## 📂 Input Data
 
 - Use data extracts from [Panorama PEAR](https://accessonehealth.ca/)
@@ -265,31 +298,59 @@ The preprocessed artifact contains:
 
 ## QR Code Configuration
 
-The QR payload can be customised in `config/parameters.yaml` under the `qr` section. Each string behaves like a Python f-string and can reference the placeholders listed below. The preprocessing step validates the configuration on every run and raises an error if it encounters an unknown placeholder or invalid format, helping surface issues before templates are rendered.
+QR code generation can be enabled/disabled in `config/parameters.yaml` under the `qr` section. The payload supports flexible templating using client metadata as placeholders.
 
-**Available placeholders**
-- `client_id`
-- `first_name`
-- `last_name`
-- `name`
-- `date_of_birth` (language-formatted string)
-- `date_of_birth_iso` (`YYYY-MM-DD`)
-- `school`
-- `city`
-- `postal_code`
-- `province`
-- `street_address`
-- `language` (`english` or `french`)
-- `language_code` (`en` or `fr`)
-- `delivery_date`
+**Available placeholders for QR payloads**
+
+See [Template Field Reference](#-template-field-reference) above for the complete list and examples.
+
+**Common examples**
+- `client_id`: Client identifier
+- `date_of_birth_iso`: ISO date format (YYYY-MM-DD)
+- `date_of_birth_iso_compact`: Compact format (YYYYMMDD)
+- `first_name`, `last_name`, `name`: Name variations
+- `school`, `postal_code`, `city`, `province`: Location info
+- `language_code`: ISO language code ('en' or 'fr')
+- `delivery_date`: Notice delivery date from config
 
 **Sample override in `config/parameters.yaml`**
 ```yaml
 qr:
-  payload_template:
-    english: "https://portal.example.ca/update?client_id={client_id}&dob={date_of_birth_iso}"
-    french: "https://portal.example.ca/update?client_id={client_id}&dob={date_of_birth_iso}"
+  payload_template: https://www.test-immunization.ca/update?client_id={client_id}&dob={date_of_birth_iso}&lang={language_code}
 ```
+
+Update the configuration file, rerun the pipeline, and regenerated notices will reflect the new QR payload.
+
+## PDF Encryption Configuration
+
+PDF encryption can be customised in `config/parameters.yaml` under the `encryption` section. The password generation supports flexible templating similar to QR payloads, allowing you to combine multiple fields with custom formats.
+
+**Available placeholders for password templates**
+
+See [Template Field Reference](#-template-field-reference) above for the complete list and examples.
+
+**Common password template strategies**
+- Simple: `{date_of_birth_iso_compact}` – DOB only
+- Compound: `{client_id}{date_of_birth_iso_compact}` – ID + DOB
+- Formatted: `{client_id}-{date_of_birth_iso}` – ID-DOB with hyphens
+
+**Sample configurations in `config/parameters.yaml`**
+```yaml
+encryption:
+  # Use only DOB in compact format (default)
+  password:
+    template: "{date_of_birth_iso_compact}"
+
+  # Combine client_id and DOB
+  password:
+    template: "{client_id}{date_of_birth_iso_compact}"
+
+  # Use formatted DOB with dashes
+  password:
+    template: "{client_id}-{date_of_birth_iso}"
+```
+
+All templates are validated at pipeline runtime to catch configuration errors early and provide clear error messages.
 
 ## PDF Encryption Configuration
 

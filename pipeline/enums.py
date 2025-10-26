@@ -73,3 +73,97 @@ class BatchType(Enum):
             BatchStrategy.BOARD: cls.BOARD_GROUPED,
         }
         return mapping[strategy]
+
+
+class TemplateField(Enum):
+    """Available placeholder fields for template rendering (QR codes, PDF passwords).
+
+    These fields are dynamically generated from client data by build_client_context()
+    and can be used in configuration templates for:
+    - QR code payloads (qr.payload_template in parameters.yaml)
+    - PDF password generation (encryption.password.template in parameters.yaml)
+
+    All fields are validated by validate_and_format_template() to catch config errors
+    early and provide clear error messages.
+
+    Fields
+    ------
+    CLIENT_ID : str
+        Unique client identifier (OEN or similar).
+    FIRST_NAME : str
+        Client's given name.
+    LAST_NAME : str
+        Client's family name.
+    NAME : str
+        Full name (first + last combined).
+    DATE_OF_BIRTH : str
+        Display format (e.g., "Jan 8, 2025" or "8 janvier 2025").
+    DATE_OF_BIRTH_ISO : str
+        ISO 8601 format: YYYY-MM-DD (e.g., "2015-03-15").
+    DATE_OF_BIRTH_ISO_COMPACT : str
+        Compact ISO format without hyphens: YYYYMMDD (e.g., "20150315").
+    SCHOOL : str
+        School name.
+    BOARD : str
+        School board name.
+    STREET_ADDRESS : str
+        Full street address.
+    CITY : str
+        City/municipality.
+    PROVINCE : str
+        Province/territory.
+    POSTAL_CODE : str
+        Postal/ZIP code.
+    LANGUAGE_CODE : str
+        ISO 639-1 language code: 'en' or 'fr'.
+    DELIVERY_DATE : str
+        Delivery date of notice (from config parameter, if set).
+
+    See Also
+    --------
+    build_client_context : Generates context dict with all available fields
+    validate_and_format_template : Validates templates against allowed_fields set
+    """
+
+    # Identity
+    CLIENT_ID = "client_id"
+
+    # Name fields
+    FIRST_NAME = "first_name"
+    LAST_NAME = "last_name"
+    NAME = "name"
+
+    # Date of birth (multiple formats)
+    DATE_OF_BIRTH = "date_of_birth"
+    DATE_OF_BIRTH_ISO = "date_of_birth_iso"
+    DATE_OF_BIRTH_ISO_COMPACT = "date_of_birth_iso_compact"
+
+    # Organization
+    SCHOOL = "school"
+    BOARD = "board"
+
+    # Address
+    STREET_ADDRESS = "street_address"
+    CITY = "city"
+    PROVINCE = "province"
+    POSTAL_CODE = "postal_code"
+
+    # Metadata
+    LANGUAGE_CODE = "language_code"
+    DELIVERY_DATE = "delivery_date"
+
+    @classmethod
+    def all_values(cls) -> set[str]:
+        """Get set of all available field names for use as allowed_fields whitelist.
+
+        Returns
+        -------
+        set[str]
+            Set of all field values (e.g., {'client_id', 'first_name', ...}).
+
+        Examples
+        --------
+        >>> TemplateField.all_values()
+        {'client_id', 'first_name', 'last_name', 'name', ...}
+        """
+        return {field.value for field in cls}

@@ -169,6 +169,118 @@ class TestPasswordGeneration:
             with pytest.raises(ValueError, match="Unknown placeholder"):
                 encrypt_notice.encrypt_pdf(str(pdf_path), context)
 
+    def test_encrypt_pdf_validates_password_template_with_allowed_fields(
+        self, tmp_test_dir: Path
+    ) -> None:
+        """Verify password template validation against TemplateField whitelist.
+
+        Real-world significance:
+        - Password templates now validate against allowed fields
+        - Typos in config (e.g., 'client_ID' instead of 'client_id') caught early
+        - Provides clear error message listing allowed fields
+        """
+        pdf_path = tmp_test_dir / "test.pdf"
+        writer = PdfWriter()
+        writer.add_blank_page(width=612, height=792)
+        with open(pdf_path, "wb") as f:
+            writer.write(f)
+
+        context = {
+            "client_id": "12345",
+            "date_of_birth_iso": "2015-03-15",
+            "date_of_birth_iso_compact": "20150315",
+        }
+
+        # Template with typo: client_ID instead of client_id
+        with patch.object(
+            encrypt_notice,
+            "get_encryption_config",
+            return_value={"password": {"template": "{client_ID}"}},
+        ):
+            with pytest.raises(ValueError, match="Invalid password template"):
+                encrypt_notice.encrypt_pdf(str(pdf_path), context)
+
+    def test_encrypt_pdf_accepts_valid_allowed_fields(self, tmp_test_dir: Path) -> None:
+        """Verify valid template placeholders are accepted.
+
+        Real-world significance:
+        - All TemplateField values should work in password templates
+        - Validation doesn't reject legitimate fields
+        - Test uses common combinations of fields
+        """
+        pdf_path = tmp_test_dir / "test.pdf"
+        writer = PdfWriter()
+        writer.add_blank_page(width=612, height=792)
+        with open(pdf_path, "wb") as f:
+            writer.write(f)
+
+        context = {
+            "client_id": "12345",
+            "first_name": "John",
+            "last_name": "Doe",
+            "date_of_birth_iso": "2015-03-15",
+            "date_of_birth_iso_compact": "20150315",
+            "school": "Lincoln School",
+            "postal_code": "M5V 3A8",
+        }
+
+        # Test various valid template combinations
+        valid_templates = [
+            "{client_id}",
+            "{date_of_birth_iso_compact}",
+            "{first_name}_{last_name}",
+            "{client_id}_{date_of_birth_iso_compact}",
+            "{school}_{postal_code}",
+        ]
+
+        for template in valid_templates:
+            with patch.object(
+                encrypt_notice,
+                "get_encryption_config",
+                return_value={"password": {"template": template}},
+            ):
+                encrypted_path = encrypt_notice.encrypt_pdf(str(pdf_path), context)
+                assert Path(encrypted_path).exists()
+                # Clean up for next iteration
+                Path(encrypted_path).unlink()
+
+    def test_encrypt_pdf_validates_disallowed_placeholders_with_clear_message(
+        self, tmp_test_dir: Path
+    ) -> None:
+        """Verify disallowed placeholders raise ValueError with helpful message.
+
+        Real-world significance:
+        - User typos in config should produce clear, actionable errors
+        - Error message helps admin understand what went wrong
+        - Example: misspelled field or using unsupported placeholder
+        """
+        pdf_path = tmp_test_dir / "test.pdf"
+        writer = PdfWriter()
+        writer.add_blank_page(width=612, height=792)
+        with open(pdf_path, "wb") as f:
+            writer.write(f)
+
+        context = {
+            "client_id": "12345",
+            "date_of_birth_iso": "2015-03-15",
+            "date_of_birth_iso_compact": "20150315",
+        }
+
+        # Template with multiple invalid placeholders
+        with patch.object(
+            encrypt_notice,
+            "get_encryption_config",
+            return_value={
+                "password": {"template": "{invalid_field}_{date_of_birth_ISO}"}
+            },
+        ):
+            with pytest.raises(ValueError) as exc_info:
+                encrypt_notice.encrypt_pdf(str(pdf_path), context)
+
+            error_msg = str(exc_info.value)
+            # Error should mention it's about the template
+            assert "template" in error_msg.lower() or "placeholder" in error_msg.lower()
+
     def test_encrypt_pdf_legacy_mode_with_oen_and_dob(self, tmp_test_dir: Path) -> None:
         """Verify legacy calling pattern (oen string + dob).
 
