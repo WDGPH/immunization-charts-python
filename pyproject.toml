@@ -24,6 +24,7 @@ dev = [
     "pytest",
     "pytest-cov",
     "pre-commit",
+    "ty>=0.0.1a24",
 ]
 
 [project.scripts]
