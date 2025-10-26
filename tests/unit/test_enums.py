@@ -1,23 +1,26 @@
-"""Unit tests for enums module - batch strategy and type enumerations.
+"""Unit tests for enums module - batch strategy, language, and template field enumerations.
 
 Tests cover:
 - BatchStrategy enum values and string conversion
 - BatchType enum values and strategy mapping
+- Language enum values and string conversion
+- TemplateField enum values and field availability
 - Error handling for invalid values
 - Case-insensitive conversion
 - Default behavior for None values
 
 Real-world significance:
 - Batch strategy determines how PDFs are grouped (by size, school, board)
-- Affects layout and shipping of immunization notices to schools
-- Invalid strategy values would cause pipeline crashes
+- Language code determines template renderer and localization
+- Template fields define available placeholders for QR codes and PDF passwords
+- Invalid values would cause pipeline crashes or incorrect behavior
 """
 
 from __future__ import annotations
 
 import pytest
 
-from pipeline.enums import BatchStrategy, BatchType, TemplateField
+from pipeline.enums import BatchStrategy, BatchType, Language, TemplateField
 
 
 @pytest.mark.unit
@@ -162,6 +165,115 @@ class TestStrategyTypeIntegration:
         for strategy, expected_type in pairs:
             actual_type = BatchType.from_strategy(strategy)
             assert actual_type == expected_type
+
+
+@pytest.mark.unit
+class TestLanguage:
+    """Unit tests for Language enumeration."""
+
+    def test_enum_values_correct(self) -> None:
+        """Verify Language enum has correct values.
+
+        Real-world significance:
+        - Defines supported output languages for immunization notices
+        """
+        assert Language.ENGLISH.value == "en"
+        assert Language.FRENCH.value == "fr"
+
+    def test_language_from_string_english(self) -> None:
+        """Verify from_string('en') returns ENGLISH.
+
+        Real-world significance:
+        - CLI and config often pass language as lowercase strings
+        """
+        assert Language.from_string("en") == Language.ENGLISH
+
+    def test_language_from_string_french(self) -> None:
+        """Verify from_string('fr') returns FRENCH.
+
+        Real-world significance:
+        - CLI and config often pass language as lowercase strings
+        """
+        assert Language.from_string("fr") == Language.FRENCH
+
+    def test_language_from_string_case_insensitive_english(self) -> None:
+        """Verify from_string() is case-insensitive for English.
+
+        Real-world significance:
+        - Users might input 'EN', 'En', etc.; should accept any case
+        """
+        assert Language.from_string("EN") == Language.ENGLISH
+        assert Language.from_string("En") == Language.ENGLISH
+
+    def test_language_from_string_case_insensitive_french(self) -> None:
+        """Verify from_string() is case-insensitive for French.
+
+        Real-world significance:
+        - Users might input 'FR', 'Fr', etc.; should accept any case
+        """
+        assert Language.from_string("FR") == Language.FRENCH
+        assert Language.from_string("Fr") == Language.FRENCH
+
+    def test_language_from_string_none_defaults_to_english(self) -> None:
+        """Verify from_string(None) defaults to ENGLISH.
+
+        Real-world significance:
+        - Allows safe default language when none specified in config
+        """
+        assert Language.from_string(None) == Language.ENGLISH
+
+    def test_language_from_string_invalid_raises_error(self) -> None:
+        """Verify from_string() raises ValueError for unsupported language.
+
+        Real-world significance:
+        - User error (typo in config or CLI) must be caught and reported clearly
+        """
+        with pytest.raises(ValueError, match="Unsupported language: es"):
+            Language.from_string("es")
+
+    def test_language_from_string_error_includes_valid_options(self) -> None:
+        """Verify error message includes list of valid language options.
+
+        Real-world significance:
+        - Users need to know what language codes are valid when they make a mistake
+        """
+        with pytest.raises(ValueError) as exc_info:
+            Language.from_string("xyz")
+
+        error_msg = str(exc_info.value)
+        assert "Valid options:" in error_msg
+        assert "en" in error_msg
+        assert "fr" in error_msg
+
+    def test_language_all_codes(self) -> None:
+        """Verify all_codes() returns set of all language codes.
+
+        Real-world significance:
+        - CLI argument parser and config validation use this to determine
+          allowed language choices
+        """
+        assert Language.all_codes() == {"en", "fr"}
+
+    def test_language_all_codes_returns_set(self) -> None:
+        """Verify all_codes() returns a set (not list or tuple).
+
+        Real-world significance:
+        - argparse.choices expects a container; set is optimal for O(1) lookups
+        """
+        codes = Language.all_codes()
+        assert isinstance(codes, set)
+        assert len(codes) == 2
+
+    def test_language_from_string_round_trip(self) -> None:
+        """Verify languages convert to/from string consistently.
+
+        Real-world significance:
+        - Required for config persistence and reproducibility
+        """
+        for lang in Language:
+            string_value = lang.value
+            reconstructed = Language.from_string(string_value)
+            assert reconstructed == lang
 
 
 @pytest.mark.unit

@@ -153,7 +153,9 @@ def build_client_context(
             "contact": {"postal_code": "...", "city": "...", ...}
         }
     language : str
-        ISO 639-1 language code ('en' for English, 'fr' for French)
+        ISO 639-1 language code ('en' for English, 'fr' for French). Must be a valid
+        Language enum value (see pipeline.enums.Language). Validated using
+        Language.from_string() at entry points; this function assumes language is valid.
     delivery_date : str | None
         Optional delivery date for template rendering
 

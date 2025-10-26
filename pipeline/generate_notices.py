@@ -17,6 +17,7 @@ from .data_models import (
     ArtifactPayload,
     ClientRecord,
 )
+from .enums import Language
 
 from templates.en_template import render_notice as render_notice_en
 from templates.fr_template import render_notice as render_notice_fr
@@ -42,10 +43,43 @@ def compile_typst(immunization_record, outpath):
     typst.compile(immunization_record, output=outpath)
 
 
-LANGUAGE_RENDERERS = {
-    "en": render_notice_en,
-    "fr": render_notice_fr,
+# Build renderer dict from Language enum
+_LANGUAGE_RENDERERS = {
+    Language.ENGLISH.value: render_notice_en,
+    Language.FRENCH.value: render_notice_fr,
 }
+
+
+def get_language_renderer(language: Language):
+    """Get template renderer for given language.
+
+    Maps Language enum values to their corresponding template rendering functions.
+    This provides a single, extensible dispatch point for template selection.
+
+    Parameters
+    ----------
+    language : Language
+        Language enum value.
+
+    Returns
+    -------
+    callable
+        Template rendering function for the language.
+
+    Raises
+    ------
+    ValueError
+        If language is not supported (defensive check; should never happen
+        if Language enum validation is used upstream).
+
+    Examples
+    --------
+    >>> renderer = get_language_renderer(Language.ENGLISH)
+    >>> # renderer is now render_notice_en function
+    """
+    if language.value not in _LANGUAGE_RENDERERS:
+        raise ValueError(f"No renderer available for language: {language.value}")
+    return _LANGUAGE_RENDERERS[language.value]
 
 
 def read_artifact(path: Path) -> ArtifactPayload:
@@ -211,7 +245,8 @@ def render_notice(
     parameters: Path,
     qr_output_dir: Path | None = None,
 ) -> str:
-    renderer = LANGUAGE_RENDERERS[client.language]
+    language = Language.from_string(client.language)
+    renderer = get_language_renderer(language)
     context = build_template_context(client, qr_output_dir)
     return renderer(
         context,

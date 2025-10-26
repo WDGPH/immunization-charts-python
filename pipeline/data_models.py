@@ -29,7 +29,11 @@ class ClientRecord:
     client_id : str
         Unique client identifier (OEN or similar).
     language : str
-        ISO 639-1 language code ('en' or 'fr').
+        ISO 639-1 language code ('en' or 'fr'). Must be a valid Language enum value
+        (see pipeline.enums.Language). Validated using Language.from_string() at entry
+        points (CLI, configuration loading, preprocessing). All functions assume this
+        field contains a valid language code; invalid codes should be caught before
+        ClientRecord instantiation.
     person : Dict[str, Any]
         Person details:
         - full_name: Combined first and last name
@@ -107,7 +111,10 @@ class ArtifactPayload:
     run_id : str
         Unique pipeline run identifier (timestamp-based).
     language : str
-        ISO 639-1 language code ('en' or 'fr').
+        ISO 639-1 language code ('en' or 'fr'). Must be a valid Language enum value
+        (see pipeline.enums.Language). All clients in the artifact must have language
+        codes that match this field; validation ensures consistency across all
+        notices generated in a single run.
     clients : List[ClientRecord]
         All processed client records.
     warnings : List[str]

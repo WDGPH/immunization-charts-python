@@ -361,10 +361,14 @@ class TestLanguageSupport:
         - Pipeline must support bilingual notices
         - Both language renderers must be present
         """
-        assert "en" in generate_notices.LANGUAGE_RENDERERS
-        assert "fr" in generate_notices.LANGUAGE_RENDERERS
-        assert callable(generate_notices.LANGUAGE_RENDERERS["en"])
-        assert callable(generate_notices.LANGUAGE_RENDERERS["fr"])
+        english_renderer = generate_notices.get_language_renderer(
+            generate_notices.Language.ENGLISH
+        )
+        french_renderer = generate_notices.get_language_renderer(
+            generate_notices.Language.FRENCH
+        )
+        assert callable(english_renderer)
+        assert callable(french_renderer)
 
     def test_render_notice_english_client(self, tmp_test_dir: Path) -> None:
         """Verify English notice can be rendered.
@@ -375,7 +379,10 @@ class TestLanguageSupport:
         """
         # Just verify the language renderer is callable
         # (actual rendering requires full Typst setup)
-        assert generate_notices.LANGUAGE_RENDERERS["en"] is not None
+        english_renderer = generate_notices.get_language_renderer(
+            generate_notices.Language.ENGLISH
+        )
+        assert english_renderer is not None
 
     def test_render_notice_french_client(self, tmp_test_dir: Path) -> None:
         """Verify French notice can be rendered.
@@ -385,4 +392,7 @@ class TestLanguageSupport:
         - Must render without errors for fr language code
         """
         # Just verify the language renderer is callable
-        assert generate_notices.LANGUAGE_RENDERERS["fr"] is not None
+        french_renderer = generate_notices.get_language_renderer(
+            generate_notices.Language.FRENCH
+        )
+        assert french_renderer is not None

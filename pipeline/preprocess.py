@@ -24,6 +24,7 @@ from .data_models import (
     ClientRecord,
     PreprocessResult,
 )
+from .enums import Language
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 CONFIG_DIR = SCRIPT_DIR.parent / "config"
@@ -173,7 +174,8 @@ def convert_date(
                 date_obj = datetime.strptime(date_str.strip(), "%Y-%m-%d")
             else:  # Localized format
                 try:
-                    if lang == "fr":
+                    lang_enum = Language.from_string(lang)
+                    if lang_enum == Language.FRENCH:
                         day, month, year = date_str.split()
                         month_num = FRENCH_MONTHS_REV.get(month.lower())
                         if not month_num:
@@ -195,7 +197,8 @@ def convert_date(
         if to_format == "iso":
             return date_obj.strftime("%Y-%m-%d")
         else:  # display format
-            if lang == "fr":
+            lang_enum = Language.from_string(lang)
+            if lang_enum == Language.FRENCH:
                 month_name = FRENCH_MONTHS[date_obj.month]
                 return f"{date_obj.day} {month_name} {date_obj.year}"
             else:
@@ -667,9 +670,10 @@ def build_preprocess_result(
         if dob_iso is None:
             warnings.add(f"Missing date of birth for client {client_id}")
 
+        language_enum = Language.from_string(language)
         formatted_dob = (
             convert_date_string_french(dob_iso)
-            if language == "fr" and dob_iso
+            if language_enum == Language.FRENCH and dob_iso
             else convert_date_string(dob_iso)
         )
         vaccines_due = process_vaccines_due(row.OVERDUE_DISEASE, language, disease_map)  # type: ignore[attr-defined]
