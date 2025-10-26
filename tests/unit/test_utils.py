@@ -20,7 +20,7 @@ from __future__ import annotations
 
 import pytest
 
-from scripts import utils
+from pipeline import utils
 
 
 @pytest.mark.unit

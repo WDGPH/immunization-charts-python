@@ -21,7 +21,7 @@ from pathlib import Path
 
 import pytest
 
-from scripts import generate_notices
+from pipeline import generate_notices
 from tests.fixtures import sample_input
 
 

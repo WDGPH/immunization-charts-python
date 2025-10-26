@@ -50,7 +50,7 @@ This section describes how the pipeline orchestrates data flow and manages state
 
 ### Module Organization
 
-The `scripts/` package is organized by pipeline function, not by layer. Each step has its own module:
+The `pipeline/` package is organized by pipeline function, not by layer. Each step has its own module:
 
 | Step | Module | Purpose |
 |------|--------|---------|
@@ -64,7 +64,7 @@ The `scripts/` package is organized by pipeline function, not by layer. Each ste
 | 8 | `batch_pdfs.py` | PDF batching & grouping (optional) |
 | 9 | `cleanup.py` | Intermediate file cleanup |
 
-**Supporting modules:** `run_pipeline.py` (orchestrator), `config_loader.py`, `data_models.py`, `enums.py`, `utils.py`. 
+**Supporting modules:** `orchestrator.py` (orchestrator), `config_loader.py`, `data_models.py`, `enums.py`, `utils.py`. 
 
 **Template modules** (in `templates/` package): `en_template.py`, `fr_template.py` (Typst template rendering). For module structure questions, see `docs/CODE_ANALYSIS_STANDARDS.md`.
 
@@ -109,7 +109,7 @@ Clients are deterministically ordered during preprocessing by: **school name →
 
 ## 🚦 Pipeline Steps
 
-The main pipeline orchestrator (`run_pipeline.py`) automates the end-to-end workflow for generating immunization notices and charts. Below are the nine sequential steps:
+The main pipeline orchestrator (`orchestrator.py`) automates the end-to-end workflow for generating immunization notices and charts. Below are the nine sequential steps:
 
 1. **Output Preparation** (`prepare_output.py`)  
    Prepares the output directory, optionally removing existing contents while preserving logs.
@@ -170,7 +170,7 @@ uv run viper students.xlsx en
 uv run viper students.xlsx en --output-dir /tmp/output
 ```
 
-> ℹ️ **Typst preview note:** The WDGPH code-server development environments render Typst files via Tinymist. The shared template at `scripts/conf.typ` only defines helper functions, colour tokens, and table layouts that the generated notice `.typ` files import; it doesn't emit any pages on its own, so Tinymist has nothing to preview if attempted on this file. To examine the actual markup that uses these helpers, run the pipeline with `pipeline.keep_intermediate_files: true` in `config/parameters.yaml` so the generated notice `.typ` files stay in `output/artifacts/` for manual inspection.
+> ℹ️ **Typst preview note:** The WDGPH code-server development environments render Typst files via Tinymist. The shared template at `templates/conf.typ` only defines helper functions, colour tokens, and table layouts that the generated notice `.typ` files import; it doesn't emit any pages on its own, so Tinymist has nothing to preview if attempted on this file. To examine the actual markup that uses these helpers, run the pipeline with `pipeline.keep_intermediate_files: true` in `config/parameters.yaml` so the generated notice `.typ` files stay in `output/artifacts/` for manual inspection.
 
 **Outputs:**
 - Processed notices and charts in the `output/` directory
@@ -202,7 +202,7 @@ uv run pytest
 
 **With coverage report:**
 ```bash
-uv run pytest --cov=scripts --cov-report=html
+uv run pytest --cov=pipeline --cov-report=html
 ```
 
 View coverage in `htmlcov/index.html`.

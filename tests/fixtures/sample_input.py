@@ -16,7 +16,7 @@ from typing import Any, Dict, List, Optional
 
 import pandas as pd
 
-from scripts import data_models
+from pipeline import data_models
 
 
 def create_test_input_dataframe(

@@ -123,5 +123,5 @@ def main(
 
 if __name__ == "__main__":
     raise RuntimeError(
-        "count_pdfs.py should not be invoked directly. Use run_pipeline.py instead."
+        "count_pdfs.py should not be invoked directly. Use orchestrator.py instead."
     )

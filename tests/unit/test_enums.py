@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import pytest
 
-from scripts.enums import BatchStrategy, BatchType
+from pipeline.enums import BatchStrategy, BatchType
 
 
 @pytest.mark.unit

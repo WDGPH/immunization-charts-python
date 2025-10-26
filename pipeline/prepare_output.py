@@ -4,7 +4,7 @@ This script ensures the output directory exists, optionally removes any
 existing contents (while preserving the logs directory), and creates the log
 directory if needed.
 
-Note: This module is called exclusively from run_pipeline.py. The internal
+Note: This module is called exclusively from orchestrator.py. The internal
 functions handle all logic; CLI support has been removed in favor of explicit
 function calls from the orchestrator.
 """
@@ -103,5 +103,5 @@ def prepare_output_directory(
 
 if __name__ == "__main__":
     raise RuntimeError(
-        "prepare_output.py should not be invoked directly. Use run_pipeline.py instead."
+        "prepare_output.py should not be invoked directly. Use orchestrator.py instead."
     )

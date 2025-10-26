@@ -26,7 +26,7 @@ from unittest.mock import patch
 import pytest
 from pypdf import PdfReader, PdfWriter
 
-from scripts import encrypt_notice
+from pipeline import encrypt_notice
 
 
 @pytest.mark.unit
@@ -50,7 +50,7 @@ class TestLoadEncryptionConfig:
         )
 
         # Note: get_encryption_config() uses default path, so we test loading directly
-        with patch("scripts.encrypt_notice.CONFIG_DIR", tmp_test_dir):
+        with patch("pipeline.encrypt_notice.CONFIG_DIR", tmp_test_dir):
             # Reset cached config
             encrypt_notice._encryption_config = None
             config = encrypt_notice.get_encryption_config()
@@ -64,7 +64,7 @@ class TestLoadEncryptionConfig:
         - Should not crash if encryption config missing
         - Falls back to reasonable defaults
         """
-        with patch("scripts.encrypt_notice.CONFIG_DIR", Path("/nonexistent")):
+        with patch("pipeline.encrypt_notice.CONFIG_DIR", Path("/nonexistent")):
             encrypt_notice._encryption_config = None
             config = encrypt_notice.get_encryption_config()
             # Should return empty dict or default config
@@ -431,7 +431,7 @@ class TestEncryptPdfsInDirectory:
             "get_encryption_config",
             return_value={"password": {"template": "{date_of_birth_iso_compact}"}},
         ):
-            with patch("scripts.encrypt_notice.encrypt_pdf") as mock_encrypt:
+            with patch("pipeline.encrypt_notice.encrypt_pdf") as mock_encrypt:
                 encrypt_notice.encrypt_pdfs_in_directory(pdf_dir, json_path, "en")
                 # encrypt_pdf should not be called for _encrypted files
                 mock_encrypt.assert_not_called()
@@ -461,7 +461,7 @@ class TestEncryptPdfsInDirectory:
             "get_encryption_config",
             return_value={"password": {"template": "{date_of_birth_iso_compact}"}},
         ):
-            with patch("scripts.encrypt_notice.encrypt_pdf") as mock_encrypt:
+            with patch("pipeline.encrypt_notice.encrypt_pdf") as mock_encrypt:
                 encrypt_notice.encrypt_pdfs_in_directory(pdf_dir, json_path, "en")
                 # encrypt_pdf should not be called for conf.pdf
                 mock_encrypt.assert_not_called()

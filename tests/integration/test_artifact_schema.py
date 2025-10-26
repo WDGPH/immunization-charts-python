@@ -20,7 +20,7 @@ from pathlib import Path
 
 import pytest
 
-from scripts import data_models
+from pipeline import data_models
 from tests.fixtures import sample_input
 
 

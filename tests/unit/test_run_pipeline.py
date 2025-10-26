@@ -1,4 +1,4 @@
-"""Unit tests for run_pipeline module - Pipeline orchestration and argument handling.
+"""Unit tests for orchestrator module - Pipeline orchestration and argument handling.
 
 Tests cover:
 - Command-line argument parsing and validation
@@ -9,7 +9,7 @@ Tests cover:
 - Return codes and exit status
 
 Real-world significance:
-- Entry point for entire pipeline (run_pipeline.main())
+- Entry point for entire pipeline (orchestrator.main())
 - Argument validation prevents downstream errors
 - Orchestration order ensures correct data flow (Step N output → Step N+1 input)
 - Error handling must gracefully report problems to users
@@ -24,7 +24,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from scripts import run_pipeline
+from pipeline import orchestrator
 
 
 @pytest.mark.unit
@@ -39,7 +39,7 @@ class TestParseArgs:
         - Parser should validate both exist
         """
         with patch("sys.argv", ["viper", "students.xlsx", "en"]):
-            args = run_pipeline.parse_args()
+            args = orchestrator.parse_args()
             assert args.input_file == "students.xlsx"
             assert args.language == "en"
 
@@ -52,7 +52,7 @@ class TestParseArgs:
         """
         # Valid language
         with patch("sys.argv", ["viper", "file.xlsx", "fr"]):
-            args = run_pipeline.parse_args()
+            args = orchestrator.parse_args()
             assert args.language == "fr"
 
     def test_parse_args_optional_directories(self) -> None:
@@ -76,7 +76,7 @@ class TestParseArgs:
                 "/etc/config",
             ],
         ):
-            args = run_pipeline.parse_args()
+            args = orchestrator.parse_args()
             assert args.input_dir == Path("/tmp/input")
             assert args.output_dir == Path("/tmp/output")
             assert args.config_dir == Path("/etc/config")
@@ -86,10 +86,10 @@ class TestParseArgs:
 
         Real-world significance:
         - Defaults should be relative to project root
-        - ../input, ../output, ../config from scripts/
+        - ../input, ../output, ../config from pipeline/
         """
         with patch("sys.argv", ["viper", "file.xlsx", "en"]):
-            args = run_pipeline.parse_args()
+            args = orchestrator.parse_args()
             # Defaults should exist
             assert args.input_dir is not None
             assert args.output_dir is not None
@@ -112,7 +112,7 @@ class TestValidateArgs:
         args.input_dir = tmp_test_dir
 
         with pytest.raises(FileNotFoundError, match="Input file not found"):
-            run_pipeline.validate_args(args)
+            orchestrator.validate_args(args)
 
     def test_validate_args_existing_input_file(self, tmp_test_dir: Path) -> None:
         """Verify no error when input file exists.
@@ -128,7 +128,7 @@ class TestValidateArgs:
         args.input_dir = tmp_test_dir
 
         # Should not raise
-        run_pipeline.validate_args(args)
+        orchestrator.validate_args(args)
 
 
 @pytest.mark.unit
@@ -143,7 +143,7 @@ class TestPrintFunctions:
         - Header provides context for the run
         """
         with patch("builtins.print"):
-            run_pipeline.print_header("students.xlsx")
+            orchestrator.print_header("students.xlsx")
 
     def test_print_step(self, capsys) -> None:
         """Verify step header includes step number and description.
@@ -153,7 +153,7 @@ class TestPrintFunctions:
         - Each step should be visible and identifiable
         """
         with patch("builtins.print"):
-            run_pipeline.print_step(1, "Preparing output directory")
+            orchestrator.print_step(1, "Preparing output directory")
 
     def test_print_step_complete(self, capsys) -> None:
         """Verify completion message includes timing info.
@@ -163,7 +163,7 @@ class TestPrintFunctions:
         - Helps identify performance bottlenecks
         """
         with patch("builtins.print"):
-            run_pipeline.print_step_complete(2, "Preprocessing", 5.5)
+            orchestrator.print_step_complete(2, "Preprocessing", 5.5)
 
 
 @pytest.mark.unit
@@ -179,9 +179,9 @@ class TestPipelineSteps:
         - First step: creates directory structure
         - Must succeed or entire pipeline fails
         """
-        with patch("scripts.run_pipeline.prepare_output") as mock_prep:
+        with patch("pipeline.orchestrator.prepare_output") as mock_prep:
             mock_prep.prepare_output_directory.return_value = True
-            result = run_pipeline.run_step_1_prepare_output(
+            result = orchestrator.run_step_1_prepare_output(
                 output_dir=tmp_output_structure["root"],
                 log_dir=tmp_output_structure["logs"],
                 auto_remove=True,
@@ -197,9 +197,9 @@ class TestPipelineSteps:
         - User should be able to cancel pipeline
         - Should not proceed if user says No
         """
-        with patch("scripts.run_pipeline.prepare_output") as mock_prep:
+        with patch("pipeline.orchestrator.prepare_output") as mock_prep:
             mock_prep.prepare_output_directory.return_value = False
-            result = run_pipeline.run_step_1_prepare_output(
+            result = orchestrator.run_step_1_prepare_output(
                 output_dir=tmp_output_structure["root"],
                 log_dir=tmp_output_structure["logs"],
                 auto_remove=False,
@@ -215,8 +215,8 @@ class TestPipelineSteps:
         - Must read input file and normalize clients
         - Returns total count for reporting
         """
-        with patch("scripts.run_pipeline.preprocess") as mock_preprocess:
-            with patch("scripts.run_pipeline.json"):
+        with patch("pipeline.orchestrator.preprocess") as mock_preprocess:
+            with patch("pipeline.orchestrator.json"):
                 # Mock the preprocessing result
                 mock_result = MagicMock()
                 mock_result.clients = [{"client_id": "1"}, {"client_id": "2"}]
@@ -230,7 +230,7 @@ class TestPipelineSteps:
                 )
 
                 with patch("builtins.print"):
-                    total = run_pipeline.run_step_2_preprocess(
+                    total = orchestrator.run_step_2_preprocess(
                         input_dir=tmp_test_dir,
                         input_file="test.xlsx",
                         output_dir=tmp_output_structure["root"],
@@ -253,10 +253,10 @@ class TestPipelineSteps:
         config_file.write_text("qr:\n  enabled: false\n")
 
         with patch(
-            "scripts.run_pipeline.load_config", return_value={"qr": {"enabled": False}}
+            "pipeline.orchestrator.load_config", return_value={"qr": {"enabled": False}}
         ):
             with patch("builtins.print"):
-                result = run_pipeline.run_step_3_generate_qr_codes(
+                result = orchestrator.run_step_3_generate_qr_codes(
                     output_dir=tmp_output_structure["root"],
                     run_id="test_run",
                     config_dir=config_file.parent,
@@ -306,13 +306,13 @@ class TestConfigLoading:
         - All behavior controlled by config file
         - Must load successfully or pipeline fails
         """
-        with patch("scripts.run_pipeline.load_config") as mock_load:
+        with patch("pipeline.orchestrator.load_config") as mock_load:
             mock_load.return_value = {
                 "pipeline": {"auto_remove_output": False},
                 "qr": {"enabled": True},
             }
 
-            from scripts.config_loader import load_config
+            from pipeline.config_loader import load_config
 
             config = load_config(config_file)
             assert config is not None

@@ -3,7 +3,7 @@ requires = ["setuptools>=45", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-packages = ["scripts", "templates"]
+packages = ["pipeline", "templates"]
 
 [project]
 name = "immunization-charts-python"
@@ -27,10 +27,10 @@ dev = [
 ]
 
 [project.scripts]
-viper = "scripts.run_pipeline:main"
+viper = "pipeline.orchestrator:main"
 
 [tool.coverage.run]
-source = ["scripts"]
+source = ["pipeline"]
 omit = ["*/__pycache__/*", "*/site-packages/*"]
 
 [tool.coverage.report]

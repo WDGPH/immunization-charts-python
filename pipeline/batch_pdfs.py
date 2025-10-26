@@ -486,8 +486,8 @@ def batch_pdfs(config: BatchConfig) -> List[BatchResult]:
 
 
 if __name__ == "__main__":
-    # This script is now called only from run_pipeline.py
+    # This script is now called only from orchestrator.py
     # and should not be invoked directly
     raise RuntimeError(
-        "batch_pdfs.py should not be invoked directly. Use run_pipeline.py instead."
+        "batch_pdfs.py should not be invoked directly. Use orchestrator.py instead."
     )

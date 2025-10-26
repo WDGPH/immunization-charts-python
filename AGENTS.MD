@@ -6,7 +6,9 @@
 
 ## Package Structure
 
-The main package is `scripts/`, containing the 9-step pipeline orchestrator and supporting modules. This is a deliberate architectural choice—**do not refactor into a different package structure** without explicit guidance. All entry points (`viper` CLI) and imports (`from scripts import ...`) depend on this naming. The module organization follows pipeline steps 1–9, not functional categories.
+The main package is `pipeline/`, containing the 9-step pipeline orchestrator and supporting modules. This is a deliberate architectural choice—**do not refactor into a different package structure** without explicit guidance. All entry points (`viper` CLI) and imports (`from pipeline import ...`) depend on this naming. The module organization follows pipeline steps 1–9, not functional categories.
+
+The orchestrator (`orchestrator.py`) coordinates all 9 steps and is the entry point for the `viper` CLI command.
 
 Template modules are in the `templates/` package (`en_template.py`, `fr_template.py`), imported as `from templates import ...` by the pipeline. This separation keeps typesetting logic distinct from orchestration.
 
@@ -76,7 +78,7 @@ uv run pytest tests/test_file.py::TestClass::test_name -v  # specific test
 
 **Coverage report:**
 ```bash
-uv run pytest --cov=scripts --cov-report=html     # generates htmlcov/index.html
+uv run pytest --cov=pipeline --cov-report=html     # generates htmlcov/index.html
 ```
 
 See `docs/TESTING_STANDARDS.md` for test organization, markers, and patterns.
@@ -105,7 +107,7 @@ When writing E2E tests for this project:
 
 ## Key Realizations for Efficient Development
 
-**Unit test coverage doesn't tell the full story.** The orchestration layer (`run_pipeline.py`) has low unit coverage because tests mock internal steps (fast feedback). E2E tests provide integration verification. Don't panic at low unit coverage numbers—trace call sites and check E2E tests first.
+**Unit test coverage doesn't tell the full story.** The orchestration layer (`orchestrator.py`) has low unit coverage because tests mock internal steps (fast feedback). E2E tests provide integration verification. Don't panic at low unit coverage numbers—trace call sites and check E2E tests first.
 
 **Defensive code and error handling are features, not bloat.** Edge case handling in date parsing, error paths for malformed data, and validation exist because real-world data is messy. When you see broad try/except or defensive checks, verify they serve a real purpose before removing them.
 
@@ -124,6 +126,6 @@ When writing E2E tests for this project:
 
 ## Communication with AI Agents
 
-- **Summarize findings directly in conversation**, don't output to temporary files
+- **Summarize findings directly in conversation**, don't output to temporary files. Never use `cat << 'EOF' ... EOF` patterns to display work summaries—deliver them as Markdown text in the conversation instead. Terminal output should only be used for live validation or debugging, not for presenting results.
 - **Integrate learnings into documentation** rather than creating standalone analysis documents
-- **Final step of work:** Archive insights into standards docs, function docstrings, or module comments for efficient future collaboration 
+- **Final step of work:** Archive insights into standards docs, function docstrings, or module comments for efficient future collaboration

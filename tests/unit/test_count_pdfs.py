@@ -22,7 +22,7 @@ from pathlib import Path
 
 import pytest
 
-from scripts import count_pdfs
+from pipeline import count_pdfs
 
 
 def create_test_pdf(path: Path, num_pages: int = 1) -> None:

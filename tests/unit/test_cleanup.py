@@ -22,7 +22,7 @@ from pathlib import Path
 
 import pytest
 
-from scripts import cleanup
+from pipeline import cleanup
 
 
 @pytest.mark.unit

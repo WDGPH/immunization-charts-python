@@ -65,5 +65,5 @@ def main(output_dir: Path, config_path: Path | None = None) -> None:
 
 if __name__ == "__main__":
     raise RuntimeError(
-        "cleanup.py should not be invoked directly. Use run_pipeline.py instead."
+        "cleanup.py should not be invoked directly. Use orchestrator.py instead."
     )
