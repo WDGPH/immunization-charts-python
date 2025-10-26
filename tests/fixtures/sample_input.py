@@ -316,50 +316,6 @@ def create_test_artifact_payload(
     )
 
 
-def create_test_pdf_record(
-    sequence: str = "00001",
-    client_id: str = "C00001",
-    output_dir: Path = Path("/tmp"),
-    page_count: int = 1,
-) -> data_models.PdfRecord:
-    """Generate a realistic PdfRecord for PDF validation tests.
-
-    Real-world significance:
-    - PDF records track compiled notices and page counts
-    - Used for verification that all clients were compiled
-    - Enables testing of PDF management (encryption, batching, etc.)
-
-    Parameters
-    ----------
-    sequence : str, default "00001"
-        Sequence number
-    client_id : str, default "C00001"
-        Client ID
-    output_dir : Path, default Path("/tmp")
-        Directory where PDF is stored
-    page_count : int, default 1
-        Number of pages in PDF
-
-    Returns
-    -------
-    PdfRecord
-        PDF metadata record for testing
-    """
-    pdf_path = output_dir / f"{sequence}_{client_id}.pdf"
-
-    return data_models.PdfRecord(
-        sequence=sequence,
-        client_id=client_id,
-        pdf_path=pdf_path,
-        page_count=page_count,
-        client={
-            "first_name": "Alice",
-            "last_name": "Zephyr",
-            "school": "Tunnel Academy",
-        },
-    )
-
-
 def write_test_artifact(
     artifact: data_models.ArtifactPayload, output_dir: Path
 ) -> Path:

@@ -87,26 +87,3 @@ def get_config_value(
             return default
 
     return value if value is not None else default
-
-
-def load_and_get(
-    key_path: str, default: Any = None, config_path: Optional[Path] = None
-) -> Any:
-    """Convenience function to load config and get a value in one call.
-
-    Parameters
-    ----------
-    key_path : str
-        Dot-separated path to the value (e.g., "batching.batch_size").
-    default : Any, optional
-        Default value if the key path is not found.
-    config_path : Path, optional
-        Path to the configuration file.
-
-    Returns
-    -------
-    Any
-        The configuration value, or the default if not found.
-    """
-    config = load_config(config_path)
-    return get_config_value(config, key_path, default)

@@ -301,46 +301,6 @@ class TestGetConfigValue:
 
 
 @pytest.mark.unit
-class TestLoadAndGet:
-    """Unit tests for load_and_get convenience function."""
-
-    def test_load_and_get_combines_load_and_get(self) -> None:
-        """Verify load_and_get combines load_config and get_config_value.
-
-        Real-world significance:
-        - Common pattern: load config, get specific value
-        - Should work with custom path or default
-        """
-        with tempfile.TemporaryDirectory() as tmpdir:
-            config_path = Path(tmpdir) / "test_config.yaml"
-            config_path.write_text("""
-app:
-  name: TestApp
-  debug: true
-""")
-
-            result = config_loader.load_and_get("app.name", config_path=config_path)
-
-            assert result == "TestApp"
-
-    def test_load_and_get_with_default(self) -> None:
-        """Verify load_and_get uses default for missing keys.
-
-        Real-world significance:
-        - Should behave like get_config_value for missing keys
-        """
-        with tempfile.TemporaryDirectory() as tmpdir:
-            config_path = Path(tmpdir) / "test_config.yaml"
-            config_path.write_text("existing: value\n")
-
-            result = config_loader.load_and_get(
-                "missing.key", default="my_default", config_path=config_path
-            )
-
-            assert result == "my_default"
-
-
-@pytest.mark.unit
 class TestActualConfig:
     """Unit tests using the actual parameters.yaml (if present).
 

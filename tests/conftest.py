@@ -9,7 +9,6 @@ This module provides:
 
 from __future__ import annotations
 
-import json
 import tempfile
 from pathlib import Path
 from typing import Any, Dict, Generator
@@ -201,62 +200,6 @@ def config_file(tmp_test_dir: Path, default_config: Dict[str, Any]) -> Path:
     with open(config_path, "w") as f:
         yaml.dump(default_config, f)
     return config_path
-
-
-@pytest.fixture
-def disease_map_file(tmp_test_dir: Path, default_disease_map: Dict[str, str]) -> Path:
-    """Create a temporary disease map file.
-
-    Real-world significance:
-    - Tests that need disease mapping can load from disk
-    - Enables testing of disease name normalization
-    - Matches production disease_map.json location/format
-
-    Parameters
-    ----------
-    tmp_test_dir : Path
-        Root temporary directory
-    default_disease_map : Dict[str, str]
-        Disease mapping dict
-
-    Returns
-    -------
-    Path
-        Path to created JSON disease map file
-    """
-    disease_map_path = tmp_test_dir / "disease_map.json"
-    with open(disease_map_path, "w") as f:
-        json.dump(default_disease_map, f)
-    return disease_map_path
-
-
-@pytest.fixture
-def vaccine_reference_file(
-    tmp_test_dir: Path, default_vaccine_reference: Dict[str, list]
-) -> Path:
-    """Create a temporary vaccine reference file.
-
-    Real-world significance:
-    - Tests that need vaccine mapping can load from disk
-    - Enables testing of vaccine expansion into component diseases
-    - Matches production vaccine_reference.json location/format
-
-    Parameters
-    ----------
-    tmp_test_dir : Path
-        Root temporary directory
-    default_vaccine_reference : Dict[str, list]
-        Vaccine reference dict
-
-    Returns
-    -------
-    Path
-        Path to created JSON vaccine reference file
-    """
-    vaccine_ref_path = tmp_test_dir / "vaccine_reference.json"
-    with open(vaccine_ref_path, "w") as f:
-        json.dump(default_vaccine_reference, f)
-    return vaccine_ref_path
 
 
 @pytest.fixture
