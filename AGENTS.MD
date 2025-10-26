@@ -24,6 +24,16 @@ Template modules are in the `templates/` package (`en_template.py`, `fr_template
 
 **Tight control via `uv` lockfile, not runtime fallbacks.** Dependencies are pinned in `uv.lock`. Write code for the specific, tested versions in that lockfile—not for theoretical version compatibility. Document version requirements in `pyproject.toml` only when necessary. **Do not add runtime fallbacks** (e.g., try PyPDF method A, fallback to method B) to support multiple versions. If a dependency needs a version bump, update `pyproject.toml`, run `uv sync`, test, and commit the new lockfile. The lockfile is the single source of truth.
 
+**Keep dependencies up-to-date:** Regularly upgrade packages to capture bugfixes and security patches:
+```bash
+uv lock --upgrade                   # Upgrade all packages to latest compatible versions
+uv sync                             # Install upgraded versions locally
+uv run pytest                        # Verify all tests pass with new versions
+# Then commit the updated uv.lock
+```
+
+This ensures the project benefits from bugfixes and security updates in dependencies while maintaining reproducibility through the locked versions.
+
 ## Core Standards (Reference These)
 
 This project maintains authoritative standards in focused documents. Before coding, review:
