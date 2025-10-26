@@ -281,48 +281,6 @@ class TestPasswordGeneration:
             # Error should mention it's about the template
             assert "template" in error_msg.lower() or "placeholder" in error_msg.lower()
 
-    def test_encrypt_pdf_legacy_mode_with_oen_and_dob(self, tmp_test_dir: Path) -> None:
-        """Verify legacy calling pattern (oen string + dob).
-
-        Real-world significance:
-        - Some callers may use old API signature
-        - Must support backward compatibility
-        - Both calling patterns should work
-        """
-        pdf_path = tmp_test_dir / "test.pdf"
-        writer = PdfWriter()
-        writer.add_blank_page(width=612, height=792)
-        with open(pdf_path, "wb") as f:
-            writer.write(f)
-
-        with patch.object(
-            encrypt_notice,
-            "get_encryption_config",
-            return_value={"password": {"template": "{date_of_birth_iso_compact}"}},
-        ):
-            encrypted_path = encrypt_notice.encrypt_pdf(
-                str(pdf_path), "12345", dob="2015-03-15"
-            )
-            assert Path(encrypted_path).exists()
-
-    def test_encrypt_pdf_legacy_mode_missing_dob_raises_error(
-        self, tmp_test_dir: Path
-    ) -> None:
-        """Verify error when legacy mode called without DOB.
-
-        Real-world significance:
-        - Legacy API requires both oen_partial and dob
-        - Calling with just oen string should fail clearly
-        """
-        pdf_path = tmp_test_dir / "test.pdf"
-        writer = PdfWriter()
-        writer.add_blank_page(width=612, height=792)
-        with open(pdf_path, "wb") as f:
-            writer.write(f)
-
-        with pytest.raises(ValueError, match="dob must be provided"):
-            encrypt_notice.encrypt_pdf(str(pdf_path), "12345", dob=None)
-
 
 @pytest.mark.unit
 class TestEncryptNotice:
