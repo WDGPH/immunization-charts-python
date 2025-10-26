@@ -75,6 +75,100 @@ class BatchType(Enum):
         return mapping[strategy]
 
 
+class Language(Enum):
+    """Supported output languages for immunization notices.
+
+    Each language corresponds to:
+    - A template renderer in templates/ (en_template.py, fr_template.py, etc.)
+    - Localization of dates, disease names, and notice formatting
+    - An artifact language code stored in preprocessed data
+
+    Currently supports English and French; extensible for future languages.
+
+    Attributes
+    ----------
+    ENGLISH : str
+        English language code ('en'). Templates: templates/en_template.py
+    FRENCH : str
+        French language code ('fr'). Templates: templates/fr_template.py
+
+    See Also
+    --------
+    get_language_renderer : Map Language enum to template rendering function
+    """
+
+    ENGLISH = "en"
+    FRENCH = "fr"
+
+    @classmethod
+    def from_string(cls, value: str | None) -> "Language":
+        """Convert string to Language enum.
+
+        Provides safe conversion from user input or configuration strings to
+        Language enum values. Used at CLI entry point and configuration loading
+        to fail fast on invalid language codes.
+
+        Parameters
+        ----------
+        value : str | None
+            Language code ('en', 'fr'), or None for default (ENGLISH).
+            Case-insensitive (normalizes to lowercase).
+
+        Returns
+        -------
+        Language
+            Corresponding Language enum value.
+
+        Raises
+        ------
+        ValueError
+            If value is not a valid language code. Error message lists
+            all available options.
+
+        Examples
+        --------
+        >>> Language.from_string('en')
+        <Language.ENGLISH: 'en'>
+
+        >>> Language.from_string('EN')  # Case-insensitive
+        <Language.ENGLISH: 'en'>
+
+        >>> Language.from_string(None)  # Default to English
+        <Language.ENGLISH: 'en'>
+
+        >>> Language.from_string('es')  # Unsupported
+        ValueError: Unsupported language: es. Valid options: en, fr
+        """
+        if value is None:
+            return cls.ENGLISH
+
+        value_lower = value.lower()
+        for lang in cls:
+            if lang.value == value_lower:
+                return lang
+
+        raise ValueError(
+            f"Unsupported language: {value}. "
+            f"Valid options: {', '.join(lang.value for lang in cls)}"
+        )
+
+    @classmethod
+    def all_codes(cls) -> set[str]:
+        """Get set of all supported language codes.
+
+        Returns
+        -------
+        set[str]
+            Set of all language codes (e.g., {'en', 'fr'}).
+
+        Examples
+        --------
+        >>> Language.all_codes()
+        {'en', 'fr'}
+        """
+        return {lang.value for lang in cls}
+
+
 class TemplateField(Enum):
     """Available placeholder fields for template rendering (QR codes, PDF passwords).
 

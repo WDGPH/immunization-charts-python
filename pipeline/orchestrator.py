@@ -27,6 +27,7 @@ from . import (
     preprocess,
 )
 from .config_loader import load_config
+from .enums import Language
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 ROOT_DIR = SCRIPT_DIR.parent
@@ -55,8 +56,8 @@ Examples:
     )
     parser.add_argument(
         "language",
-        choices=["en", "fr"],
-        help="Language for output (en or fr)",
+        choices=sorted(Language.all_codes()),
+        help=f"Language for output ({', '.join(sorted(Language.all_codes()))})",
     )
     parser.add_argument(
         "--input-dir",
