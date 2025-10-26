@@ -66,61 +66,37 @@ def get_encryption_config():
     return _load_encryption_config()
 
 
-def encrypt_pdf(
-    file_path: str, context_or_oen: str | dict, dob: str | None = None
-) -> str:
+def encrypt_pdf(file_path: str, context: dict) -> str:
     """Encrypt a PDF with a password derived from client context.
-
-    Supports two calling patterns:
-    1. New (recommended): encrypt_pdf(file_path, context_dict)
-    2. Legacy: encrypt_pdf(file_path, oen_partial, dob)
 
     Parameters
     ----------
     file_path : str
         Path to the PDF file to encrypt.
-    context_or_oen : str | dict
-        Either:
-        - A dict with template context (from build_client_context)
-        - A string client identifier (legacy mode)
-    dob : str | None
-        Date of birth in YYYY-MM-DD format (required if context_or_oen is str).
+    context : dict
+        Template context dict with client metadata (from build_client_context).
+        Must contain fields referenced in the password template.
 
     Returns
     -------
     str
         Path to the encrypted PDF file with _encrypted suffix.
+
+    Raises
+    ------
+    ValueError
+        If password template references missing fields or is invalid.
     """
-    # Handle both new (context dict) and legacy (oen + dob) calling patterns
-    if isinstance(context_or_oen, dict):
-        context = context_or_oen
-        config = get_encryption_config()
-        password_config = config.get("password", {})
-        template = password_config.get("template", "{date_of_birth_iso_compact}")
-        try:
-            password = validate_and_format_template(
-                template, context, allowed_fields=TemplateField.all_values()
-            )
-        except (KeyError, ValueError) as e:
-            raise ValueError(f"Invalid password template: {e}") from e
-    else:
-        # Legacy mode: context_or_oen is oen_partial
-        if dob is None:
-            raise ValueError("dob must be provided when context_or_oen is a string")
-        config = get_encryption_config()
-        password_config = config.get("password", {})
-        template = password_config.get("template", "{date_of_birth_iso_compact}")
-        context = {
-            "client_id": str(context_or_oen),
-            "date_of_birth_iso": str(dob),
-            "date_of_birth_iso_compact": str(dob).replace("-", ""),
-        }
-        try:
-            password = validate_and_format_template(
-                template, context, allowed_fields=TemplateField.all_values()
-            )
-        except (KeyError, ValueError) as e:
-            raise ValueError(f"Invalid password template: {e}") from e
+    config = get_encryption_config()
+    password_config = config.get("password", {})
+    template = password_config.get("template", "{date_of_birth_iso_compact}")
+
+    try:
+        password = validate_and_format_template(
+            template, context, allowed_fields=TemplateField.all_values()
+        )
+    except (KeyError, ValueError) as e:
+        raise ValueError(f"Invalid password template: {e}") from e
 
     reader = PdfReader(file_path, strict=False)
     writer = PdfWriter()
