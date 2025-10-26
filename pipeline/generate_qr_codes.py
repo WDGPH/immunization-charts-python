@@ -14,7 +14,6 @@ import hashlib
 import json
 import logging
 from pathlib import Path
-from string import Formatter
 from typing import Any, Dict, List, Optional
 
 import yaml
@@ -29,6 +28,11 @@ except ImportError:
     Image = None  # type: ignore
 
 from .config_loader import load_config
+from .enums import TemplateField
+from .utils import (
+    build_client_context,
+    validate_and_format_template,
+)
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 ROOT_DIR = SCRIPT_DIR.parent
@@ -38,23 +42,8 @@ PARAMETERS_PATH = CONFIG_DIR / "parameters.yaml"
 LOG = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
-SUPPORTED_QR_TEMPLATE_FIELDS = {
-    "client_id",
-    "first_name",
-    "last_name",
-    "name",
-    "date_of_birth",
-    "date_of_birth_iso",
-    "school",
-    "city",
-    "postal_code",
-    "province",
-    "street_address",
-    "language_code",
-    "delivery_date",
-}
-
-_FORMATTER = Formatter()
+# Use centralized enum instead of hardcoded set
+SUPPORTED_QR_TEMPLATE_FIELDS = TemplateField.all_values()
 
 
 def generate_qr_code(
@@ -121,86 +110,22 @@ def read_preprocessed_artifact(path: Path) -> Dict[str, Any]:
     return payload
 
 
-def _string_or_empty(value: Any) -> str:
-    """Safely convert value to string, returning empty string for None/NaN."""
-    if value is None:
-        return ""
-    return str(value).strip()
-
-
-def _extract_template_fields(template: str) -> set[str]:
-    """Extract placeholder names from a format string."""
-    try:
-        return {
-            field_name
-            for _, field_name, _, _ in _FORMATTER.parse(template)
-            if field_name
-        }
-    except ValueError as exc:
-        raise ValueError(f"Invalid QR payload template: {exc}") from exc
-
-
 def _format_qr_payload(template: str, context: Dict[str, str]) -> str:
     """Format and validate QR payload template against allowed placeholders.
 
-    Validates that all placeholders in the template exist in the provided context
-    and are part of SUPPORTED_QR_TEMPLATE_FIELDS. Raises ValueError if unsupported
-    placeholders are used.
+    Uses centralized validation from utils.validate_and_format_template() with
+    the QR template fields whitelist.
+
+    Raises
+    ------
+    KeyError
+        If template contains placeholders not in context
+    ValueError
+        If template contains disallowed placeholders (not in SUPPORTED_QR_TEMPLATE_FIELDS)
     """
-    placeholders = _extract_template_fields(template)
-    unknown_fields = placeholders - context.keys()
-    if unknown_fields:
-        raise KeyError(
-            f"Unknown placeholder(s) {sorted(unknown_fields)} in qr_payload_template. "
-            f"Available placeholders: {sorted(context.keys())}"
-        )
-
-    disallowed = placeholders - SUPPORTED_QR_TEMPLATE_FIELDS
-    if disallowed:
-        raise ValueError(
-            f"Disallowed placeholder(s) {sorted(disallowed)} in qr_payload_template. "
-            f"Allowed placeholders: {sorted(SUPPORTED_QR_TEMPLATE_FIELDS)}"
-        )
-
-    return template.format(**context)
-
-
-def _build_qr_context(
-    *,
-    client_id: str,
-    first_name: str,
-    last_name: str,
-    dob_display: str,
-    dob_iso: Optional[str],
-    school: str,
-    city: str,
-    postal_code: str,
-    province: str,
-    street_address: str,
-    language_code: str,
-    delivery_date: Optional[str],
-) -> Dict[str, str]:
-    """Build template context for QR payload formatting."""
-    return {
-        "client_id": _string_or_empty(client_id),
-        "first_name": _string_or_empty(first_name),
-        "last_name": _string_or_empty(last_name),
-        "name": " ".join(
-            filter(
-                None,
-                [_string_or_empty(first_name), _string_or_empty(last_name)],
-            )
-        ).strip(),
-        "date_of_birth": _string_or_empty(dob_display),
-        "date_of_birth_iso": _string_or_empty(dob_iso),
-        "school": _string_or_empty(school),
-        "city": _string_or_empty(city),
-        "postal_code": _string_or_empty(postal_code),
-        "province": _string_or_empty(province),
-        "street_address": _string_or_empty(street_address),
-        "language_code": _string_or_empty(language_code),  # ISO code: 'en' or 'fr'
-        "delivery_date": _string_or_empty(delivery_date),
-    }
+    return validate_and_format_template(
+        template, context, allowed_fields=SUPPORTED_QR_TEMPLATE_FIELDS
+    )
 
 
 def load_qr_settings(config_path: Path | None = None) -> tuple[str, Optional[str]]:
@@ -297,28 +222,9 @@ def generate_qr_codes(
     # Generate QR code for each client
     for client in clients:
         client_id = client.get("client_id")
-        sequence = client.get("sequence")
 
-        # Get client details for context
-        person = client.get("person", {})
-        contact = client.get("contact", {})
-        school = client.get("school", {})
-
-        # Build QR context
-        qr_context = _build_qr_context(
-            client_id=client_id,
-            first_name=person.get("first_name", ""),
-            last_name=person.get("last_name", ""),
-            dob_display=person.get("date_of_birth_display", ""),
-            dob_iso=person.get("date_of_birth_iso"),
-            school=school.get("name", ""),
-            city=contact.get("city", ""),
-            postal_code=contact.get("postal_code", ""),
-            province=contact.get("province", ""),
-            street_address=contact.get("street", ""),
-            language_code=language,
-            delivery_date=delivery_date,
-        )
+        # Build context using centralized utility (handles all field extraction)
+        qr_context = build_client_context(client, language, delivery_date)
 
         # Generate payload (template is now required)
         try:
@@ -333,6 +239,7 @@ def generate_qr_codes(
 
         # Generate PNG
         try:
+            sequence = client.get("sequence")
             qr_path = generate_qr_code(
                 qr_payload,
                 qr_output_dir,

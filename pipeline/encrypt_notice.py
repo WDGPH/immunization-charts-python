@@ -19,7 +19,8 @@ from typing import List, Tuple
 import yaml
 from pypdf import PdfReader, PdfWriter
 
-from .utils import build_client_context
+from .enums import TemplateField
+from .utils import build_client_context, validate_and_format_template
 
 # Configuration paths
 CONFIG_DIR = Path(__file__).resolve().parent.parent / "config"
@@ -97,9 +98,11 @@ def encrypt_pdf(
         password_config = config.get("password", {})
         template = password_config.get("template", "{date_of_birth_iso_compact}")
         try:
-            password = template.format(**context)
-        except KeyError as e:
-            raise ValueError(f"Unknown placeholder in password template: {e}")
+            password = validate_and_format_template(
+                template, context, allowed_fields=TemplateField.all_values()
+            )
+        except (KeyError, ValueError) as e:
+            raise ValueError(f"Invalid password template: {e}") from e
     else:
         # Legacy mode: context_or_oen is oen_partial
         if dob is None:
@@ -113,9 +116,11 @@ def encrypt_pdf(
             "date_of_birth_iso_compact": str(dob).replace("-", ""),
         }
         try:
-            password = template.format(**context)
-        except KeyError as e:
-            raise ValueError(f"Unknown placeholder in password template: {e}")
+            password = validate_and_format_template(
+                template, context, allowed_fields=TemplateField.all_values()
+            )
+        except (KeyError, ValueError) as e:
+            raise ValueError(f"Invalid password template: {e}") from e
 
     reader = PdfReader(file_path, strict=False)
     writer = PdfWriter()
