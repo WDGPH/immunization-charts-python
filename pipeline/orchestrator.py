@@ -15,7 +15,6 @@ import time
 import traceback
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional
 
 # Import pipeline steps
 from . import batch_pdfs, cleanup, compile_notices, count_pdfs
@@ -378,7 +377,7 @@ def print_summary(
         print("🧹 Cleanup:                Skipped")
 
 
-def main(argv: Optional[list[str]] = None) -> int:
+def main() -> int:
     """Run the pipeline orchestrator."""
     try:
         args = parse_args()

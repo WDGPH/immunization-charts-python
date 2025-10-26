@@ -601,13 +601,6 @@ def enrich_grouped_records(
     return enriched
 
 
-def _string_or_empty(value: Any) -> str:
-    """Safely convert value to string, returning empty string for None/NaN."""
-    if value is None or (isinstance(value, float) and pd.isna(value)):
-        return ""
-    return str(value).strip()
-
-
 def build_preprocess_result(
     df: pd.DataFrame,
     language: str,
@@ -810,19 +803,3 @@ def write_artifact(
     artifact_path.write_text(json.dumps(payload_dict, indent=2), encoding="utf-8")
     LOG.info("Wrote normalized artifact to %s", artifact_path)
     return artifact_path
-
-
-def extract_total_clients(artifact_path: Path) -> int:
-    """Extract total client count from preprocessed artifact."""
-    with artifact_path.open("r", encoding="utf-8") as handle:
-        payload = json.load(handle)
-
-    total: Optional[int] = payload.get("total_clients")
-    if total is None:
-        clients = payload.get("clients", [])
-        total = len(clients)
-
-    try:
-        return int(total)
-    except (TypeError, ValueError) as exc:  # pragma: no cover - defensive guard
-        raise ValueError("Unable to determine the total number of clients") from exc
