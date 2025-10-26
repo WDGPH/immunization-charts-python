@@ -244,5 +244,5 @@ def main(
 if __name__ == "__main__":
     raise RuntimeError(
         "generate_notices.py should not be invoked directly. "
-        "Use run_pipeline.py instead."
+        "Use orchestrator.py instead."
     )

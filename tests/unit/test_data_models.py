@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import pytest
 
-from scripts import data_models
+from pipeline import data_models
 
 
 @pytest.mark.unit

@@ -21,7 +21,7 @@ from typing import Any, Dict
 
 import pytest
 
-from scripts import config_loader
+from pipeline import config_loader
 
 
 @pytest.mark.unit

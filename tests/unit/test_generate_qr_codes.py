@@ -24,7 +24,7 @@ from unittest.mock import patch
 import pytest
 import yaml
 
-from scripts import generate_qr_codes
+from pipeline import generate_qr_codes
 from tests.fixtures import sample_input
 
 
@@ -530,7 +530,7 @@ class TestGenerateQrCodes:
         qr_output_dir = tmp_output_structure["root"] / "qr_codes"
         assert not qr_output_dir.exists()
 
-        with patch("scripts.generate_qr_codes.generate_qr_code") as mock_gen:
+        with patch("pipeline.generate_qr_codes.generate_qr_code") as mock_gen:
             mock_gen.return_value = Path("dummy.png")
             generate_qr_codes.generate_qr_codes(
                 artifact_path.parent

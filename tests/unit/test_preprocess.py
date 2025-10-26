@@ -25,7 +25,7 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from scripts import preprocess
+from pipeline import preprocess
 from tests.fixtures import sample_input
 
 

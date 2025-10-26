@@ -24,7 +24,7 @@ from unittest.mock import patch
 
 import pytest
 
-from scripts import prepare_output
+from pipeline import prepare_output
 
 
 @pytest.mark.unit

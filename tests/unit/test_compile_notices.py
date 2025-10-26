@@ -23,7 +23,7 @@ from unittest.mock import patch
 import pytest
 import yaml
 
-from scripts import compile_notices
+from pipeline import compile_notices
 
 
 @pytest.mark.unit
@@ -229,7 +229,7 @@ class TestCompileTypstFiles:
         pdf_dir = tmp_output_structure["root"] / "pdf_output"
         assert not pdf_dir.exists()
 
-        with patch("scripts.compile_notices.compile_file"):
+        with patch("pipeline.compile_notices.compile_file"):
             compile_notices.compile_typst_files(
                 tmp_output_structure["artifacts"],
                 pdf_dir,
@@ -257,7 +257,7 @@ class TestCompileTypstFiles:
 
         pdf_dir = tmp_output_structure["pdf_individual"]
 
-        with patch("scripts.compile_notices.compile_file"):
+        with patch("pipeline.compile_notices.compile_file"):
             count = compile_notices.compile_typst_files(
                 tmp_output_structure["artifacts"],
                 pdf_dir,
@@ -311,7 +311,7 @@ class TestCompileTypstFiles:
 
         pdf_dir = tmp_output_structure["pdf_individual"]
 
-        with patch("scripts.compile_notices.compile_file") as mock_compile:
+        with patch("pipeline.compile_notices.compile_file") as mock_compile:
             compile_notices.compile_typst_files(
                 tmp_output_structure["artifacts"],
                 pdf_dir,
@@ -353,7 +353,7 @@ class TestCompileWithConfig:
 
         pdf_dir = tmp_output_structure["pdf_individual"]
 
-        with patch("scripts.compile_notices.compile_file"):
+        with patch("pipeline.compile_notices.compile_file"):
             result = compile_notices.compile_with_config(
                 tmp_output_structure["artifacts"],
                 pdf_dir,
@@ -392,7 +392,7 @@ class TestCompileWithConfig:
         try:
             os.environ["TYPST_BIN"] = "/custom/typst"
 
-            with patch("scripts.compile_notices.compile_file") as mock_compile:
+            with patch("pipeline.compile_notices.compile_file") as mock_compile:
                 compile_notices.compile_with_config(
                     tmp_output_structure["artifacts"],
                     pdf_dir,

@@ -19,9 +19,9 @@ from pathlib import Path
 
 import pytest
 
-from scripts import batch_pdfs
-from scripts.data_models import PdfRecord
-from scripts.enums import BatchStrategy, BatchType
+from pipeline import batch_pdfs
+from pipeline.data_models import PdfRecord
+from pipeline.enums import BatchStrategy, BatchType
 from tests.fixtures import sample_input
 
 
