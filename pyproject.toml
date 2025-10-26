@@ -14,7 +14,6 @@ dependencies = [
     "PyYAML",
     "openpyxl",
     "pypdf",
-    "typst>=0.13.2",
     "qrcode>=7.4.2",
     "pillow>=10.4.0",
 ]

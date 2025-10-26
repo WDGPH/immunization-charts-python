@@ -11,8 +11,6 @@ import logging
 from pathlib import Path
 from typing import Dict, List, Mapping, Sequence
 
-import typst
-
 from .data_models import (
     ArtifactPayload,
     ClientRecord,
@@ -27,20 +25,6 @@ ROOT_DIR = SCRIPT_DIR.parent
 
 LOG = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
-
-
-# Colocated from utils.py
-def compile_typst(immunization_record, outpath):
-    """Compile a Typst template to PDF output.
-
-    Parameters
-    ----------
-    immunization_record : str
-        Path to the Typst template file.
-    outpath : str
-        Path to output PDF file.
-    """
-    typst.compile(immunization_record, output=outpath)
 
 
 # Build renderer dict from Language enum
