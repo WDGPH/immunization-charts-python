@@ -297,7 +297,20 @@ REQUIRED_COLUMNS = [
 
 
 def configure_logging(output_dir: Path, run_id: str) -> Path:
-    """Configure file logging for preprocessing step."""
+    """Configure file logging for the preprocessing step.
+
+    Parameters
+    ----------
+    output_dir : Path
+        Root output directory where logs subdirectory will be created.
+    run_id : str
+        Unique run identifier used in log filename.
+
+    Returns
+    -------
+    Path
+        Path to the created log file.
+    """
     log_dir = output_dir / "logs"
     log_dir.mkdir(parents=True, exist_ok=True)
     log_path = log_dir / f"preprocess_{run_id}.log"
@@ -315,14 +328,51 @@ def configure_logging(output_dir: Path, run_id: str) -> Path:
 
 
 def detect_file_type(file_path: Path) -> str:
-    """Return the file extension for preprocessing logic."""
+    """Detect file type by extension.
+
+    Parameters
+    ----------
+    file_path : Path
+        Path to the file to detect.
+
+    Returns
+    -------
+    str
+        File extension in lowercase (e.g., '.xlsx', '.csv').
+
+    Raises
+    ------
+    FileNotFoundError
+        If the file does not exist.
+    """
     if not file_path.exists():
         raise FileNotFoundError(f"Input file not found: {file_path}")
     return file_path.suffix.lower()
 
 
 def read_input(file_path: Path) -> pd.DataFrame:
-    """Read CSV/Excel into DataFrame with robust encoding and delimiter detection."""
+    """Read CSV or Excel input file into a pandas DataFrame.
+
+    Supports .xlsx, .xls, and .csv formats with robust encoding and delimiter
+    detection. This is a critical preprocessing step that loads raw client data.
+
+    Parameters
+    ----------
+    file_path : Path
+        Path to the input file (CSV, XLSX, or XLS).
+
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame with raw client data loaded from the file.
+
+    Raises
+    ------
+    ValueError
+        If file type is unsupported or CSV cannot be decoded with common encodings.
+    Exception
+        If file reading fails for any reason (logged to preprocessing logs).
+    """
     ext = detect_file_type(file_path)
 
     try:
@@ -353,7 +403,26 @@ def read_input(file_path: Path) -> pd.DataFrame:
 
 
 def ensure_required_columns(df: pd.DataFrame) -> pd.DataFrame:
-    """Normalize column names and validate required columns."""
+    """Normalize column names and validate that all required columns are present.
+
+    Standardizes column names to uppercase and underscores, then validates that
+    the DataFrame contains all required columns for immunization processing.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Input DataFrame with client data (column names may have mixed case/spacing).
+
+    Returns
+    -------
+    pd.DataFrame
+        Copy of input DataFrame with normalized column names.
+
+    Raises
+    ------
+    ValueError
+        If any required columns are missing from the DataFrame.
+    """
     df = df.copy()
     df.columns = [col.strip().upper() for col in df.columns]
     missing = [col for col in REQUIRED_COLUMNS if col not in df.columns]
@@ -366,7 +435,27 @@ def ensure_required_columns(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def normalize_dataframe(df: pd.DataFrame) -> pd.DataFrame:
-    """Standardize data types and fill missing values."""
+    """Standardize data types and fill missing values in the input DataFrame.
+
+    Ensures consistent data types across all columns:
+    - String columns are filled with empty strings and trimmed
+    - DATE_OF_BIRTH is converted to datetime
+    - AGE is converted to numeric (if present)
+    - Missing board/school data is initialized with empty dicts
+
+    This normalization is critical for downstream processing as it ensures
+    every client record has the expected structure.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Input DataFrame with raw client data.
+
+    Returns
+    -------
+    pd.DataFrame
+        Copy of DataFrame with normalized types and filled values.
+    """
     working = df.copy()
     string_columns = [
         "SCHOOL_NAME",

@@ -1,6 +1,19 @@
 """English Typst template renderer.
 
-Port of the original mock template authored by Kassy Raymond.
+This module contains the English version of the immunization notice template. The
+template generates a 2025 immunization notice in Typst format for dynamic PDF
+rendering.
+
+The template defines the notice layout, including client information, immunization
+requirements, vaccine records, QR codes, and contact instructions. All placeholder
+values (client data, dates, vaccines) are dynamically substituted during rendering.
+
+Available placeholder variables include:
+- client: Client data dict with person, school, board, contact info
+- client_id: Unique client identifier
+- immunizations_due: List of required vaccines
+- qr_code: Optional QR code image path (if QR generation is enabled)
+- date: Delivery/notice date
 """
 
 from __future__ import annotations
@@ -8,7 +21,7 @@ from __future__ import annotations
 from typing import Mapping
 
 TEMPLATE_PREFIX = """// --- CCEYA NOTICE TEMPLATE (TEST VERSION) --- //
-// Description: A typst template that dynamically generates 2025 cceya templates for phsd.
+// Description: A typst template that dynamically generates CCEYA templates.
 // NOTE: All contact details are placeholders for testing purposes only.
 // Author: Kassy Raymond
 // Date Created: 2025-06-25

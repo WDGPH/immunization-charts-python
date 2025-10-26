@@ -15,14 +15,50 @@ from typing import Any, Dict, List, Optional, Sequence
 class ClientRecord:
     """Unified client record across all pipeline steps.
 
-    Fields:
-    - person: Dict with full_name, date_of_birth, date_of_birth_display, date_of_birth_iso, age, over_16
-    - school: Dict with name, code (optional)
-    - board: Dict with name, code (optional)
-    - contact: Dict with street, city, province, postal_code
-    - qr: Optional Dict with payload, filename, path (optional)
-    - metadata: Custom metadata dict
-    - received: List of vaccine records received
+    This dataclass represents a single client (student) record passed through
+    the entire pipeline. It contains all necessary information for:
+    - Generating personalized notices
+    - Creating QR codes
+    - Encrypting PDFs
+    - Batching outputs
+
+    Fields
+    ------
+    sequence : str
+        Zero-padded sequence number for this client in the batch (e.g., '00001').
+    client_id : str
+        Unique client identifier (OEN or similar).
+    language : str
+        ISO 639-1 language code ('en' or 'fr').
+    person : Dict[str, Any]
+        Person details:
+        - full_name: Combined first and last name
+        - first_name: Given name (optional)
+        - last_name: Family name (optional)
+        - date_of_birth: Display format (e.g., "Jan 8, 2025")
+        - date_of_birth_iso: ISO format (YYYY-MM-DD)
+        - date_of_birth_display: Localized display format
+        - age: Calculated age in years
+        - over_16: Boolean flag for age >= 16
+    school : Dict[str, Any]
+        School information: name, id, code, type.
+    board : Dict[str, Any]
+        School board information: name, id, code.
+    contact : Dict[str, Any]
+        Contact address: street, city, province, postal_code.
+    vaccines_due : Optional[str]
+        Comma-separated string of vaccines due (display format).
+    vaccines_due_list : Optional[List[str]]
+        List of vaccine names/codes due.
+    received : Optional[Sequence[Dict[str, object]]]
+        List of vaccine records already received (structured data).
+    metadata : Dict[str, object]
+        Custom pipeline metadata (warnings, flags, etc.).
+    qr : Optional[Dict[str, Any]]
+        QR code information (if generated):
+        - payload: QR code data string
+        - filename: PNG filename
+        - path: Relative path to PNG file
     """
 
     sequence: str
@@ -41,7 +77,19 @@ class ClientRecord:
 
 @dataclass(frozen=True)
 class PreprocessResult:
-    """Result of preprocessing step."""
+    """Result of preprocessing step.
+
+    The output of Step 2 (preprocessing) that contains normalized client data
+    and any warnings generated during processing.
+
+    Parameters
+    ----------
+    clients : List[ClientRecord]
+        Processed and validated client records.
+    warnings : List[str]
+        Non-fatal warnings encountered during preprocessing (e.g., missing
+        optional fields, unrecognized vaccine codes).
+    """
 
     clients: List[ClientRecord]
     warnings: List[str]
@@ -49,7 +97,28 @@ class PreprocessResult:
 
 @dataclass(frozen=True)
 class ArtifactPayload:
-    """Preprocessed artifact with metadata."""
+    """Preprocessed artifact with metadata.
+
+    The JSON artifact written by Step 2 (preprocessing) and read by downstream
+    steps. Contains all normalized client data and provenance information.
+
+    Parameters
+    ----------
+    run_id : str
+        Unique pipeline run identifier (timestamp-based).
+    language : str
+        ISO 639-1 language code ('en' or 'fr').
+    clients : List[ClientRecord]
+        All processed client records.
+    warnings : List[str]
+        All preprocessing warnings.
+    created_at : str
+        ISO 8601 timestamp when artifact was created.
+    input_file : Optional[str]
+        Name of the input file processed (for audit trail).
+    total_clients : int
+        Total number of clients in artifact (convenience field).
+    """
 
     run_id: str
     language: str
@@ -62,7 +131,25 @@ class ArtifactPayload:
 
 @dataclass(frozen=True)
 class PdfRecord:
-    """Compiled PDF with client metadata."""
+    """Compiled PDF with client metadata.
+
+    Represents a single generated PDF notice with its associated client
+    data and page count. Used during batching (Step 8) to group PDFs
+    and generate manifests.
+
+    Parameters
+    ----------
+    sequence : str
+        Zero-padded sequence number matching the PDF filename.
+    client_id : str
+        Client identifier matching the PDF filename.
+    pdf_path : Path
+        Absolute path to the generated PDF file.
+    page_count : int
+        Number of pages in the PDF (usually 2 for immunization notices).
+    client : Dict[str, Any]
+        Full client data dict for manifest generation and batching.
+    """
 
     sequence: str
     client_id: str

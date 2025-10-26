@@ -1,6 +1,9 @@
 """Utility functions for immunization pipeline processing.
 
-Provides template rendering utilities shared across pipeline steps."""
+Provides template rendering utilities and context building functions shared
+across pipeline steps, particularly for QR code generation, PDF encryption,
+and template variable substitution. All functions handle string conversions
+and safe formatting of client data for use in downstream templates."""
 
 from __future__ import annotations
 

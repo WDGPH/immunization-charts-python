@@ -28,7 +28,17 @@ _encryption_config = None
 
 
 def _load_encryption_config():
-    """Load encryption configuration from unified parameters.yaml file."""
+    """Load and cache encryption configuration from parameters.yaml.
+
+    Configuration is loaded once and cached globally for subsequent function calls.
+    This avoids repeated file I/O when generating passwords for multiple PDFs.
+
+    Returns
+    -------
+    dict
+        Encryption configuration dict (typically contains 'password' key with
+        'template' sub-key), or empty dict if config file not found.
+    """
     global _encryption_config
     if _encryption_config is None:
         try:
@@ -45,7 +55,13 @@ def _load_encryption_config():
 
 
 def get_encryption_config():
-    """Get the encryption configuration from parameters.yaml."""
+    """Get the encryption configuration from parameters.yaml.
+
+    Returns
+    -------
+    dict
+        Cached encryption configuration.
+    """
     return _load_encryption_config()
 
 

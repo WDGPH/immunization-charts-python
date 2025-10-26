@@ -17,11 +17,23 @@ from typing import Callable, Optional
 
 
 def _is_log_directory(candidate: Path, log_dir: Path) -> bool:
-    """Return True when *candidate* is the log directory or one of its ancestors.
+    """Check if a path is the log directory or one of its ancestors.
 
     The pipeline stores logs under a dedicated directory (``output/logs``). When
     cleaning the output directory we must preserve the log directory and its
-    contents. The check accounts for potential symlinks by resolving both paths.
+    contents. This check accounts for potential symlinks by resolving both paths.
+
+    Parameters
+    ----------
+    candidate : Path
+        Path to check.
+    log_dir : Path
+        Reference log directory path.
+
+    Returns
+    -------
+    bool
+        True if candidate is the log directory or an ancestor, False otherwise.
     """
 
     try:
@@ -41,7 +53,15 @@ def _is_log_directory(candidate: Path, log_dir: Path) -> bool:
 
 
 def _purge_output_directory(output_dir: Path, log_dir: Path) -> None:
-    """Remove everything inside *output_dir* except the logs directory."""
+    """Remove everything inside output_dir except the logs directory.
+
+    Parameters
+    ----------
+    output_dir : Path
+        Output directory to clean.
+    log_dir : Path
+        Log directory to preserve.
+    """
 
     for child in output_dir.iterdir():
         if _is_log_directory(child, log_dir):
@@ -53,6 +73,18 @@ def _purge_output_directory(output_dir: Path, log_dir: Path) -> None:
 
 
 def _default_prompt(output_dir: Path) -> bool:
+    """Prompt user for confirmation to delete output directory contents.
+
+    Parameters
+    ----------
+    output_dir : Path
+        Directory path being queried.
+
+    Returns
+    -------
+    bool
+        True if user confirms (y/yes), False otherwise.
+    """
     print("")
     print(f"⚠️  Output directory already exists: {output_dir}")
     response = input("Delete contents (except logs) and proceed? [y/N] ")
