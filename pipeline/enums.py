@@ -11,7 +11,7 @@ class BatchStrategy(Enum):
     BOARD = "board"
 
     @classmethod
-    def from_string(cls, value: str | None) -> "BatchStrategy | None":
+    def from_string(cls, value: str | None) -> "BatchStrategy":
         """Convert string to BatchStrategy. Defaults to SIZE if None."""
         if value is None:
             return cls.SIZE

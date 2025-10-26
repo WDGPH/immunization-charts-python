@@ -202,6 +202,7 @@ class TestLoadArtifact:
         loaded = batch_pdfs.load_artifact(tmp_path, run_id)
 
         assert loaded["run_id"] == run_id
+        assert isinstance(loaded["clients"], list)
         assert len(loaded["clients"]) == 2
 
     def test_load_artifact_missing_file_raises_error(self, tmp_path: Path) -> None:

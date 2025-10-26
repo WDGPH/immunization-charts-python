@@ -21,9 +21,11 @@ import yaml
 
 try:
     import qrcode
+    from qrcode import constants as qrcode_constants
     from PIL import Image
 except ImportError:
     qrcode = None  # type: ignore
+    qrcode_constants = None  # type: ignore
     Image = None  # type: ignore
 
 from .config_loader import load_config
@@ -90,7 +92,7 @@ def generate_qr_code(
 
     qr = qrcode.QRCode(
         version=1,
-        error_correction=qrcode.constants.ERROR_CORRECT_L,
+        error_correction=qrcode_constants.ERROR_CORRECT_L,
         box_size=10,
         border=4,
     )
@@ -101,7 +103,8 @@ def generate_qr_code(
     pil_image = getattr(image, "get_image", lambda: image)()
 
     # Convert to 1-bit black/white without dithering to keep crisp edges.
-    pil_bitmap = pil_image.convert("1", dither=Image.NONE)
+    # NONE (0) means no dithering
+    pil_bitmap = pil_image.convert("1", dither=0)
 
     if not filename:
         digest = hashlib.sha1(data.encode("utf-8")).hexdigest()[:12]

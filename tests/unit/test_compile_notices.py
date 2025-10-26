@@ -130,7 +130,7 @@ class TestCompileFile:
     """Unit tests for compile_file function."""
 
     def test_compile_file_invokes_typst_command(
-        self, tmp_output_structure: Path
+        self, tmp_output_structure: dict
     ) -> None:
         """Verify typst CLI is invoked with correct parameters.
 

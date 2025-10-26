@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import json
 import subprocess
+from collections.abc import Generator
 from pathlib import Path
 
 import pytest
@@ -42,7 +43,7 @@ class TestFullPipelineExecution:
         return Path(__file__).resolve().parent.parent.parent
 
     @pytest.fixture
-    def pipeline_input_file(self, project_root: Path) -> Path:
+    def pipeline_input_file(self, project_root: Path) -> Generator[Path, None, None]:
         """Create a test input Excel file in the project input directory."""
         input_file = project_root / "input" / "e2e_test_clients.xlsx"
         df = create_test_input_dataframe(num_clients=3)
