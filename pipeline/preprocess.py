@@ -58,10 +58,10 @@ from .data_models import (
     PreprocessResult,
 )
 from .enums import Language
+from .translation_helpers import normalize_disease
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 CONFIG_DIR = SCRIPT_DIR.parent / "config"
-DISEASE_MAP_PATH = CONFIG_DIR / "disease_map.json"
 VACCINE_REFERENCE_PATH = CONFIG_DIR / "vaccine_reference.json"
 PARAMETERS_PATH = CONFIG_DIR / "parameters.yaml"
 
@@ -69,7 +69,7 @@ LOG = logging.getLogger(__name__)
 
 _FORMATTER = Formatter()
 
-# Date conversion helpers (colocated from utils.py)
+# Date conversion helpers
 FRENCH_MONTHS = {
     1: "janvier",
     2: "février",
@@ -416,33 +416,39 @@ def synthesize_identifier(existing: str, source: str, prefix: str) -> str:
     return f"{prefix}_{digest}"
 
 
-def process_vaccines_due(
-    vaccines_due: Any, language: str, disease_map: Dict[str, str]
-) -> str:
-    """Map overdue diseases to vaccine names using disease_map."""
+def process_vaccines_due(vaccines_due: Any, language: str) -> str:
+    """Map overdue diseases to canonical disease names.
+
+    Normalizes raw input disease strings to canonical disease names using
+    config/disease_normalization.json. Returns a comma-separated string of
+    canonical disease names.
+
+    Parameters
+    ----------
+    vaccines_due : Any
+        Raw string of comma-separated disease names from input.
+    language : str
+        Language code (e.g., "en", "fr"). Used for logging.
+
+    Returns
+    -------
+    str
+        Comma-separated string of canonical disease names (English).
+        Empty string if input is empty or invalid.
+    """
     if not isinstance(vaccines_due, str) or not vaccines_due.strip():
         return ""
 
-    replacements = {
-        "en": {
-            "Haemophilus influenzae infection, invasive": "Invasive Haemophilus influenzae infection (Hib)",
-        },
-        "fr": {
-            "infection à Haemophilus influenzae, invasive": "Haemophilus influenzae de type b (Hib)",
-        },
-    }
-
-    normalised = vaccines_due
-    for original, replacement in replacements.get(language, {}).items():
-        normalised = normalised.replace(original, replacement)
-
     items: List[str] = []
-    for token in normalised.split(","):
-        cleaned = token.strip()
-        mapped = disease_map.get(cleaned, cleaned)
-        items.append(mapped)
+    for token in vaccines_due.split(","):
+        # Normalize: raw input -> canonical disease name
+        normalized = normalize_disease(token.strip())
+        items.append(normalized)
 
-    return ", ".join(item.replace("'", "").replace('"', "") for item in items if item)
+    # Filter empty items and clean quotes
+    return ", ".join(
+        item.replace("'", "").replace('"', "") for item in items if item.strip()
+    )
 
 
 def process_received_agents(
@@ -512,7 +518,6 @@ def enrich_grouped_records(
 def build_preprocess_result(
     df: pd.DataFrame,
     language: str,
-    disease_map: Dict[str, str],
     vaccine_reference: Dict[str, Any],
     ignore_agents: List[str],
 ) -> PreprocessResult:
@@ -577,7 +582,7 @@ def build_preprocess_result(
             if language_enum == Language.FRENCH and dob_iso
             else convert_date_string(dob_iso)
         )
-        vaccines_due = process_vaccines_due(row.OVERDUE_DISEASE, language, disease_map)  # type: ignore[attr-defined]
+        vaccines_due = process_vaccines_due(row.OVERDUE_DISEASE, language)  # type: ignore[attr-defined]
         vaccines_due_list = [
             item.strip() for item in vaccines_due.split(",") if item.strip()
         ]

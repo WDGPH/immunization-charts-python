@@ -49,6 +49,7 @@ from .data_models import (
     ClientRecord,
 )
 from .enums import Language
+from .translation_helpers import display_label
 
 from templates.en_template import render_notice as render_notice_en
 from templates.fr_template import render_notice as render_notice_fr
@@ -237,7 +238,23 @@ def to_typ_value(value) -> str:
 def build_template_context(
     client: ClientRecord, qr_output_dir: Path | None = None
 ) -> Dict[str, str]:
-    """Build template context from client data."""
+    """Build template context from client data.
+
+    Translates disease names in vaccines_due_list and received records to
+    localized display strings using the configured translation files.
+
+    Parameters
+    ----------
+    client : ClientRecord
+        Client record with all required fields.
+    qr_output_dir : Path, optional
+        Directory containing QR code PNG files.
+
+    Returns
+    -------
+    Dict[str, str]
+        Template context with translated disease names.
+    """
     client_data = {
         "name": client.person["full_name"],
         "address": client.contact["street"],
@@ -254,13 +271,47 @@ def build_template_context(
         if qr_path.exists():
             client_data["qr_code"] = to_root_relative(qr_path)
 
+    # Translate vaccines_due_list to display labels
+    vaccines_due_array_translated: List[str] = []
+    if client.vaccines_due_list:
+        for disease in client.vaccines_due_list:
+            label = display_label(
+                "diseases_overdue", disease, client.language, strict=False
+            )
+            vaccines_due_array_translated.append(label)
+
+    # Translate vaccines_due string
+    vaccines_due_str_translated = (
+        ", ".join(vaccines_due_array_translated)
+        if vaccines_due_array_translated
+        else ""
+    )
+
+    # Translate received records' diseases
+    received_translated: List[Dict[str, object]] = []
+    if client.received:
+        for record in client.received:
+            translated_record = dict(record)
+            # Translate diseases field (not vaccine)
+            if "diseases" in translated_record and isinstance(
+                translated_record["diseases"], list
+            ):
+                translated_diseases = []
+                for disease in translated_record["diseases"]:
+                    label = display_label(
+                        "diseases_chart", disease, client.language, strict=False
+                    )
+                    translated_diseases.append(label)
+                translated_record["diseases"] = translated_diseases
+            received_translated.append(translated_record)
+
     return {
         "client_row": to_typ_value([client.client_id]),
         "client_data": to_typ_value(client_data),
-        "vaccines_due_str": to_typ_value(client.vaccines_due or ""),
-        "vaccines_due_array": to_typ_value(client.vaccines_due_list or []),
-        "received": to_typ_value(client.received or []),
-        "num_rows": str(len(client.received or [])),
+        "vaccines_due_str": to_typ_value(vaccines_due_str_translated),
+        "vaccines_due_array": to_typ_value(vaccines_due_array_translated),
+        "received": to_typ_value(received_translated),
+        "num_rows": str(len(received_translated)),
     }
 
 

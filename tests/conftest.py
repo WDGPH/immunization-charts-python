@@ -70,34 +70,6 @@ def tmp_output_structure(tmp_test_dir: Path) -> Dict[str, Path]:
 
 
 @pytest.fixture
-def default_disease_map() -> Dict[str, str]:
-    """Provide a minimal disease map for testing.
-
-    Real-world significance:
-    - Maps disease names in input to vaccine/disease names in notices
-    - Required by preprocess step to normalize disease data
-    - Affects immunization status text in notices
-
-    Returns
-    -------
-    Dict[str, str]
-        Maps disease/vaccine names, e.g. {"DTaP": "Diphtheria/Tetanus/Pertussis"}
-    """
-    return {
-        "Diphtheria": "Diphtheria",
-        "Tetanus": "Tetanus",
-        "Pertussis": "Pertussis",
-        "DTaP": "Diphtheria/Tetanus/Pertussis",
-        "IPV": "Polio",
-        "MMR": "Measles/Mumps/Rubella",
-        "Varicella": "Chickenpox",
-        "Meningococcal": "Meningococcal infection, invasive",
-        "Haemophilus influenzae": "Haemophilus influenzae infection, invasive",
-        "Pneumococcal": "Pneumococcal infection, invasive",
-    }
-
-
-@pytest.fixture
 def default_vaccine_reference() -> Dict[str, list]:
     """Provide a minimal vaccine reference for testing.
 

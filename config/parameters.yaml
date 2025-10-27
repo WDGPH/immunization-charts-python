@@ -28,7 +28,7 @@ cleanup:
 date_today: August 31, 2025
 delivery_date: '2025-04-08'
 encryption:
-  enabled: true
+  enabled: false
   password:
     template: '{date_of_birth_iso_compact}'
 ignore_agents:
