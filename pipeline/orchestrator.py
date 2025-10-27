@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """VIPER Pipeline Orchestrator.
 
 This script orchestrates the end-to-end immunization notice generation pipeline.
