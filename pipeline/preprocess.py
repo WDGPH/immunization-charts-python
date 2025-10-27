@@ -51,6 +51,7 @@ from typing import Any, Dict, List, Optional
 
 import pandas as pd
 import yaml
+from babel.dates import format_date
 
 from .data_models import (
     ArtifactPayload,
@@ -69,74 +70,54 @@ LOG = logging.getLogger(__name__)
 
 _FORMATTER = Formatter()
 
-# Date conversion helpers
-FRENCH_MONTHS = {
-    1: "janvier",
-    2: "février",
-    3: "mars",
-    4: "avril",
-    5: "mai",
-    6: "juin",
-    7: "juillet",
-    8: "août",
-    9: "septembre",
-    10: "octobre",
-    11: "novembre",
-    12: "décembre",
-}
 
+def convert_date_string(
+    date_str: str | datetime | pd.Timestamp, locale: str = "en"
+) -> str | None:
+    """Convert a date to display format with locale-aware formatting.
 
-def convert_date_string_french(date_str):
-    """Convert a date string from YYYY-MM-DD format to French display format.
-
-    Parameters
-    ----------
-    date_str : str
-        Date string in YYYY-MM-DD format.
-
-    Returns
-    -------
-    str
-        Date in French format (e.g., "8 mai 2025").
-    """
-    date_obj = datetime.strptime(date_str, "%Y-%m-%d")
-    day = date_obj.day
-    month = FRENCH_MONTHS[date_obj.month]
-    year = date_obj.year
-
-    return f"{day} {month} {year}"
-
-
-def convert_date_string(date_str):
-    """Convert a date to English display format.
+    Uses Babel for locale-aware date formatting. Generates format like
+    "May 8, 2025" (en) or "8 mai 2025" (fr) depending on locale.
 
     Parameters
     ----------
     date_str : str | datetime | pd.Timestamp
         Date string in YYYY-MM-DD format or datetime-like object.
+    locale : str, optional
+        Locale code for date formatting (default: "en").
+        Examples: "en" for English, "fr" for French.
 
     Returns
     -------
-    str
-        Date in the format Mon DD, YYYY (e.g., "May 8, 2025").
+    str | None
+        Date in locale-specific format, or None if input is null.
+
+    Raises
+    ------
+    ValueError
+        If date_str is a string in unrecognized format.
     """
     if pd.isna(date_str):
         return None
 
-    # If it's already a datetime or Timestamp
+    # If it's already a datetime or Timestamp, use it directly
     if isinstance(date_str, (pd.Timestamp, datetime)):
-        return date_str.strftime("%b %d, %Y")
+        date_obj = date_str
+    else:
+        # Parse string input
+        try:
+            date_obj = datetime.strptime(str(date_str).strip(), "%Y-%m-%d")
+        except ValueError:
+            raise ValueError(f"Unrecognized date format: {date_str}")
 
-    # Otherwise assume string input
-    try:
-        date_obj = datetime.strptime(str(date_str).strip(), "%Y-%m-%d")
-        return date_obj.strftime("%b %d, %Y")
-    except ValueError:
-        raise ValueError(f"Unrecognized date format: {date_str}")
+    return format_date(date_obj, format="long", locale=locale)
 
 
-def convert_date_iso(date_str):
+def convert_date_iso(date_str: str) -> str:
     """Convert a date from English display format to ISO format.
+
+    Reverses the formatting from convert_date_string(). Expects input
+    in "Mon DD, YYYY" format (e.g., "May 8, 2025").
 
     Parameters
     ----------
@@ -619,9 +600,9 @@ def build_preprocess_result(
 
         language_enum = Language.from_string(language)
         formatted_dob = (
-            convert_date_string_french(dob_iso)
+            convert_date_string(dob_iso, locale="fr")
             if language_enum == Language.FRENCH and dob_iso
-            else convert_date_string(dob_iso)
+            else convert_date_string(dob_iso, locale="en")
         )
         vaccines_due = process_vaccines_due(row.OVERDUE_DISEASE, language)  # type: ignore[attr-defined]
         vaccines_due_list = [
