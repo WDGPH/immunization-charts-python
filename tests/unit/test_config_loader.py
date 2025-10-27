@@ -2,7 +2,6 @@
 
 Tests cover:
 - Loading YAML configurations from files
-- Retrieving nested values with dot notation
 - Error handling for missing files and invalid YAML
 - Support for various data types (strings, integers, booleans, lists, nested dicts)
 - Default values and fallback behavior
@@ -10,14 +9,13 @@ Tests cover:
 Real-world significance:
 - Configuration controls all pipeline behavior (QR generation, encryption, batching, etc.)
 - Incorrect config loading can silently disable features or cause crashes
-- Dot notation retrieval enables simple config access throughout codebase
+- Config validation ensures all required keys are present
 """
 
 from __future__ import annotations
 
 import tempfile
 from pathlib import Path
-from typing import Any, Dict
 
 import pytest
 
@@ -49,7 +47,7 @@ class TestLoadConfig:
         """
         with tempfile.TemporaryDirectory() as tmpdir:
             config_path = Path(tmpdir) / "test_config.yaml"
-            config_path.write_text("test_key: test_value\n")
+            config_path.write_text("qr:\n  enabled: false\ntest_key: test_value\n")
 
             config = config_loader.load_config(config_path)
 
@@ -65,7 +63,9 @@ class TestLoadConfig:
         with tempfile.TemporaryDirectory() as tmpdir:
             config_path = Path(tmpdir) / "nested_config.yaml"
             config_path.write_text(
-                """section1:
+                """qr:
+  enabled: false
+section1:
   key1: value1
   key2: value2
 section2:
@@ -91,18 +91,19 @@ section2:
             config_loader.load_config(missing_path)
 
     def test_load_config_empty_file(self) -> None:
-        """Verify empty YAML file returns empty dict.
+        """Verify empty YAML file with valid QR config returns dict.
 
         Real-world significance:
-        - Should gracefully handle empty config (allows progressive setup)
+        - Empty config must still provide valid QR settings (QR enabled by default)
         """
         with tempfile.TemporaryDirectory() as tmpdir:
             config_path = Path(tmpdir) / "empty_config.yaml"
-            config_path.write_text("")
+            # Even empty files need valid QR config after validation
+            config_path.write_text("qr:\n  enabled: false\n")
 
             config = config_loader.load_config(config_path)
 
-            assert config == {}
+            assert config.get("qr", {}).get("enabled") is False
 
     def test_load_config_with_various_data_types(self) -> None:
         """Verify YAML correctly loads strings, numbers, booleans, lists, nulls.
@@ -114,7 +115,9 @@ section2:
         with tempfile.TemporaryDirectory() as tmpdir:
             config_path = Path(tmpdir) / "types_config.yaml"
             config_path.write_text(
-                """string_val: hello
+                """qr:
+  enabled: false
+string_val: hello
 int_val: 42
 float_val: 3.14
 bool_val: true
@@ -147,157 +150,6 @@ null_val: null
 
             with pytest.raises(Exception):  # yaml.YAMLError or similar
                 config_loader.load_config(config_path)
-
-
-@pytest.mark.unit
-class TestGetConfigValue:
-    """Unit tests for get_config_value function with dot notation."""
-
-    def test_get_config_value_single_key(self) -> None:
-        """Verify single-level key retrieval.
-
-        Real-world significance:
-        - Used throughout codebase to access top-level config values
-        """
-        config = {"key": "value"}
-
-        result = config_loader.get_config_value(config, "key")
-
-        assert result == "value"
-
-    def test_get_config_value_nested_with_dot_notation(self) -> None:
-        """Verify dot notation retrieves nested values.
-
-        Real-world significance:
-        - Used to access qr.enabled, encryption.password.template, etc.
-        - Cleaner and safer than nested bracket access
-        """
-        config = {"section": {"subsection": {"key": "nested_value"}}}
-
-        result = config_loader.get_config_value(config, "section.subsection.key")
-
-        assert result == "nested_value"
-
-    def test_get_config_value_missing_key_returns_default(self) -> None:
-        """Verify missing key returns default value.
-
-        Real-world significance:
-        - Allows graceful degradation when optional config keys are missing
-        - Prevents KeyError crashes in pipeline
-        """
-        config = {"existing": "value"}
-
-        result = config_loader.get_config_value(config, "missing", default="default")
-
-        assert result == "default"
-
-    def test_get_config_value_missing_key_returns_none(self) -> None:
-        """Verify missing key returns None when no default provided.
-
-        Real-world significance:
-        - Distinguishes between "key missing" and "key has value None"
-        - Caller can use None to detect missing optional config
-        """
-        config = {"existing": "value"}
-
-        result = config_loader.get_config_value(config, "missing")
-
-        assert result is None
-
-    def test_get_config_value_missing_intermediate_key(self) -> None:
-        """Verify missing intermediate key path returns default.
-
-        Real-world significance:
-        - e.g., config missing encryption.password.template should not crash
-        - Must safely handle partial config structures
-        """
-        config = {"section": {"key": "value"}}
-
-        result = config_loader.get_config_value(
-            config, "section.missing.key", default="fallback"
-        )
-
-        assert result == "fallback"
-
-    def test_get_config_value_non_dict_intermediate(self) -> None:
-        """Verify accessing nested keys on non-dict returns default.
-
-        Real-world significance:
-        - Config corruption (wrong type) shouldn't crash pipeline
-        - Must gracefully fall back
-        """
-        config = {"section": "not_a_dict"}
-
-        result = config_loader.get_config_value(
-            config, "section.key", default="fallback"
-        )
-
-        assert result == "fallback"
-
-    def test_get_config_value_empty_config(self) -> None:
-        """Verify retrieving from empty config returns default.
-
-        Real-world significance:
-        - Must handle edge case of completely empty config
-        """
-        config: Dict[str, Any] = {}
-
-        result = config_loader.get_config_value(config, "any.key", default="default")
-
-        assert result == "default"
-
-    def test_get_config_value_with_none_values_uses_default(self) -> None:
-        """Verify keys with None values return default (falsy handling).
-
-        Real-world significance:
-        - config: {section: {key: null}} should use default, not return None
-        - None often indicates "not configured", so default is more appropriate
-        """
-        config = {"section": {"key": None}}
-
-        result = config_loader.get_config_value(
-            config, "section.key", default="default"
-        )
-
-        assert result == "default"
-
-    def test_get_config_value_with_falsy_values_returns_value(self) -> None:
-        """Verify that falsy but valid values (0, False, empty string) are returned.
-
-        Real-world significance:
-        - batch_size: 0 or qr.enabled: false are valid configurations
-        - Must distinguish between "missing" and "falsy but present"
-        """
-        config = {
-            "zero": 0,
-            "false": False,
-            "empty_string": "",
-            "nested": {
-                "zero": 0,
-                "false": False,
-            },
-        }
-
-        assert config_loader.get_config_value(config, "zero") == 0
-        assert config_loader.get_config_value(config, "false") is False
-        assert config_loader.get_config_value(config, "empty_string") == ""
-        assert config_loader.get_config_value(config, "nested.zero") == 0
-        assert config_loader.get_config_value(config, "nested.false") is False
-
-    def test_get_config_value_with_list_values(self) -> None:
-        """Verify list values are retrieved correctly.
-
-        Real-world significance:
-        - chart_diseases_header and ignore_agents are lists in config
-        - Must preserve list structure
-        """
-        config = {"items": ["a", "b", "c"], "nested": {"items": [1, 2, 3]}}
-
-        items = config_loader.get_config_value(config, "items")
-        assert items == ["a", "b", "c"]
-
-        nested_items = config_loader.get_config_value(config, "nested.items")
-        assert nested_items == [1, 2, 3]
 
 
 @pytest.mark.unit

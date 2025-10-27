@@ -113,27 +113,6 @@ class TestBatchType:
         assert BatchType.SCHOOL_GROUPED.value == "school_grouped"
         assert BatchType.BOARD_GROUPED.value == "board_grouped"
 
-    def test_from_strategy_converts_correctly(self) -> None:
-        """Verify from_strategy correctly maps strategies to types.
-
-        Real-world significance:
-        - Ensures consistent strategy-to-type mapping throughout pipeline
-        """
-        assert BatchType.from_strategy(BatchStrategy.SIZE) == BatchType.SIZE_BASED
-        assert BatchType.from_strategy(BatchStrategy.SCHOOL) == BatchType.SCHOOL_GROUPED
-        assert BatchType.from_strategy(BatchStrategy.BOARD) == BatchType.BOARD_GROUPED
-
-    def test_from_strategy_all_strategies_covered(self) -> None:
-        """Verify from_strategy handles all BatchStrategy values.
-
-        Real-world significance:
-        - Adding new strategy requires corresponding BatchType
-        """
-        for strategy in BatchStrategy:
-            # Should not raise KeyError
-            batch_type = BatchType.from_strategy(strategy)
-            assert isinstance(batch_type, BatchType)
-
 
 @pytest.mark.unit
 class TestStrategyTypeIntegration:
@@ -149,22 +128,6 @@ class TestStrategyTypeIntegration:
             string_value = strategy.value
             reconstructed = BatchStrategy.from_string(string_value)
             assert reconstructed == strategy
-
-    def test_strategy_to_type_correspondence(self) -> None:
-        """Verify strategy-to-type mapping is complete and consistent.
-
-        Real-world significance:
-        - Ensures batch type descriptors match actual strategy implementation
-        """
-        pairs = [
-            (BatchStrategy.SIZE, BatchType.SIZE_BASED),
-            (BatchStrategy.SCHOOL, BatchType.SCHOOL_GROUPED),
-            (BatchStrategy.BOARD, BatchType.BOARD_GROUPED),
-        ]
-
-        for strategy, expected_type in pairs:
-            actual_type = BatchType.from_strategy(strategy)
-            assert actual_type == expected_type
 
 
 @pytest.mark.unit

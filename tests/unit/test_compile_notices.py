@@ -344,10 +344,11 @@ class TestCompileWithConfig:
 
         config_path = tmp_output_structure["root"] / "config.yaml"
         config = {
+            "qr": {"enabled": False},
             "typst": {
                 "bin": "typst",
                 "font_path": "/usr/share/fonts",
-            }
+            },
         }
         config_path.write_text(yaml.dump(config))
 
@@ -379,9 +380,10 @@ class TestCompileWithConfig:
 
         config_path = tmp_output_structure["root"] / "config.yaml"
         config = {
+            "qr": {"enabled": False},
             "typst": {
                 "bin": "typst",
-            }
+            },
         }
         config_path.write_text(yaml.dump(config))
 

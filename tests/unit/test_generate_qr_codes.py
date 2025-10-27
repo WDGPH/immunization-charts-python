@@ -24,7 +24,7 @@ from unittest.mock import patch
 import pytest
 import yaml
 
-from pipeline import generate_qr_codes
+from pipeline import generate_qr_codes, utils as pipeline_utils
 from tests.fixtures import sample_input
 
 
@@ -146,7 +146,11 @@ class TestFormatQrPayload:
             "delivery_date": "2025-04-08",
         }
 
-        payload = generate_qr_codes.format_qr_payload(template, context)
+        payload = pipeline_utils.validate_and_format_template(
+            template,
+            context,
+            allowed_fields=generate_qr_codes.SUPPORTED_QR_TEMPLATE_FIELDS,
+        )
 
         assert "client_id=12345" in payload
         assert "dob=2020-01-01" in payload
@@ -176,7 +180,11 @@ class TestFormatQrPayload:
             "delivery_date": "2025-04-08",
         }
 
-        payload = generate_qr_codes.format_qr_payload(template, context)
+        payload = pipeline_utils.validate_and_format_template(
+            template,
+            context,
+            allowed_fields=generate_qr_codes.SUPPORTED_QR_TEMPLATE_FIELDS,
+        )
 
         assert payload == "https://example.com/update?id=12345&name=John Doe"
 
@@ -205,7 +213,11 @@ class TestFormatQrPayload:
         }
 
         with pytest.raises(KeyError):
-            generate_qr_codes.format_qr_payload(template, context)
+            pipeline_utils.validate_and_format_template(
+                template,
+                context,
+                allowed_fields=generate_qr_codes.SUPPORTED_QR_TEMPLATE_FIELDS,
+            )
 
     def test_format_qr_payload_disallowed_placeholder_raises_error(self) -> None:
         """Verify error when template uses disallowed placeholder.
@@ -233,7 +245,11 @@ class TestFormatQrPayload:
         }
 
         with pytest.raises(ValueError, match="Disallowed"):
-            generate_qr_codes.format_qr_payload(template, context)
+            pipeline_utils.validate_and_format_template(
+                template,
+                context,
+                allowed_fields=generate_qr_codes.SUPPORTED_QR_TEMPLATE_FIELDS,
+            )
 
     def test_format_qr_payload_empty_placeholder_value(self) -> None:
         """Verify empty placeholder values are handled.
@@ -259,7 +275,11 @@ class TestFormatQrPayload:
             "delivery_date": "2025-04-08",
         }
 
-        payload = generate_qr_codes.format_qr_payload(template, context)
+        payload = pipeline_utils.validate_and_format_template(
+            template,
+            context,
+            allowed_fields=generate_qr_codes.SUPPORTED_QR_TEMPLATE_FIELDS,
+        )
 
         assert "client=12345" in payload
         assert "school=" in payload
@@ -376,7 +396,7 @@ class TestGenerateQrCodes:
 
         Real-world significance:
         - Configuration error: qr.enabled=true but no template provided
-        - Must fail fast with clear guidance
+        - Must fail fast with clear guidance (at config load time)
         """
         artifact = sample_input.create_test_artifact_payload(num_clients=1)
         artifact_path = tmp_output_structure["artifacts"] / "preprocessed.json"
@@ -386,7 +406,7 @@ class TestGenerateQrCodes:
         config = {"qr": {"enabled": True}}
         config_path.write_text(yaml.dump(config))
 
-        with pytest.raises(RuntimeError, match="Cannot generate QR codes"):
+        with pytest.raises(ValueError, match="qr.payload_template"):
             generate_qr_codes.generate_qr_codes(
                 artifact_path.parent
                 / f"preprocessed_clients_{artifact.run_id}_{artifact.language}.json",

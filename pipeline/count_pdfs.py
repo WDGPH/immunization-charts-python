@@ -1,4 +1,39 @@
-"""Summarize page counts for PDFs."""
+"""Summarize page counts for PDFs.
+
+Validates and counts pages in compiled PDF files. Provides summary statistics
+for quality assurance and debugging purposes. Can output results as JSON for
+downstream processing.
+
+**Input Contract:**
+- Reads PDF files from output/pdf_individual/ directory
+- Assumes PDFs are valid (created by compilation step)
+- Assumes each PDF corresponds to one client notice
+
+**Output Contract:**
+- Writes page count statistics to JSON and/or console
+- Records page counts per PDF and aggregate statistics
+- Metadata file: output/metadata/{language}_page_counts_{run_id}.json
+
+**Error Handling:**
+- Invalid PDFs raise immediately (fail-fast; quality validation step)
+- Missing PDF files raise immediately (infrastructure error)
+- No partial results; all PDFs must validate successfully (critical step)
+
+**Validation Contract:**
+
+What this module validates:
+- All PDF files are readable and valid (uses PdfReader)
+- All PDFs have consistent page counts (configurable tolerance)
+- Page count statistics are computed and accurate
+- Output JSON is valid and parseable
+
+What this module assumes (validated upstream):
+- PDF files exist and are complete (created by compile step)
+- PDF filenames match expected pattern (from notice generation)
+- Output directory can be created (general I/O)
+
+Note: This is a validation/quality assurance step. PDF errors halt pipeline (fail-fast).
+"""
 
 from __future__ import annotations
 

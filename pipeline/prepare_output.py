@@ -7,6 +7,34 @@ directory if needed.
 Note: This module is called exclusively from orchestrator.py. The internal
 functions handle all logic; CLI support has been removed in favor of explicit
 function calls from the orchestrator.
+
+**Input Contract:**
+- Receives output directory path and auto_remove_output flag from config
+- Assumes configuration has been validated by load_config() at orchestrator startup
+
+**Output Contract:**
+- Creates output directory structure if it doesn't exist
+- Optionally removes existing output while preserving logs
+- Ensures log and artifact subdirectories are ready for pipeline output
+
+**Error Handling:**
+- File system permission errors raise immediately (infrastructure error)
+- Missing directories are created automatically (no error)
+- Fails fast on unrecoverable I/O errors
+
+**Validation Contract:**
+
+What this module validates:
+- Output directory can be created if missing
+- File system permissions allow write/delete operations
+- Log directory can be preserved during cleanup
+
+What this module assumes (validated upstream):
+- Config keys (pipeline.auto_remove_output) have been validated by load_config()
+- Output path is a valid directory path (basic format validation)
+
+Note: This is a utility/setup step. Runs before the main pipeline; failures halt
+everything (fail-fast) since output directory is prerequisite for all steps.
 """
 
 from __future__ import annotations
