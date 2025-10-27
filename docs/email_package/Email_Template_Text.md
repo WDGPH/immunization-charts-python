@@ -10,7 +10,6 @@ This email provides details on template options and data requirements.
 Attached:
 1. **Template Overview (PDF)** – Customization options for the report generation
 2. **Checklist (PDF)** – Steps for onboarding
-3. **Data Preparation Guide (PDF)** – Instructions for Panorama reports
 
 **Template Options:**
 - **Base Template:** Quick deployment, limited customization  

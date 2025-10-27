@@ -23,10 +23,9 @@ If custom, please provide:
 ---
 
 ## 3. Prepare and Submit Data
-Follow the “Student Overdue Vaccine List Process” document for instructions.
+Pull your Panorama report to obtain a list of overdue students.
 
 Ensure:
-- Proper formatting of the **Received Agents** column (e.g., `Mar 20, 2011 – Men-C-C, Apr 15, 2012 – MMR`)
 - Correct file naming:
 
 `YYYYMMDD_YourPHU_EN.xlsx`
