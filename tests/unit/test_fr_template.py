@@ -27,6 +27,22 @@ from templates.fr_template import (
 )
 
 
+def _valid_context():
+    """Create a valid context dict with all required keys (French).
+
+    Helper for tests to avoid duplication.
+    """
+    return {
+        "client_row": "()",
+        "client_data": "{}",
+        "vaccines_due_str": '""',
+        "vaccines_due_array": "()",
+        "received": "()",
+        "num_rows": "0",
+        "chart_diseases_translated": '("Diphtérie", "Tétanos", "Coqueluche")',
+    }
+
+
 @pytest.mark.unit
 class TestRenderNotice:
     """Unit tests for render_notice function (French)."""
@@ -46,6 +62,7 @@ class TestRenderNotice:
             "vaccines_due_array": '("RRO", "DPT")',
             "received": '(("RRO", "2020-05-15"), ("DPT", "2019-03-15"))',
             "num_rows": "2",
+            "chart_diseases_translated": '("Diphtérie", "Tétanos", "Coqueluche")',
         }
 
         result = render_notice(
@@ -74,6 +91,7 @@ class TestRenderNotice:
             "vaccines_due_array": "()",
             "received": "()",
             "num_rows": "0",
+            "chart_diseases_translated": '("Diphtérie", "Tétanos", "Coqueluche")',
         }
 
         with pytest.raises(KeyError, match="Missing context keys"):
@@ -118,6 +136,7 @@ class TestRenderNotice:
             "vaccines_due_array": "()",
             "received": "()",
             "num_rows": "0",
+            "chart_diseases_translated": '("Diphtérie", "Tétanos", "Coqueluche")',
         }
 
         logo_path = "/custom/logo/path.png"
@@ -144,6 +163,7 @@ class TestRenderNotice:
             "vaccines_due_array": "()",
             "received": "()",
             "num_rows": "0",
+            "chart_diseases_translated": '("Diphtérie", "Tétanos", "Coqueluche")',
         }
 
         signature_path = "/custom/signature.png"
@@ -170,6 +190,7 @@ class TestRenderNotice:
             "vaccines_due_array": "()",
             "received": "()",
             "num_rows": "0",
+            "chart_diseases_translated": '("Diphtérie", "Tétanos", "Coqueluche")',
         }
 
         parameters_path = "/etc/config/parameters.yaml"
@@ -196,6 +217,7 @@ class TestRenderNotice:
             "vaccines_due_array": "()",
             "received": "()",
             "num_rows": "0",
+            "chart_diseases_translated": '("Diphtérie", "Tétanos", "Coqueluche")',
         }
 
         result = render_notice(
@@ -222,6 +244,7 @@ class TestRenderNotice:
             "vaccines_due_array": '("RRO")',
             "received": "()",
             "num_rows": "1",
+            "chart_diseases_translated": '("Diphtérie", "Tétanos", "Coqueluche")',
         }
 
         result = render_notice(
@@ -250,6 +273,7 @@ class TestRenderNotice:
             "vaccines_due_array": '("Rougeole", "Oreillons", "Rubéole")',
             "received": '(("Rougeole", "2020-05-01"), ("Oreillons", "2020-05-01"))',
             "num_rows": "5",
+            "chart_diseases_translated": '("Diphtérie", "Tétanos", "Coqueluche")',
         }
 
         result = render_notice(
@@ -278,6 +302,7 @@ class TestRenderNotice:
             "vaccines_due_array": "()",
             "received": "()",
             "num_rows": "0",
+            "chart_diseases_translated": '("Diphtérie", "Tétanos", "Coqueluche")',
         }
 
         result = render_notice(
@@ -305,6 +330,7 @@ class TestRenderNotice:
             "vaccines_due_array": "()",
             "received": "()",
             "num_rows": "0",
+            "chart_diseases_translated": '("Diphtérie", "Tétanos", "Coqueluche")',
         }
 
         result = render_notice(
