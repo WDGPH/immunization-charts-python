@@ -1,164 +1,177 @@
 # Agent Development Guidelines
 
-## Philosophy: Simplification First
 
-**Pre-v1.0:** No backward compatibility constraints. Question every class, module, and abstraction: "Is this worth its weight?" Favor simple code over extensibility. Use dicts and native Python structures freely. Colocate utilities in the step that uses them; only truly reused functions belong in `utils.py`. No argument parsers per file—interaction patterns are fixed (see Workflow).
+## Read first
 
-## Command Execution Discipline
+* **Standards**:
+  * `docs/DOCUMENTATION_STANDARDS.md`
+  * `docs/TESTING_STANDARDS.md`
+  * `docs/CODE_ANALYSIS_STANDARDS.md`
 
-**Run each command once.** Avoid "let me try again" patterns that duplicate execution:
-
-- **Use `2>&1` from the start** if you need stderr captured (don't run once without it, then again with it)
-- **Investigate, don't re-run**: If a command appears to hang or fail, check state (read files, inspect git status) rather than reflexively re-running
-- **Check actual results**: After a potentially interrupted command, verify the actual state before deciding if re-execution is needed
-
-## Package Structure
-
-The main package is `pipeline/`, containing the 9-step pipeline orchestrator and supporting modules. This is a deliberate architectural choice—**do not refactor into a different package structure** without explicit guidance. All entry points (`viper` CLI) and imports (`from pipeline import ...`) depend on this naming. The module organization follows pipeline steps 1–9, not functional categories.
-
-The orchestrator (`orchestrator.py`) coordinates all 9 steps and is the entry point for the `viper` CLI command.
-
-Template modules are in the `templates/` package (`en_template.py`, `fr_template.py`), imported as `from templates import ...` by the pipeline. This separation keeps typesetting logic distinct from orchestration.
-
-## Dependency Management
-
-**Tight control via `uv` lockfile, not runtime fallbacks.** Dependencies are pinned in `uv.lock`. Write code for the specific, tested versions in that lockfile—not for theoretical version compatibility. Document version requirements in `pyproject.toml` only when necessary. **Do not add runtime fallbacks** (e.g., try PyPDF method A, fallback to method B) to support multiple versions. If a dependency needs a version bump, update `pyproject.toml`, run `uv sync`, test, and commit the new lockfile. The lockfile is the single source of truth.
-
-**Keep dependencies up-to-date:** Regularly upgrade packages to capture bugfixes and security patches:
-```bash
-uv lock --upgrade                   # Upgrade all packages to latest compatible versions
-uv sync                             # Install upgraded versions locally
-uv run pytest                        # Verify all tests pass with new versions
-# Then commit the updated uv.lock
-```
-
-This ensures the project benefits from bugfixes and security updates in dependencies while maintaining reproducibility through the locked versions.
-
-## Core Standards (Reference These)
-
-This project maintains authoritative standards in focused documents. Before coding, review:
-
-- **Testing strategy & organization:** `docs/TESTING_STANDARDS.md` (unit/integration/e2e layers, markers, patterns)
-- **Code analysis procedures:** `docs/CODE_ANALYSIS_STANDARDS.md` (dead code detection, duplication, real-world significance)
-- **Configuration management:** Comments in `config/parameters.yaml` (parameters organized by pipeline step)
-
-## Configuration (parameters.yaml)
-
-Organize by pipeline step under headers like `# Step 3: Generating QR Codes`. Add parameters to the appropriate step section (never create new top-level sections). Use dot notation (`qr.enabled`, `qr.payload_template`) and snake_case. Document inline in YAML.
-
-Validate: `uv run python -c "import yaml; yaml.safe_load(open('config/parameters.yaml'))"`
-
-## Code Style
-
-**All imports at top**, organized: future → stdlib → third-party → local. Example:
-```python
-from __future__ import annotations
-import json
-import yaml
-from .config_loader import load_config
-```
-
-Use type hints, f-strings, docstrings, dataclasses. Avoid wildcard imports. See `docs/CODE_ANALYSIS_STANDARDS.md` for docstring depth and real-world significance guidance.
-
-## Code Quality & Pre-commit Hooks
-
-**Setup:** One-time initialization to enable automatic code checks on every commit:
-```bash
-uv sync --group dev                 # Install pre-commit (includes pytest, pytest-cov)
-uv run pre-commit install           # Initialize git hooks
-```
-
-**Manual checks anytime:**
-```bash
-uv run pre-commit run --all-files   # Run ruff linting and formatting on all files
-```
-
-The pre-commit hook (configured in `.pre-commit-config.yaml`) runs automatically on each `git commit`:
-- **`ruff check --fix`**: Lint issues (auto-fixes when possible)
-- **`ruff format`**: Code formatting (black-like style)
-
-If either check fails, your commit is blocked until issues are resolved. This ensures consistent code quality across all contributions.
-
-## Type Checking with `ty`
-
-**Type validation:** Run the type checker to catch static type errors before testing:
-```bash
-uv run ty check                     # check all files for type errors
-```
-
-Use `ty` to verify:
-- Function signatures match argument types
-- Optional types are properly narrowed
-- Dict/object attributes are correct
-- No unresolved imports or module members
-
-All type errors must be resolved (except where `type: ignore` comments are justified with explanation). Type checking is part of code quality standards and should be run regularly during development.
-
-## Running Tests (Quick Reference for AI Agents)
-
-**Setup:** `uv sync --group dev` (one-time, installs pytest and testing dependencies)
-
-**Run pipeline:** `uv run viper <input.xlsx> <en|fr>`
-
-**Run tests:**
-```bash
-uv run pytest                                      # all tests
-uv run pytest -m unit                              # unit only (fast, ~2s)
-uv run pytest -m "not e2e"                         # skip E2E (fast feedback)
-uv run pytest tests/e2e/ -v                        # only E2E tests
-uv run pytest tests/test_file.py::TestClass::test_name -v  # specific test
-```
-
-**Coverage report:**
-```bash
-uv run pytest --cov=pipeline --cov-report=html     # generates htmlcov/index.html
-```
-
-See `docs/TESTING_STANDARDS.md` for test organization, markers, and patterns.
-
-## E2E Test Pitfalls
-
-When writing E2E tests for this project:
-
-**Path Constraint (Critical):**
-- E2E tests MUST run in **project context**, not pytest `tmp_path`
-- Reason: Typst subprocess requires absolute paths relative to project root (`generate_notices.py` uses `_to_root_relative()`)
-- Solution: Use `project_root` fixture, place test files in `project_root / "input"`, use `yield` for cleanup
-- Incorrect: `subprocess.run(..., cwd=str(tmp_path), ...)` ❌
-- Correct: `subprocess.run(..., cwd=str(project_root), ...)` ✅
-
-**Configuration Override Pattern:**
-- Feature flags (QR, encryption, batching) are tested by modifying `config/parameters.yaml`
-- Pattern: load YAML → modify key → write → run test → try-finally restore original
-- Example: See `tests/e2e/test_full_pipeline.py::test_pipeline_with_qr_disabled()`
-- This tests real config parsing, not mocked behavior
-
-**Test Fixtures:**
-- Use project-aware fixtures for input/output (not tmp dirs)
-- See `docs/TESTING_STANDARDS.md` → "E2E Test Patterns for Immunization Pipeline" for examples
-- Input fixture creates test Excel in `project_root / "input"`, yields path, cleans up after test
-
-## Key Realizations for Efficient Development
-
-**Unit test coverage doesn't tell the full story.** The orchestration layer (`orchestrator.py`) has low unit coverage because tests mock internal steps (fast feedback). E2E tests provide integration verification. Don't panic at low unit coverage numbers—trace call sites and check E2E tests first.
-
-**Defensive code and error handling are features, not bloat.** Edge case handling in date parsing, error paths for malformed data, and validation exist because real-world data is messy. When you see broad try/except or defensive checks, verify they serve a real purpose before removing them.
-
-**Optional features (Steps 7-9) have different testing expectations.** Encryption, batching, and cleanup are conditional based on configuration. They'll have lighter test coverage than core steps 1-6, and that's acceptable. Focus testing effort on the critical path first.
-
-**The test architecture trades unit speed for E2E confidence.** Fast unit tests (2s) catch logic bugs in isolation. E2E tests (50s) verify orchestration and integration. This is a deliberate design, not a gap to fix.
+---
 
 ## Workflow
 
-1. **Understand** project deeply (code patterns, data flow, existing duplication)—use docs + functional analysis (`grep`, trace usages)
-2. **Plan** code/architecture around this understanding
-3. **Implement** with imports at top, type hints, significant docstrings
-4. **Test** in `tests/` directory (`uv run pytest`)
-5. **Configure** in `parameters.yaml` step sections with comments
-6. **Document** README only when feature complete. For standards & procedures, update the appropriate reference doc (TESTING_STANDARDS.md, CODE_ANALYSIS_STANDARDS.md). Archive detailed analysis into standards or docstrings rather than creating standalone reports.
+1. **Understand:** read code, trace flows, grep usages, read docs.
+2. **Plan:** design around findings.
+3. **Implement:** imports at top, types, meaningful docstrings.
+4. **Test:** `uv run pytest` with markers.
+5. **Configure:** add parameters under the correct step in YAML with comments.
+6. **Document:** update standards or docstrings when feature‑complete. **Avoid standalone reports; strongly focus on integrating findings into existing docs and keeping them up to date.**
 
-## Communication with AI Agents
+---
 
-- **Summarize findings directly in conversation**, don't output to temporary files. Never use `cat << 'EOF' ... EOF` patterns to display work summaries—deliver them as Markdown text in the conversation instead. Terminal output should only be used for live validation or debugging, not for presenting results.
-- **Integrate learnings into documentation** rather than creating standalone analysis documents
-- **Final step of work:** Archive insights into standards docs, function docstrings, or module comments for efficient future collaboration
+## Collaboration
+
+* Present findings in the conversation as Markdown. Do not emit temporary files or heredoc tricks.
+* Integrate durable learnings into standards, module comments, or docstrings.
+* End each task by archiving insights where future contributors will look.
+
+---
+
+## Package layout
+
+* **Orchestrator:** `pipeline/orchestrator.py` is the `viper` CLI entry point and coordinates 9 steps.
+* **Steps:** Modules are organized by steps 1–9, not by functional themes.
+* **Templates:** `templates/` contains `en_template.py`, `fr_template.py`. Import via `from templates import ...`. Typesetting is separate from orchestration.
+
+---
+
+## Dependencies
+
+Single source of truth: `uv.lock`.
+
+* Code to locked versions. No runtime fallbacks for alternate APIs.
+* Upgrades:
+
+  ```bash
+  uv lock --upgrade
+  uv sync
+  uv run pytest
+  git add uv.lock && git commit -m "deps: upgrade"
+  ```
+* If a version bump is required, update `pyproject.toml`, run `uv sync`, test, and commit the new lockfile.
+
+---
+
+## Configuration (`config/parameters.yaml`)
+
+* Organize by pipeline step with headers, e.g., `# Step 3: Generating QR Codes`.
+* Use dot notation and `snake_case` keys, e.g., `qr.enabled`, `qr.payload_template`.
+* Document inline in YAML.
+* Validate quickly:
+
+  ```bash
+  uv run python -c "import yaml,sys; yaml.safe_load(open('config/parameters.yaml')) or sys.exit(0)"
+  ```
+
+---
+
+## Code style
+
+* Imports at top: future → stdlib → third‑party → local.
+
+  ```python
+  from __future__ import annotations
+  import json
+  import yaml
+  from .config_loader import load_config
+  ```
+* Use type hints, f‑strings, docstrings, dataclasses.
+* No wildcard imports.
+* Depth and significance guidance lives in `docs/CODE_ANALYSIS_STANDARDS.md`.
+
+---
+
+## Quality gates (pre‑commit)
+
+One‑time setup:
+
+```bash
+uv sync --group dev
+uv run pre-commit install
+```
+
+Manual run:
+
+```bash
+uv run pre-commit run --all-files
+```
+
+Hooks (block commits on failure): `ruff check --fix` then `ruff format`.
+
+---
+
+## Type checking (`ty`)
+
+Check before tests:
+
+```bash
+uv run ty check
+```
+
+Resolve all type errors or justify with `# type: ignore` and a short comment.
+
+---
+
+## Command execution discipline
+
+Run each shell command once. Investigate before re‑running.
+
+* If you need stderr, include it from the start: `2>&1`.
+* On hangs or failures, inspect state (`git status`, file contents) before retrying.
+* After interruptions, verify outcomes before re‑execution.
+
+---
+
+## Engineering principles
+
+Applies at all times. Compatibility posture is noted where behavior differs before and after 1.0.
+
+1. **Simplicity first.** Prefer straightforward code over abstraction. Use native structures freely. Extract helpers only when they reduce duplication or improve clarity.
+
+   * *Compatibility note:* pre‑1.0 favors rapid simplification with no backward‑compat guarantees. Post‑1.0 preserve public contracts when changing code.
+2. **Clear boundaries and reuse.** Colocate helpers with the step that uses them. Extract to `utils.py` only when reused by ≥2 modules and clarity improves. Prefer pure, side‑effect‑free helpers with action‑oriented names.
+3. **Deterministic, step‑isolated pipeline.** Steps read inputs from disk and write outputs to disk. Do not pass in‑memory state via the orchestrator. Same input → same output, including ordering and filenames.
+4. **Contracts over defensiveness.** Centralize input validation in preprocessing and output checks in dedicated validation steps. Fail fast with precise exceptions. Do not add silent fallbacks.
+5. **Naming and public surface.** Functions use `snake_case` with verbs (e.g., `generate_typst_files`). Do not rely on leading underscores for privacy; document intent. Only the orchestrator exposes a CLI; no per‑module parsers.
+6. **Dependencies are locked.** Write to the APIs in `uv.lock`. If an API changes, upgrade and re‑lock. Do not branch at runtime to support multiple versions.
+7. **Errors and logging.** Catch only exceptions you can handle meaningfully. Raise actionable messages. Log at step boundaries and major operations. Informative, not noisy.
+8. **Parallel development without drift.** Keep core steps stable (preprocess, notices, compile, validate). Optional steps (encryption, batching, cleanup) may evolve independently if contracts hold. Update tests and docs with any schema or layout change.
+9. **Tests are the spec.** Update tests with behavior changes. Use integration tests for quick feedback and E2E tests for coverage. Keep E2E tests project‑root aware.
+10. **Documentation placement.** Enduring standards live here and in `docs/`. Point‑in‑time analyses and refactor plans live in `docs/`.
+  - **Single canonical working document per initiative.** During a feature or refactor effort, maintain one authoritative document (e.g., `docs/DEFENSIVE_CODE_AND_HELPERS_PLAN.md`). Append progress (phases, decisions, status) to that file instead of creating new phase‑specific Markdown files.
+  - Prefer sections like "Status", "Decision Log", and dated "Updates" within the canonical doc over new files such as `PHASE_X_START.md` or `PHASE_X_COMPLETION.md`.
+  - If interim files were created, integrate their content back into the canonical doc and avoid introducing new ones. Link to historical PRs/commits for provenance rather than duplicating documents.
+
+---
+
+## Tests: quick reference
+
+Setup once:
+
+```bash
+uv sync --group dev
+```
+
+Run pipeline:
+
+```bash
+uv run viper <input.xlsx> <en|fr>
+```
+
+Run tests:
+
+```bash
+uv run pytest                           # all
+uv run pytest -m unit                   # unit only (~2s)
+uv run pytest -m "not e2e"              # skip e2e
+uv run pytest tests/e2e/ -v             # only e2e
+uv run pytest tests/test_file.py::TestClass::test_name -v
+```
+
+Coverage:
+
+```bash
+uv run pytest --cov=pipeline --cov-report=html  # opens htmlcov/index.html
+```
