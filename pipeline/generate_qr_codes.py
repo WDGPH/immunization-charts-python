@@ -110,18 +110,30 @@ def read_preprocessed_artifact(path: Path) -> Dict[str, Any]:
     return payload
 
 
-def _format_qr_payload(template: str, context: Dict[str, str]) -> str:
+def format_qr_payload(template: str, context: Dict[str, str]) -> str:
     """Format and validate QR payload template against allowed placeholders.
 
-    Uses centralized validation from utils.validate_and_format_template() with
-    the QR template fields whitelist.
+    Module-internal helper for generate_qr_codes(). Uses centralized validation
+    from utils.validate_and_format_template() with the QR template fields whitelist.
+
+    Parameters
+    ----------
+    template : str
+        Format string template with placeholders like "{client_id}".
+    context : Dict[str, str]
+        Context dict with placeholder values.
+
+    Returns
+    -------
+    str
+        Rendered template with placeholders substituted.
 
     Raises
     ------
     KeyError
-        If template contains placeholders not in context
+        If template contains placeholders not in context.
     ValueError
-        If template contains disallowed placeholders (not in SUPPORTED_QR_TEMPLATE_FIELDS)
+        If template contains disallowed placeholders (not in SUPPORTED_QR_TEMPLATE_FIELDS).
     """
     return validate_and_format_template(
         template, context, allowed_fields=SUPPORTED_QR_TEMPLATE_FIELDS
@@ -228,7 +240,7 @@ def generate_qr_codes(
 
         # Generate payload (template is now required)
         try:
-            qr_payload = _format_qr_payload(payload_template, qr_context)
+            qr_payload = format_qr_payload(payload_template, qr_context)
         except (KeyError, ValueError) as exc:
             LOG.warning(
                 "Could not format QR payload for client %s: %s",

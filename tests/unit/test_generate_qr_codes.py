@@ -120,7 +120,7 @@ class TestLoadQrSettings:
 
 @pytest.mark.unit
 class TestFormatQrPayload:
-    """Unit tests for _format_qr_payload function."""
+    """Unit tests for format_qr_payload function."""
 
     def test_format_qr_payload_valid_template(self) -> None:
         """Verify valid template formats correctly.
@@ -146,7 +146,7 @@ class TestFormatQrPayload:
             "delivery_date": "2025-04-08",
         }
 
-        payload = generate_qr_codes._format_qr_payload(template, context)
+        payload = generate_qr_codes.format_qr_payload(template, context)
 
         assert "client_id=12345" in payload
         assert "dob=2020-01-01" in payload
@@ -176,7 +176,7 @@ class TestFormatQrPayload:
             "delivery_date": "2025-04-08",
         }
 
-        payload = generate_qr_codes._format_qr_payload(template, context)
+        payload = generate_qr_codes.format_qr_payload(template, context)
 
         assert payload == "https://example.com/update?id=12345&name=John Doe"
 
@@ -205,7 +205,7 @@ class TestFormatQrPayload:
         }
 
         with pytest.raises(KeyError):
-            generate_qr_codes._format_qr_payload(template, context)
+            generate_qr_codes.format_qr_payload(template, context)
 
     def test_format_qr_payload_disallowed_placeholder_raises_error(self) -> None:
         """Verify error when template uses disallowed placeholder.
@@ -233,7 +233,7 @@ class TestFormatQrPayload:
         }
 
         with pytest.raises(ValueError, match="Disallowed"):
-            generate_qr_codes._format_qr_payload(template, context)
+            generate_qr_codes.format_qr_payload(template, context)
 
     def test_format_qr_payload_empty_placeholder_value(self) -> None:
         """Verify empty placeholder values are handled.
@@ -259,7 +259,7 @@ class TestFormatQrPayload:
             "delivery_date": "2025-04-08",
         }
 
-        payload = generate_qr_codes._format_qr_payload(template, context)
+        payload = generate_qr_codes.format_qr_payload(template, context)
 
         assert "client=12345" in payload
         assert "school=" in payload

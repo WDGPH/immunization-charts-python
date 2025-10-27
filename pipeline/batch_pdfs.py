@@ -466,7 +466,24 @@ def plan_batches(
     return plans
 
 
-def _relative(path: Path, root: Path) -> str:
+def relative(path: Path, root: Path) -> str:
+    """Convert path to string relative to root directory.
+
+    Module-internal helper for manifest generation. Creates relative path strings
+    for storing in JSON manifests, making paths portable across different base directories.
+
+    Parameters
+    ----------
+    path : Path
+        Absolute path to convert.
+    root : Path
+        Root directory to compute relative path from.
+
+    Returns
+    -------
+    str
+        Relative path as POSIX string.
+    """
     try:
         return str(path.relative_to(root))
     except ValueError:
@@ -521,7 +538,7 @@ def write_batch(
         "total_clients": len(plan.clients),
         "total_pages": total_pages,
         "sha256": checksum,
-        "output_pdf": _relative(output_pdf, config.output_dir),
+        "output_pdf": relative(output_pdf, config.output_dir),
         "clients": [
             {
                 "sequence": record.sequence,
@@ -529,8 +546,8 @@ def write_batch(
                 "full_name": record.client["person"]["full_name"],
                 "school": record.client["school"]["name"],
                 "board": record.client["board"]["name"],
-                "pdf_path": _relative(record.pdf_path, config.output_dir),
-                "artifact_path": _relative(artifact_path, config.output_dir),
+                "pdf_path": relative(record.pdf_path, config.output_dir),
+                "artifact_path": relative(artifact_path, config.output_dir),
                 "pages": record.page_count,
             }
             for record in plan.clients

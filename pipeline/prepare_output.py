@@ -16,12 +16,13 @@ from pathlib import Path
 from typing import Callable, Optional
 
 
-def _is_log_directory(candidate: Path, log_dir: Path) -> bool:
+def is_log_directory(candidate: Path, log_dir: Path) -> bool:
     """Check if a path is the log directory or one of its ancestors.
 
-    The pipeline stores logs under a dedicated directory (``output/logs``). When
-    cleaning the output directory we must preserve the log directory and its
-    contents. This check accounts for potential symlinks by resolving both paths.
+    Module-internal helper for purge_output_directory(). The pipeline stores logs
+    under a dedicated directory (``output/logs``). When cleaning the output directory
+    we must preserve the log directory and its contents. This check accounts for
+    potential symlinks by resolving both paths.
 
     Parameters
     ----------
@@ -52,8 +53,12 @@ def _is_log_directory(candidate: Path, log_dir: Path) -> bool:
     return candidate_resolved == log_resolved
 
 
-def _purge_output_directory(output_dir: Path, log_dir: Path) -> None:
+def purge_output_directory(output_dir: Path, log_dir: Path) -> None:
     """Remove everything inside output_dir except the logs directory.
+
+    Module-internal helper for prepare_output_directory(). Recursively deletes
+    all files and subdirectories except the log directory, which is preserved
+    for audit trails.
 
     Parameters
     ----------
@@ -64,7 +69,7 @@ def _purge_output_directory(output_dir: Path, log_dir: Path) -> None:
     """
 
     for child in output_dir.iterdir():
-        if _is_log_directory(child, log_dir):
+        if is_log_directory(child, log_dir):
             continue
         if child.is_dir():
             shutil.rmtree(child)
@@ -72,8 +77,11 @@ def _purge_output_directory(output_dir: Path, log_dir: Path) -> None:
             child.unlink(missing_ok=True)
 
 
-def _default_prompt(output_dir: Path) -> bool:
+def default_prompt(output_dir: Path) -> bool:
     """Prompt user for confirmation to delete output directory contents.
+
+    Module-internal helper for prepare_output_directory(). Interactive prompt
+    to prevent accidental data loss when auto_remove is False.
 
     Parameters
     ----------
@@ -119,13 +127,13 @@ def prepare_output_directory(
         operation.
     """
 
-    prompt_callable = prompt or _default_prompt
+    prompt_callable = prompt or default_prompt
 
     if output_dir.exists():
         if not auto_remove and not prompt_callable(output_dir):
             print("❌ Pipeline cancelled. No changes made.")
             return False
-        _purge_output_directory(output_dir, log_dir)
+        purge_output_directory(output_dir, log_dir)
     else:
         output_dir.mkdir(parents=True, exist_ok=True)
 

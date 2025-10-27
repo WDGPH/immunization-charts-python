@@ -109,11 +109,11 @@ def read_artifact(path: Path) -> ArtifactPayload:
     )
 
 
-def _escape_string(value: str) -> str:
+def escape_string(value: str) -> str:
     """Escape special characters in a string for Typst template output.
 
-    Escapes backslashes, quotes, and newlines to ensure the string can be
-    safely embedded in a Typst template.
+    Module-internal helper for to_typ_value(). Escapes backslashes, quotes,
+    and newlines to ensure the string can be safely embedded in a Typst template.
 
     Parameters
     ----------
@@ -128,11 +128,12 @@ def _escape_string(value: str) -> str:
     return value.replace("\\", "\\\\").replace('"', '\\"').replace("\n", "\\n")
 
 
-def _to_typ_value(value) -> str:
+def to_typ_value(value) -> str:
     """Convert a Python value to its Typst template representation.
 
-    Handles strings (with escaping), booleans, None, numbers, sequences (tuples),
-    and mappings (dicts) by converting them to Typst syntax.
+    Module-internal helper for building template contexts. Handles strings
+    (with escaping), booleans, None, numbers, sequences (tuples), and mappings
+    (dicts) by converting them to Typst syntax.
 
     Parameters
     ----------
@@ -151,15 +152,15 @@ def _to_typ_value(value) -> str:
 
     Examples
     --------
-    >>> _to_typ_value("hello")
+    >>> to_typ_value("hello")
     '"hello"'
-    >>> _to_typ_value(True)
+    >>> to_typ_value(True)
     'true'
-    >>> _to_typ_value([1, 2, 3])
+    >>> to_typ_value([1, 2, 3])
     '(1, 2, 3)'
     """
     if isinstance(value, str):
-        return f'"{_escape_string(value)}"'
+        return f'"{escape_string(value)}"'
     if isinstance(value, bool):
         return "true" if value else "false"
     if value is None:
@@ -167,14 +168,14 @@ def _to_typ_value(value) -> str:
     if isinstance(value, (int, float)):
         return str(value)
     if isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
-        items = [_to_typ_value(item) for item in value]
+        items = [to_typ_value(item) for item in value]
         if len(items) == 1:
             inner = f"{items[0]},"
         else:
             inner = ", ".join(items)
         return f"({inner})"
     if isinstance(value, Mapping):
-        items = ", ".join(f"{key}: {_to_typ_value(val)}" for key, val in value.items())
+        items = ", ".join(f"{key}: {to_typ_value(val)}" for key, val in value.items())
         return f"({items})"
     raise TypeError(f"Unsupported value type for Typst conversion: {type(value)!r}")
 
@@ -197,19 +198,40 @@ def build_template_context(
         qr_filename = f"qr_code_{client.sequence}_{client.client_id}.png"
         qr_path = qr_output_dir / qr_filename
         if qr_path.exists():
-            client_data["qr_code"] = _to_root_relative(qr_path)
+            client_data["qr_code"] = to_root_relative(qr_path)
 
     return {
-        "client_row": _to_typ_value([client.client_id]),
-        "client_data": _to_typ_value(client_data),
-        "vaccines_due_str": _to_typ_value(client.vaccines_due or ""),
-        "vaccines_due_array": _to_typ_value(client.vaccines_due_list or []),
-        "received": _to_typ_value(client.received or []),
+        "client_row": to_typ_value([client.client_id]),
+        "client_data": to_typ_value(client_data),
+        "vaccines_due_str": to_typ_value(client.vaccines_due or ""),
+        "vaccines_due_array": to_typ_value(client.vaccines_due_list or []),
+        "received": to_typ_value(client.received or []),
         "num_rows": str(len(client.received or [])),
     }
 
 
-def _to_root_relative(path: Path) -> str:
+def to_root_relative(path: Path) -> str:
+    """Convert absolute path to project-root-relative Typst path reference.
+
+    Module-internal helper for template rendering. Converts absolute file paths
+    to paths relative to the project root, formatted for Typst's import resolution.
+    Required because Typst subprocess needs paths resolvable from the project directory.
+
+    Parameters
+    ----------
+    path : Path
+        Absolute path to convert.
+
+    Returns
+    -------
+    str
+        Path string like "/artifacts/qr_codes/code.png" (relative to project root).
+
+    Raises
+    ------
+    ValueError
+        If path is outside the project root.
+    """
     absolute = path.resolve()
     try:
         relative = absolute.relative_to(ROOT_DIR)
@@ -234,9 +256,9 @@ def render_notice(
     context = build_template_context(client, qr_output_dir)
     return renderer(
         context,
-        logo_path=_to_root_relative(logo),
-        signature_path=_to_root_relative(signature),
-        parameters_path=_to_root_relative(parameters),
+        logo_path=to_root_relative(logo),
+        signature_path=to_root_relative(signature),
+        parameters_path=to_root_relative(parameters),
     )
 
 
