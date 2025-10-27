@@ -177,14 +177,12 @@ def run_step_2_preprocess(
     df = preprocess.ensure_required_columns(df_raw)
 
     # Load configuration
-    disease_map_path = preprocess.DISEASE_MAP_PATH
     vaccine_reference_path = preprocess.VACCINE_REFERENCE_PATH
-    disease_map = json.loads(disease_map_path.read_text(encoding="utf-8"))
     vaccine_reference = json.loads(vaccine_reference_path.read_text(encoding="utf-8"))
 
     # Build preprocessing result
     result = preprocess.build_preprocess_result(
-        df, language, disease_map, vaccine_reference, preprocess.IGNORE_AGENTS
+        df, language, vaccine_reference, preprocess.IGNORE_AGENTS
     )
 
     # Write artifact

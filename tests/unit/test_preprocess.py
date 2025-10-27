@@ -238,7 +238,7 @@ class TestBuildPreprocessResult:
     """Unit tests for build_preprocess_result function."""
 
     def test_build_result_generates_clients_with_sequences(
-        self, default_disease_map, default_vaccine_reference
+        self, default_vaccine_reference
     ) -> None:
         """Verify clients are generated with sequence numbers.
 
@@ -252,7 +252,6 @@ class TestBuildPreprocessResult:
         result = preprocess.build_preprocess_result(
             normalized,
             language="en",
-            disease_map=default_disease_map,
             vaccine_reference=default_vaccine_reference,
             ignore_agents=[],
         )
@@ -263,7 +262,7 @@ class TestBuildPreprocessResult:
         assert sequences == ["00001", "00002", "00003"]
 
     def test_build_result_sorts_clients_deterministically(
-        self, default_disease_map, default_vaccine_reference
+        self, default_vaccine_reference
     ) -> None:
         """Verify clients are sorted consistently.
 
@@ -278,7 +277,6 @@ class TestBuildPreprocessResult:
         result1 = preprocess.build_preprocess_result(
             normalized,
             language="en",
-            disease_map=default_disease_map,
             vaccine_reference=default_vaccine_reference,
             ignore_agents=[],
         )
@@ -286,7 +284,6 @@ class TestBuildPreprocessResult:
         result2 = preprocess.build_preprocess_result(
             normalized,
             language="en",
-            disease_map=default_disease_map,
             vaccine_reference=default_vaccine_reference,
             ignore_agents=[],
         )
@@ -296,7 +293,7 @@ class TestBuildPreprocessResult:
         assert ids1 == ids2, "Client order must be deterministic"
 
     def test_build_result_sorts_by_school_then_name(
-        self, default_disease_map, default_vaccine_reference
+        self, default_vaccine_reference
     ) -> None:
         """Verify clients sorted by school → last_name → first_name → client_id.
 
@@ -341,7 +338,6 @@ class TestBuildPreprocessResult:
         result = preprocess.build_preprocess_result(
             normalized,
             language="en",
-            disease_map=default_disease_map,
             vaccine_reference=default_vaccine_reference,
             ignore_agents=[],
         )
@@ -361,12 +357,6 @@ class TestBuildPreprocessResult:
         - Vaccine mapping must preserve all components
         - Affects disease coverage reporting in notices
         """
-        disease_map = {
-            "DTaP": "Diphtheria/Tetanus/Pertussis",
-            "Diphtheria": "Diphtheria",
-            "Tetanus": "Tetanus",
-            "Pertussis": "Pertussis",
-        }
         df = sample_input.create_test_input_dataframe(num_clients=1)
         df["IMMS GIVEN"] = ["May 1, 2020 - DTaP"]
         normalized = preprocess.ensure_required_columns(df)
@@ -374,7 +364,6 @@ class TestBuildPreprocessResult:
         result = preprocess.build_preprocess_result(
             normalized,
             language="en",
-            disease_map=disease_map,
             vaccine_reference=default_vaccine_reference,
             ignore_agents=[],
         )
@@ -387,7 +376,7 @@ class TestBuildPreprocessResult:
         assert "Diphtheria" in str(client.received[0].get("diseases", []))
 
     def test_build_result_handles_missing_board_name_with_warning(
-        self, default_disease_map, default_vaccine_reference
+        self, default_vaccine_reference
     ) -> None:
         """Verify missing board name generates warning.
 
@@ -417,7 +406,6 @@ class TestBuildPreprocessResult:
         result = preprocess.build_preprocess_result(
             normalized,
             language="en",
-            disease_map=default_disease_map,
             vaccine_reference=default_vaccine_reference,
             ignore_agents=[],
         )
@@ -426,7 +414,7 @@ class TestBuildPreprocessResult:
         assert len(result.clients) == 1
 
     def test_build_result_french_language_support(
-        self, default_disease_map, default_vaccine_reference
+        self, default_vaccine_reference
     ) -> None:
         """Verify preprocessing handles French language correctly.
 
@@ -441,7 +429,6 @@ class TestBuildPreprocessResult:
         result = preprocess.build_preprocess_result(
             normalized,
             language="fr",
-            disease_map=default_disease_map,
             vaccine_reference=default_vaccine_reference,
             ignore_agents=[],
         )
@@ -450,7 +437,7 @@ class TestBuildPreprocessResult:
         assert result.clients[0].language == "fr"
 
     def test_build_result_handles_ignore_agents(
-        self, default_disease_map, default_vaccine_reference
+        self, default_vaccine_reference
     ) -> None:
         """Verify ignore_agents filters out unspecified vaccines.
 
@@ -464,7 +451,6 @@ class TestBuildPreprocessResult:
         result = preprocess.build_preprocess_result(
             normalized,
             language="en",
-            disease_map=default_disease_map,
             vaccine_reference=default_vaccine_reference,
             ignore_agents=["Not Specified", "unspecified"],
         )
