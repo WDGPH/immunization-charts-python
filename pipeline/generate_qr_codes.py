@@ -6,6 +6,38 @@ rendered as PNG files in the output artifacts directory.
 
 The QR code generation step is optional and can be skipped via the qr.enabled
 configuration setting.
+
+**Input Contract:**
+- Reads preprocessed artifact JSON (created by preprocess step)
+- Assumes artifact contains valid client records with required fields
+- Assumes qr.enabled=true and qr.payload_template defined in config (if QR generation requested)
+
+**Output Contract:**
+- Writes QR code PNG files to output/artifacts/qr_codes/
+- Returns list of successfully generated QR file paths
+- Per-client errors are logged and skipped (optional feature; doesn't halt pipeline)
+
+**Error Handling:**
+- Configuration errors (missing template) raise immediately (infrastructure error)
+- Per-client failures (invalid data) log warning and continue (data error in optional feature)
+- This strategy allows partial success; some clients may not have QR codes
+
+**Validation Contract:**
+
+What this module validates:
+- Artifact file exists and is valid JSON (validation in read_preprocessed_artifact())
+- QR code generation is enabled in config (qr.enabled=true)
+- Payload template is defined if QR generation is enabled
+- Payload template format is valid (has valid placeholders)
+- QR code can be rendered as PNG (infrastructure check)
+
+What this module assumes (validated upstream):
+- Artifact JSON structure is valid (validated by preprocessing step)
+- Client records have all required fields (validated by preprocessing step)
+- Output directory can be created (general I/O)
+
+Per-client failures (invalid client data, template rendering errors) are logged
+and skipped (intentional for optional feature). Some clients may lack QR codes.
 """
 
 from __future__ import annotations
@@ -42,7 +74,7 @@ PARAMETERS_PATH = CONFIG_DIR / "parameters.yaml"
 LOG = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
-# Use centralized enum instead of hardcoded set
+# Allowed template fields for QR payloads (from centralized enum)
 SUPPORTED_QR_TEMPLATE_FIELDS = TemplateField.all_values()
 
 
@@ -105,39 +137,39 @@ def generate_qr_code(
 
 
 def read_preprocessed_artifact(path: Path) -> Dict[str, Any]:
-    """Read preprocessed client artifact from JSON."""
-    payload = json.loads(path.read_text(encoding="utf-8"))
-    return payload
+    """Read preprocessed client artifact from JSON.
 
-
-def format_qr_payload(template: str, context: Dict[str, str]) -> str:
-    """Format and validate QR payload template against allowed placeholders.
-
-    Module-internal helper for generate_qr_codes(). Uses centralized validation
-    from utils.validate_and_format_template() with the QR template fields whitelist.
+    **Input Contract:** Assumes artifact was created by preprocessing step and
+    exists on disk. Does not validate artifact schema; assumes preprocessing
+    has already validated client data structure.
 
     Parameters
     ----------
-    template : str
-        Format string template with placeholders like "{client_id}".
-    context : Dict[str, str]
-        Context dict with placeholder values.
+    path : Path
+        Path to the preprocessed JSON artifact file.
 
     Returns
     -------
-    str
-        Rendered template with placeholders substituted.
+    Dict[str, Any]
+        Parsed artifact dict with clients and metadata.
 
     Raises
     ------
-    KeyError
-        If template contains placeholders not in context.
-    ValueError
-        If template contains disallowed placeholders (not in SUPPORTED_QR_TEMPLATE_FIELDS).
+    FileNotFoundError
+        If artifact file does not exist.
+    json.JSONDecodeError
+        If artifact is not valid JSON.
     """
-    return validate_and_format_template(
-        template, context, allowed_fields=SUPPORTED_QR_TEMPLATE_FIELDS
-    )
+    if not path.exists():
+        raise FileNotFoundError(
+            f"Preprocessed artifact not found: {path}. "
+            "Ensure preprocessing step has completed."
+        )
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        return payload
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"Preprocessed artifact is not valid JSON: {path}") from exc
 
 
 def load_qr_settings(config_path: Path | None = None) -> tuple[str, Optional[str]]:
@@ -240,7 +272,11 @@ def generate_qr_codes(
 
         # Generate payload (template is now required)
         try:
-            qr_payload = format_qr_payload(payload_template, qr_context)
+            qr_payload = validate_and_format_template(
+                payload_template,
+                qr_context,
+                allowed_fields=SUPPORTED_QR_TEMPLATE_FIELDS,
+            )
         except (KeyError, ValueError) as exc:
             LOG.warning(
                 "Could not format QR payload for client %s: %s",

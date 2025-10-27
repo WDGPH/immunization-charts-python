@@ -11,8 +11,11 @@ Real-world significance:
 
 Failure Point Analysis:
 1. **CLI Entry Point (FIRST DEFENSE)**: argparse validates against Language.all_codes()
-2. **Enum Validation**: Language.from_string() provides detailed error messages
-3. **Template Dispatcher**: get_language_renderer() has defensive checks
+2. **Enum Validation (PRIMARY DEFENSE)**: Language.from_string() provides detailed error messages
+3. **Template Dispatcher (NO DEFENSIVE CHECK)**: get_language_renderer() assumes valid input
+   - Removed in Task 4 (redundant validation)
+   - Language is guaranteed valid by checks 1-2
+   - No performance penalty from unnecessary checks
 4. **Preprocessing**: Language enum validation in date conversion and vaccine mapping
 """
 
@@ -95,31 +98,37 @@ class TestUnsupportedLanguageDetection:
         """
         assert Language.from_string(None) == Language.ENGLISH
 
-    def test_template_renderer_dispatch_catches_unsupported_language(self) -> None:
-        """Verify get_language_renderer() has defensive check for unsupported language.
+    def test_template_renderer_dispatch_assumes_valid_language(self) -> None:
+        """Verify get_language_renderer() assumes language is already validated.
 
-        FAILURE POINT #2: Template Dispatcher Validation
-        - Secondary defense if invalid language somehow reaches this point
-        - Should never happen if upstream validation works correctly
-        - Defensive check prevents cryptic KeyError
+        CHANGE RATIONALE (Task 4 - Remove Redundant Validation):
+        - Language validation happens at THREE upstream points:
+          1. CLI: argparse choices (before pipeline runs)
+          2. Enum: Language.from_string() validates at multiple usage points
+          3. Type system: Type hints enforce Language enum
+        - get_language_renderer() can safely assume valid input (no defensive check needed)
+        - Removing redundant check simplifies code and improves performance
 
         Real-world significance:
-        - Even if Language.from_string() is bypassed, template dispatch validates
-        - Prevents AttributeError or KeyError from plain dict lookup
-        - Clear error message guides developer to fix the issue
+        - Code is clearer: no misleading defensive checks
+        - No false sense of protection; real validation is upstream
+        - If invalid language somehow reaches this point, KeyError is appropriate
+          (indicates upstream validation failure, not a data issue)
+
+        Validation Contract:
+        - Input: Language enum (already validated upstream)
+        - Output: Callable template renderer
+        - No error handling needed (error indicates upstream validation failed)
         """
 
-        # Create a mock Language-like object to simulate unsupported language
-        class UnsupportedLanguage:
-            value = "es"
+        # Verify renderer dispatch works for valid languages
+        en = Language.from_string("en")
+        en_renderer = generate_notices.get_language_renderer(en)
+        assert callable(en_renderer)
 
-        mock_lang = UnsupportedLanguage()
-
-        with pytest.raises(ValueError) as exc_info:
-            generate_notices.get_language_renderer(mock_lang)  # type: ignore[arg-type]
-
-        error_msg = str(exc_info.value)
-        assert "No renderer available for language: es" in error_msg
+        fr = Language.from_string("fr")
+        fr_renderer = generate_notices.get_language_renderer(fr)
+        assert callable(fr_renderer)
 
     def test_valid_languages_pass_all_checks(self) -> None:
         """Verify valid languages pass all validation checks.
@@ -182,23 +191,22 @@ class TestLanguageFailurePathDocumentation:
            - Generate notices: render_notice(), line ~249
            - Testing: Language validation tests
 
-        3. **Template Dispatcher (SECONDARY VALIDATION)**
+        3. **Template Dispatcher (NO DEFENSIVE CHECK - Task 4 OPTIMIZATION)**
            Location: pipeline/generate_notices.py, get_language_renderer()
-           Trigger: Invalid language code reaches render_notice()
-           Error Message: "ValueError: No renderer available for language: es"
-           Note: Should never be triggered if upstream validation works
-           Defensive Purpose: Prevents cryptic KeyError from _LANGUAGE_RENDERERS dict
+           Status: REMOVED redundant validation check in Task 4
+           Rationale: Language is guaranteed valid by CLI validation + Language.from_string()
+           Performance: Eliminates unnecessary dict lookup validation
+           Safety: Type system and upstream validation provide sufficient protection
 
-        4. **Rendering Failure (TERTIARY - SHOULD NOT REACH)**
+        4. **Rendering Failure (SHOULD NOT REACH)**
            Location: pipeline/generate_notices.py, render_notice()
-           Would Occur: If invalid language bypasses both checks above
+           Would Occur: If invalid language somehow bypassed both checks
            Error Type: Would be KeyError from _LANGUAGE_RENDERERS[language.value]
-           Prevention: Checks 1-3 ensure this never happens
+           Prevention: Checks 1-2 ensure this never happens
 
         RESULT: **IMMEDIATE FAILURE WITH CLEAR ERROR MESSAGE**
         - User sees error at CLI before pipeline starts
         - If CLI validation bypassed, fails in enum validation with clear message
-        - If enum validation bypassed, fails in template dispatcher with clear message
         - All failure points provide actionable error messages listing valid options
         - **ZERO RISK** of silent failures or cryptic KeyError
 

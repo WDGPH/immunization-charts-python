@@ -3,6 +3,39 @@
 Normalizes and structures input data into a single JSON artifact for downstream
 pipeline steps. Handles data validation, client sorting, and vaccine processing.
 QR code generation is handled by a separate step after preprocessing.
+
+**Input Contract:**
+- Reads raw client data from CSV or Excel file (.xlsx, .xls, .csv)
+- Validates file type and encoding (tries multiple encodings for CSV)
+- Validates all required columns are present
+
+**Output Contract:**
+- Writes preprocessed artifact JSON to output/artifacts/preprocessed_clients_*.json
+- Artifact contains all valid client records with normalized data types
+- Artifact includes metadata (run_id, language, created_at, warnings)
+- Downstream steps assume artifact is valid; preprocessing is the sole validation step
+
+**Error Handling:**
+- File I/O errors (missing file, unsupported format) raise immediately (infrastructure)
+- Missing required columns raise immediately (data error in required step)
+- Invalid data (missing DOB, unparseable date) logged as warnings; processing continues
+- Fail-fast for structural issues; warn-and-continue for data quality issues
+
+**Validation Contract:**
+
+What this module validates:
+- Input file exists and is readable
+- Input file is supported format (.xlsx, .xls, .csv)
+- File encoding (tries UTF-8, Latin-1, etc. for CSV)
+- All required columns are present in input data
+- Client data normalization (DOB parsing, vaccine processing)
+- Language code is valid (from CLI argument)
+
+What this module assumes (validated upstream):
+- Language code from CLI is valid (validated by Language.from_string() at orchestrator)
+- Disease and vaccine reference data are valid JSON (validated by config loading)
+
+Note: This is the primary validation step. Downstream steps trust preprocessing output.
 """
 
 from __future__ import annotations
@@ -51,23 +84,6 @@ FRENCH_MONTHS = {
     11: "novembre",
     12: "décembre",
 }
-FRENCH_MONTHS_REV = {v.lower(): k for k, v in FRENCH_MONTHS.items()}
-
-ENGLISH_MONTHS = {
-    1: "Jan",
-    2: "Feb",
-    3: "Mar",
-    4: "Apr",
-    5: "May",
-    6: "Jun",
-    7: "Jul",
-    8: "Aug",
-    9: "Sep",
-    10: "Oct",
-    11: "Nov",
-    12: "Dec",
-}
-ENGLISH_MONTHS_REV = {v.lower(): k for k, v in ENGLISH_MONTHS.items()}
 
 
 def convert_date_string_french(date_str):
@@ -136,79 +152,6 @@ def convert_date_iso(date_str):
     return date_obj.strftime("%Y-%m-%d")
 
 
-def convert_date(
-    date_str: str, to_format: str = "display", lang: str = "en"
-) -> Optional[str]:
-    """Convert dates between ISO and localized display formats.
-
-    Parameters
-    ----------
-    date_str : str | datetime | pd.Timestamp
-        Date string to convert.
-    to_format : str, optional
-        Target format - 'iso' or 'display' (default: 'display').
-    lang : str, optional
-        Language code 'en' or 'fr' (default: 'en').
-
-    Returns
-    -------
-    str
-        Formatted date string according to specified format.
-
-    Examples
-    --------
-    convert_date('2025-05-08', 'display', 'en') -> 'May 8, 2025'
-    convert_date('2025-05-08', 'display', 'fr') -> '8 mai 2025'
-    convert_date('May 8, 2025', 'iso', 'en') -> '2025-05-08'
-    convert_date('8 mai 2025', 'iso', 'fr') -> '2025-05-08'
-    """
-    if pd.isna(date_str):
-        return None
-
-    try:
-        # Convert input to datetime object
-        if isinstance(date_str, (pd.Timestamp, datetime)):
-            date_obj = date_str
-        elif isinstance(date_str, str):
-            if "-" in date_str:  # ISO format
-                date_obj = datetime.strptime(date_str.strip(), "%Y-%m-%d")
-            else:  # Localized format
-                try:
-                    lang_enum = Language.from_string(lang)
-                    if lang_enum == Language.FRENCH:
-                        day, month, year = date_str.split()
-                        month_num = FRENCH_MONTHS_REV.get(month.lower())
-                        if not month_num:
-                            raise ValueError(f"Invalid French month: {month}")
-                        date_obj = datetime(int(year), month_num, int(day))
-                    else:
-                        month, rest = date_str.split(maxsplit=1)
-                        day, year = rest.rstrip(",").split(",")
-                        month_num = ENGLISH_MONTHS_REV.get(month.strip().lower())
-                        if not month_num:
-                            raise ValueError(f"Invalid English month: {month}")
-                        date_obj = datetime(int(year), month_num, int(day.strip()))
-                except (ValueError, KeyError) as e:
-                    raise ValueError(f"Unable to parse date string: {date_str}") from e
-        else:
-            raise ValueError(f"Unsupported date type: {type(date_str)}")
-
-        # Convert to target format
-        if to_format == "iso":
-            return date_obj.strftime("%Y-%m-%d")
-        else:  # display format
-            lang_enum = Language.from_string(lang)
-            if lang_enum == Language.FRENCH:
-                month_name = FRENCH_MONTHS[date_obj.month]
-                return f"{date_obj.day} {month_name} {date_obj.year}"
-            else:
-                month_name = ENGLISH_MONTHS[date_obj.month]
-                return f"{month_name} {date_obj.day}, {date_obj.year}"
-
-    except Exception as e:
-        raise ValueError(f"Date conversion failed: {str(e)}") from e
-
-
 def over_16_check(date_of_birth, delivery_date):
     """Check if a client is over 16 years old on delivery date.
 
@@ -238,41 +181,6 @@ def over_16_check(date_of_birth, delivery_date):
         age -= 1
 
     return age >= 16
-
-
-def calculate_age(DOB, DOV):
-    """Calculate the age in years and months.
-
-    Parameters
-    ----------
-    DOB : str
-        Date of birth in YYYY-MM-DD format.
-    DOV : str
-        Date of visit in YYYY-MM-DD or Mon DD, YYYY format.
-
-    Returns
-    -------
-    str
-        Age string in format "YY Y MM M" (e.g., "5Y 3M").
-    """
-    DOB_datetime = datetime.strptime(DOB, "%Y-%m-%d")
-
-    if DOV[0].isdigit():
-        DOV_datetime = datetime.strptime(DOV, "%Y-%m-%d")
-    else:
-        DOV_datetime = datetime.strptime(DOV, "%b %d, %Y")
-
-    years = DOV_datetime.year - DOB_datetime.year
-    months = DOV_datetime.month - DOB_datetime.month
-
-    if DOV_datetime.day < DOB_datetime.day:
-        months -= 1
-
-    if months < 0:
-        years -= 1
-        months += 12
-
-    return f"{years}Y {months}M"
 
 
 IGNORE_AGENTS = [

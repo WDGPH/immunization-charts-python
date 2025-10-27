@@ -50,30 +50,6 @@ class BatchType(Enum):
     SCHOOL_GROUPED = "school_grouped"
     BOARD_GROUPED = "board_grouped"
 
-    @classmethod
-    def from_strategy(cls, strategy: "BatchStrategy") -> "BatchType":
-        """Convert BatchStrategy to corresponding BatchType.
-
-        Maps the grouping strategy to the batch type descriptor used in batch
-        manifest records and filenames.
-
-        Parameters
-        ----------
-        strategy : BatchStrategy
-            Batch strategy enum value.
-
-        Returns
-        -------
-        BatchType
-            Corresponding batch type descriptor.
-        """
-        mapping = {
-            BatchStrategy.SIZE: cls.SIZE_BASED,
-            BatchStrategy.SCHOOL: cls.SCHOOL_GROUPED,
-            BatchStrategy.BOARD: cls.BOARD_GROUPED,
-        }
-        return mapping[strategy]
-
 
 class Language(Enum):
     """Supported output languages for immunization notices.

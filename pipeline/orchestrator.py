@@ -4,6 +4,31 @@
 This script orchestrates the end-to-end immunization notice generation pipeline.
 It executes each step in sequence, handles errors, and provides detailed timing and
 progress information.
+
+**Error Handling Philosophy:**
+
+The pipeline distinguishes between critical and optional steps:
+
+- **Critical Steps** (Notice generation, Compilation, PDF validation) implement fail-fast:
+  - Any error halts the pipeline immediately
+  - No partial output; users get deterministic results
+  - Pipeline exits with code 1; user must investigate and retry
+
+- **Optional Steps** (QR codes, Encryption, Batching) implement per-item recovery:
+  - Individual item failures (PDF, client, batch) are logged and skipped
+  - Remaining items continue processing
+  - Pipeline completes successfully even if some items failed
+  - Users are shown summary of successes, skipped, and failed items
+
+- **Infrastructure Errors** (missing files, config errors) always fail-fast:
+  - Caught and raised immediately; no recovery attempts
+  - Prevents confusing partial output caused by misconfiguration
+  - Pipeline exits with code 1
+
+**Exit Codes:**
+- 0: Pipeline completed successfully
+- 1: Pipeline failed (critical step error or infrastructure error)
+- 2: User cancelled (output preparation step)
 """
 
 from __future__ import annotations
@@ -194,6 +219,7 @@ def run_step_3_generate_qr_codes(
     print_step(3, "Generating QR codes")
 
     config = load_config(config_dir / "parameters.yaml")
+
     qr_config = config.get("qr", {})
     qr_enabled = qr_config.get("enabled", True)
 
@@ -250,6 +276,9 @@ def run_step_5_compile_notices(
 ) -> None:
     """Step 5: Compiling Typst templates to PDFs."""
     print_step(5, "Compiling Typst templates")
+
+    # Load and validate configuration (fail-fast if invalid)
+    load_config(config_dir / "parameters.yaml")
 
     artifacts_dir = output_dir / "artifacts"
     pdf_dir = output_dir / "pdf_individual"
@@ -314,6 +343,9 @@ def run_step_8_batch_pdfs(
 ) -> None:
     """Step 8: Batching PDFs (optional)."""
     print_step(8, "Batching PDFs")
+
+    # Load and validate configuration (fail-fast if invalid)
+    load_config(config_dir / "parameters.yaml")
 
     parameters_path = config_dir / "parameters.yaml"
 

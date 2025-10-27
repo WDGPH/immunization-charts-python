@@ -12,6 +12,36 @@ unit testing. Batching supports three modes:
 
 Each batch produces a merged PDF inside ``output/pdf_combined`` and a manifest JSON
 record inside ``output/metadata`` that captures critical metadata for audits.
+
+**Input Contract:**
+- Reads individual PDF files from output/pdf_individual/
+- Reads client metadata from preprocessed artifact JSON
+- Assumes batch_size > 0 in config (batching is optional; disabled when batch_size=0)
+
+**Output Contract:**
+- Writes merged PDF files to output/pdf_combined/
+- Writes batch manifest JSON to output/metadata/
+- Returns list of created batch files
+
+**Error Handling:**
+- Configuration errors (invalid batch_size, group_by) raise immediately (infrastructure)
+- Per-batch errors (PDF merge failure) log and continue (optional feature)
+- Pipeline completes even if some batches fail to create (optional step)
+
+**Validation Contract:**
+
+What this module validates:
+- Batch size is positive (batch_size > 0)
+- Group-by strategy is valid (size, school, board, or None)
+- PDF files can be discovered and merged
+- Manifest records have required metadata
+
+What this module assumes (validated upstream):
+- PDF files are valid and readable (validated by count_pdfs step)
+- Client metadata in artifact is complete (validated by preprocessing step)
+- Output directory can be created (general I/O)
+
+Note: This is an optional step. Per-batch errors are logged but don't halt pipeline.
 """
 
 from __future__ import annotations

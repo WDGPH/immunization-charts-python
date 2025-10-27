@@ -135,7 +135,7 @@ class TestValidateArgs:
 class TestPrintFunctions:
     """Unit tests for pipeline progress printing."""
 
-    def test_print_header(self, capsys) -> None:
+    def test_print_header(self) -> None:
         """Verify header printing includes input file info.
 
         Real-world significance:
@@ -145,7 +145,7 @@ class TestPrintFunctions:
         with patch("builtins.print"):
             orchestrator.print_header("students.xlsx")
 
-    def test_print_step(self, capsys) -> None:
+    def test_print_step(self) -> None:
         """Verify step header includes step number and description.
 
         Real-world significance:
@@ -155,7 +155,7 @@ class TestPrintFunctions:
         with patch("builtins.print"):
             orchestrator.print_step(1, "Preparing output directory")
 
-    def test_print_step_complete(self, capsys) -> None:
+    def test_print_step_complete(self) -> None:
         """Verify completion message includes timing info.
 
         Real-world significance:

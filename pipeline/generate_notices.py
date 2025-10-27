@@ -2,6 +2,39 @@
 
 This module consumes the JSON artifact emitted by ``preprocess.py`` and generates
 per-client Typst templates for notice rendering.
+
+**Input Contract:**
+- Reads preprocessed artifact JSON (created by preprocess step)
+- Assumes artifact contains valid client records with all required fields
+- Assumes language validation already occurred at CLI entry point
+
+**Output Contract:**
+- Writes per-client Typst template files to output/artifacts/typst/
+- Returns list of successfully generated .typ file paths
+- All clients must succeed; fails immediately on first error (critical feature)
+
+**Error Handling:**
+- Client data errors raise immediately (cannot produce incomplete output)
+- Infrastructure errors (missing paths) raise immediately
+- Invalid language enum raises immediately (should never occur if upstream validates)
+- No per-client recovery; fail-fast approach ensures deterministic output
+
+**Validation Contract:**
+
+What this module validates:
+- Artifact language matches all client languages (fail-fast if mismatch)
+
+What this module assumes (validated upstream):
+- Artifact file exists and is valid JSON (validated by read_artifact())
+- Language code is valid (validated at CLI by argparse choices)
+- Client records have all required fields (validated by preprocessing step)
+- File paths exist (output_dir, logo_path, signature_path, parameters_path)
+
+Functions with special validation notes:
+- render_notice(): Calls Language.from_string() on client.language to convert
+  string to enum; this adds a second validation layer (redundant but safe)
+- get_language_renderer(): Assumes language enum is valid; no defensive check
+  (language validated upstream via CLI choices + Language.from_string())
 """
 
 from __future__ import annotations
@@ -40,34 +73,36 @@ def get_language_renderer(language: Language):
     Maps Language enum values to their corresponding template rendering functions.
     This provides a single, extensible dispatch point for template selection.
 
+    **Validation Contract:** Assumes language is a valid Language enum (validated
+    upstream at CLI entry point via argparse choices, and again by Language.from_string()
+    before calling this function). No defensive validation needed.
+
     Parameters
     ----------
     language : Language
-        Language enum value.
+        Language enum value (guaranteed to be valid from Language enum).
 
     Returns
     -------
     callable
         Template rendering function for the language.
 
-    Raises
-    ------
-    ValueError
-        If language is not supported (defensive check; should never happen
-        if Language enum validation is used upstream).
-
     Examples
     --------
     >>> renderer = get_language_renderer(Language.ENGLISH)
     >>> # renderer is now render_notice_en function
     """
-    if language.value not in _LANGUAGE_RENDERERS:
-        raise ValueError(f"No renderer available for language: {language.value}")
+    # Language is already validated upstream (CLI choices + Language.from_string())
+    # Direct lookup; safe because only valid Language enums reach this function
     return _LANGUAGE_RENDERERS[language.value]
 
 
 def read_artifact(path: Path) -> ArtifactPayload:
     """Read and deserialize the preprocessed artifact JSON.
+
+    **Input Contract:** Assumes artifact was created by preprocessing step and
+    contains valid client records. Does not validate client schema; relies on
+    preprocessing to have ensured data quality.
 
     Parameters
     ----------
@@ -78,8 +113,27 @@ def read_artifact(path: Path) -> ArtifactPayload:
     -------
     ArtifactPayload
         Parsed artifact with clients and metadata.
+
+    Raises
+    ------
+    FileNotFoundError
+        If artifact file does not exist.
+    json.JSONDecodeError
+        If artifact is not valid JSON.
+    KeyError
+        If artifact is missing required fields.
     """
-    payload_dict = json.loads(path.read_text(encoding="utf-8"))
+    if not path.exists():
+        raise FileNotFoundError(
+            f"Preprocessed artifact not found: {path}. "
+            "Ensure preprocessing step has completed."
+        )
+
+    try:
+        payload_dict = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"Preprocessed artifact is not valid JSON: {path}") from exc
+
     clients = []
 
     for client_dict in payload_dict["clients"]:

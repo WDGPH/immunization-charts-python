@@ -7,6 +7,24 @@ Passwords are generated per-client per-PDF using templates defined in
 config/parameters.yaml under encryption.password.template. Templates support
 placeholders like {client_id}, {date_of_birth_iso}, {date_of_birth_iso_compact},
 {first_name}, {last_name}, {school}, {postal_code}, etc.
+
+**Input Contract:**
+- Reads PDF files from disk and client metadata from JSON
+- Assumes PDF and JSON files exist before encryption
+- Assumes JSON contains valid client metadata with required fields for password template
+
+**Output Contract:**
+- Writes encrypted PDFs to disk with "_encrypted" suffix
+- Unencrypted originals are deleted after successful encryption
+- Per-PDF failures are logged and skipped (optional feature; some PDFs may not be encrypted)
+- Pipeline completes even if some PDFs fail to encrypt
+
+**Error Handling:**
+- Infrastructure errors (missing PDF/JSON files) raise immediately (fail-fast)
+- Configuration errors (invalid password template) raise immediately (fail-fast)
+- Per-PDF failures (encryption error, invalid template data) are logged and skipped
+- This strategy allows partial success; users are notified with summary of results
+- Per-PDF recovery is intentional for optional step; allows users to still get output
 """
 
 from __future__ import annotations

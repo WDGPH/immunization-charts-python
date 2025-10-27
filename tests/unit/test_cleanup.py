@@ -92,71 +92,6 @@ class TestSafeDelete:
 
 
 @pytest.mark.unit
-class TestRemoveFilesWithExt:
-    """Unit tests for remove_files_with_ext function."""
-
-    def test_remove_files_with_single_extension(self, tmp_test_dir: Path) -> None:
-        """Verify files with specified extension are removed.
-
-        Real-world significance:
-        - Should remove .typ files (intermediate Typst templates)
-        - Leave other files untouched
-        """
-        (tmp_test_dir / "notice_00001.typ").write_text("template")
-        (tmp_test_dir / "notice_00002.typ").write_text("template")
-        (tmp_test_dir / "metadata.json").write_text("metadata")
-
-        cleanup.remove_files_with_ext(tmp_test_dir, ["typ"])
-
-        assert not (tmp_test_dir / "notice_00001.typ").exists()
-        assert not (tmp_test_dir / "notice_00002.typ").exists()
-        assert (tmp_test_dir / "metadata.json").exists()
-
-    def test_remove_files_with_multiple_extensions(self, tmp_test_dir: Path) -> None:
-        """Verify files matching any extension are removed.
-
-        Real-world significance:
-        - Cleanup might remove multiple file types in one call
-        - E.g., .typ and .json intermediate files
-        """
-        (tmp_test_dir / "template.typ").write_text("typst")
-        (tmp_test_dir / "artifact.json").write_text("json")
-        (tmp_test_dir / "notice.pdf").write_text("pdf")
-
-        cleanup.remove_files_with_ext(tmp_test_dir, ["typ", "json"])
-
-        assert not (tmp_test_dir / "template.typ").exists()
-        assert not (tmp_test_dir / "artifact.json").exists()
-        assert (tmp_test_dir / "notice.pdf").exists()
-
-    def test_remove_files_missing_directory_handles_gracefully(
-        self, tmp_test_dir: Path
-    ) -> None:
-        """Verify no error when directory doesn't exist.
-
-        Real-world significance:
-        - Cleanup called on directory that might not exist
-        - Should handle gracefully
-        """
-        missing_dir = tmp_test_dir / "nonexistent"
-
-        # Should not raise
-        cleanup.remove_files_with_ext(missing_dir, ["typ"])
-
-    def test_remove_files_empty_extension_list(self, tmp_test_dir: Path) -> None:
-        """Verify empty extension list doesn't delete anything.
-
-        Real-world significance:
-        - Configuration might disable cleanup by providing empty list
-        - Should handle gracefully
-        """
-        (tmp_test_dir / "test.typ").write_text("data")
-
-        cleanup.remove_files_with_ext(tmp_test_dir, [])
-
-        assert (tmp_test_dir / "test.typ").exists()
-
-
 @pytest.mark.unit
 class TestCleanupWithConfig:
     """Unit tests for cleanup_with_config function."""
@@ -182,7 +117,7 @@ class TestCleanupWithConfig:
 
         config_path = output_dir / "parameters.yaml"
         config_path.write_text(
-            "cleanup:\n  remove_directories:\n    - artifacts\n    - metadata\n"
+            "qr:\n  enabled: false\ncleanup:\n  remove_directories:\n    - artifacts\n    - metadata\n"
         )
 
         cleanup.cleanup_with_config(output_dir, config_path)
@@ -204,7 +139,9 @@ class TestCleanupWithConfig:
 
         # Config without cleanup section
         config_path = output_dir / "parameters.yaml"
-        config_path.write_text("pipeline:\n  keep_intermediate_files: false\n")
+        config_path.write_text(
+            "qr:\n  enabled: false\npipeline:\n  keep_intermediate_files: false\n"
+        )
 
         # Should not raise
         cleanup.cleanup_with_config(output_dir, config_path)
@@ -221,7 +158,9 @@ class TestCleanupWithConfig:
         (tmp_output_structure["artifacts"] / "test.json").write_text("data")
 
         config_path = output_dir / "parameters.yaml"
-        config_path.write_text("cleanup:\n  remove_directories: []\n")
+        config_path.write_text(
+            "qr:\n  enabled: false\ncleanup:\n  remove_directories: []\n"
+        )
 
         cleanup.cleanup_with_config(output_dir, config_path)
 
@@ -240,7 +179,7 @@ class TestCleanupWithConfig:
 
         config_path = output_dir / "parameters.yaml"
         config_path.write_text(
-            "cleanup:\n  remove_directories:\n    - nonexistent_dir\n    - artifacts\n"
+            "qr:\n  enabled: false\ncleanup:\n  remove_directories:\n    - nonexistent_dir\n    - artifacts\n"
         )
 
         # Should not raise
@@ -276,7 +215,9 @@ class TestMain:
         (tmp_output_structure["artifacts"] / "test.json").write_text("data")
 
         config_path = output_dir / "parameters.yaml"
-        config_path.write_text("cleanup:\n  remove_directories:\n    - artifacts\n")
+        config_path.write_text(
+            "qr:\n  enabled: false\ncleanup:\n  remove_directories:\n    - artifacts\n"
+        )
 
         cleanup.main(output_dir, config_path)
 
@@ -321,7 +262,9 @@ class TestCleanupIntegration:
         )
 
         config_path = output_dir / "parameters.yaml"
-        config_path.write_text("cleanup:\n  remove_directories:\n    - artifacts\n")
+        config_path.write_text(
+            "qr:\n  enabled: false\ncleanup:\n  remove_directories:\n    - artifacts\n"
+        )
 
         cleanup.cleanup_with_config(output_dir, config_path)
 
@@ -340,7 +283,9 @@ class TestCleanupIntegration:
         output_dir = tmp_output_structure["root"]
 
         config_path = output_dir / "parameters.yaml"
-        config_path.write_text("cleanup:\n  remove_directories:\n    - artifacts\n")
+        config_path.write_text(
+            "qr:\n  enabled: false\ncleanup:\n  remove_directories:\n    - artifacts\n"
+        )
 
         # First call
         cleanup.cleanup_with_config(output_dir, config_path)

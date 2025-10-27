@@ -1,7 +1,36 @@
 """Cleanup module for removing intermediate pipeline artifacts.
 
 Removes specified directories and file types from the output directory to reduce
-storage footprint after the pipeline completes successfully."""
+storage footprint after the pipeline completes successfully.
+
+**Input Contract:**
+- Reads configuration from parameters.yaml (cleanup section)
+- Assumes output directory structure exists (may be partially populated)
+- Assumes cleanup.remove_directories and cleanup.remove_extensions config keys exist
+
+**Output Contract:**
+- Removes specified directories and file types from output_dir
+- Does not modify final PDF outputs (pdf_individual, pdf_combined)
+- Does not halt pipeline if cleanup fails
+
+**Error Handling:**
+- File deletion errors are logged and continue (optional step)
+- Missing directories/files don't cause errors (idempotent)
+- Pipeline completes even if cleanup partially fails (utility step)
+
+**Validation Contract:**
+
+What this module validates:
+- Output directory exists and is writable
+- Directory/file paths can be safely deleted (exist check before delete)
+
+What this module assumes (validated upstream):
+- Configuration keys are valid (cleanup.remove_directories, cleanup.remove_extensions)
+- Output directory structure is correct (created by prior steps)
+
+Note: This is a utility/cleanup step. Failures don't halt pipeline. Can be skipped
+entirely via pipeline.keep_intermediate_files config setting.
+"""
 
 import shutil
 from pathlib import Path
@@ -22,23 +51,6 @@ def safe_delete(path: Path):
             shutil.rmtree(path)
         else:
             path.unlink()
-
-
-def remove_files_with_ext(base_dir: Path, extensions):
-    """Remove files with specified extensions in the given directory.
-
-    Parameters
-    ----------
-    base_dir : Path
-        Directory to clean.
-    extensions : Iterable[str]
-        File extensions to remove (without leading dots, e.g., ['typ', 'json']).
-    """
-    if not base_dir.exists():
-        return
-    for ext in extensions:
-        for file in base_dir.glob(f"*.{ext}"):
-            safe_delete(file)
 
 
 def cleanup_with_config(output_dir: Path, config_path: Path | None = None) -> None:
