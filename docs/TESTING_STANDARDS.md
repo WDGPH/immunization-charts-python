@@ -72,7 +72,15 @@ Tests verify:
 ```python
 @pytest.mark.unit
 def test_config_loads_valid_yaml():
-    """Verify valid YAML config loads without error."""
+    """Verify valid YAML config loads without error.
+
+    Real-world significance:
+    - Configuration must be valid before pipeline execution
+    - Catches YAML syntax errors early rather than mid-pipeline
+    - Ensures all required keys are present
+
+    Assertion: Config dict contains expected keys with valid values
+    """
     config = load_config("config/parameters.yaml")
     assert "pipeline" in config
     assert config["pipeline"]["auto_remove_output"] in [True, False]
@@ -94,8 +102,21 @@ Tests verify:
 **Example:**
 ```python
 @pytest.mark.integration
-def test_preprocess_output_works_with_qr_generation(tmp_path):
-    """Integration: preprocessed artifact feeds correctly to QR generation."""
+def test_preprocess_output_works_with_qr_generation(tmp_path: Path) -> None:
+    """Integration: preprocessed artifact feeds correctly to QR generation.
+
+    Real-world significance:
+    - Verifies pipeline contract: Step 1 output is valid for Step 2 input
+    - Catches schema mismatches that would fail mid-pipeline
+    - Ensures QR codes are generated for all clients in artifact
+
+    Parameters
+    ----------
+    tmp_path : Path
+        Pytest fixture providing temporary directory for artifacts
+
+    Assertion: QR files generated equal the number of clients in artifact
+    """
     artifact = preprocess.build_preprocess_result(df, language="en", ...)
     artifact_path = preprocess.write_artifact(tmp_path, artifact, ...)
     
@@ -134,12 +155,39 @@ from pathlib import Path
 
 @pytest.fixture
 def project_root() -> Path:
-    """Return the absolute path to project root."""
+    """Return the absolute path to project root.
+
+    Used by E2E tests to ensure correct working directory for Typst PDF
+    compilation and path resolution.
+
+    Returns
+    -------
+    Path
+        Absolute path to project root (three levels up from tests/e2e/)
+    """
     return Path(__file__).parent.parent.parent  # tests/e2e/... → project root
 
 @pytest.mark.e2e
-def test_full_pipeline_english(project_root: Path):
-    """E2E: Complete pipeline generates PDF output for English input."""
+def test_full_pipeline_english(project_root: Path) -> None:
+    """E2E: Complete pipeline generates PDF output for English input.
+
+    Real-world significance:
+    - Verifies full 9-step pipeline works end-to-end
+    - Ensures PDF files are created with correct names and counts
+    - Tests English language variant (French tested separately)
+
+    Parameters
+    ----------
+    project_root : Path
+        Fixture providing absolute path to project root
+
+    Raises
+    ------
+    AssertionError
+        If pipeline exit code is non-zero or PDF count incorrect
+
+    Assertion: Pipeline succeeds and generates correct number of PDFs
+    """
     input_dir = project_root / "input"
     output_dir = project_root / "output"
     
@@ -161,17 +209,34 @@ def test_full_pipeline_english(project_root: Path):
 
 ### Configuration Override Pattern for Feature Testing
 
-**Pattern:** Test optional features (QR, encryption, batching) by modifying `config/parameters.yaml` and restoring it afterward.
-
-**Why:** This tests real config parsing, not mocked behavior. It verifies that feature flags actually control pipeline behavior.
-
 **Solution:**
 ```python
 import yaml
+from pathlib import Path
 
 @pytest.mark.e2e
-def test_pipeline_with_qr_disabled(project_root: Path):
-    """E2E: QR code generation can be disabled via config."""
+def test_pipeline_with_qr_disabled(project_root: Path) -> None:
+    """E2E: QR code generation can be disabled via config.
+
+    Real-world significance:
+    - Verifies feature flags in config actually control pipeline behavior
+    - Tests that disabled QR generation doesn't crash pipeline
+    - Ensures config-driven behavior is deterministic and testable
+
+    Parameters
+    ----------
+    project_root : Path
+        Fixture providing absolute path to project root
+
+    Raises
+    ------
+    AssertionError
+        If QR code generation is not skipped when disabled
+
+    Notes
+    -----
+    Always restores original config in finally block to prevent test pollution.
+    """
     config_path = project_root / "config" / "parameters.yaml"
     
     # Load original config
@@ -213,9 +278,32 @@ def test_pipeline_with_qr_disabled(project_root: Path):
 
 **Solution:**
 ```python
+from pathlib import Path
+import pandas as pd
+
 @pytest.fixture
 def pipeline_input_file(project_root: Path) -> Path:
-    """Create a test Excel file in project input directory."""
+    """Create a test Excel file in project input directory.
+
+    Provides temporary test input file for E2E tests. File is created in
+    project root's input/ directory (not tmp_path) to comply with path
+    constraints for Typst PDF compilation.
+
+    Parameters
+    ----------
+    project_root : Path
+        Fixture providing absolute path to project root
+
+    Yields
+    ------
+    Path
+        Absolute path to created test Excel file
+
+    Notes
+    -----
+    File is cleaned up after test via yield. Uses project root instead of
+    tmp_path to enable Typst path resolution for PDF compilation.
+    """
     input_file = project_root / "input" / "e2e_test_clients.xlsx"
     
     # Create test DataFrame and write to Excel
@@ -280,14 +368,30 @@ markers =
 
 ## Testing Patterns
 
-### 1. Artifact Schema Testing
-
-Since pipeline steps communicate via JSON artifacts, test the schema:
-
+**Example:**
 ```python
 @pytest.mark.integration
-def test_preprocessed_artifact_schema(tmp_path):
-    """Verify preprocess output matches expected schema."""
+def test_preprocessed_artifact_schema(tmp_path: Path) -> None:
+    """Verify preprocess output matches expected schema.
+
+    Real-world significance:
+    - Downstream steps (QR generation, notice compilation) depend on
+      consistent artifact structure
+    - Schema mismatches cause silent failures later in pipeline
+    - Ensures data normalization is deterministic across runs
+
+    Parameters
+    ----------
+    tmp_path : Path
+        Pytest fixture providing temporary directory
+
+    Raises
+    ------
+    AssertionError
+        If artifact missing required keys or clients lack expected fields
+
+    Assertion: Artifact contains all required keys and client records complete
+    """
     artifact = preprocess.build_preprocess_result(df, language="en", ...)
     
     assert "run_id" in artifact
@@ -305,8 +409,25 @@ Test that configuration options actually control behavior by modifying config fi
 **For unit/integration tests** (using mocked config):
 ```python
 @pytest.mark.unit
-def test_qr_generation_skips_if_disabled():
-    """When config['qr']['enabled'] is False, QR generation is skipped."""
+def test_qr_generation_skips_if_disabled() -> None:
+    """When config['qr']['enabled'] is False, QR generation is skipped.
+
+    Real-world significance:
+    - Users can disable QR codes for certain notice types (e.g., old PDFs)
+    - Configuration must actually affect pipeline behavior
+    - Skipping should not crash pipeline or leave partial output
+
+    Parameters
+    ----------
+    None - Uses mocked config parameter
+
+    Raises
+    ------
+    AssertionError
+        If QR files are generated when disabled
+
+    Assertion: QR file list is empty when qr.enabled is False
+    """
     config = {"qr": {"enabled": False}}
     
     qr_files = generate_qr_codes.generate_qr_codes(
@@ -319,10 +440,33 @@ def test_qr_generation_skips_if_disabled():
 **For E2E tests** (using real config file modifications):
 ```python
 import yaml
+from pathlib import Path
 
 @pytest.mark.e2e
-def test_pipeline_with_qr_disabled(project_root: Path):
-    """E2E: Verify QR feature flag actually controls pipeline behavior."""
+def test_pipeline_with_qr_disabled_e2e(project_root: Path) -> None:
+    """E2E: Verify QR feature flag actually controls pipeline behavior.
+
+    Real-world significance:
+    - Catches YAML parsing bugs and config file format issues
+    - Tests that disabling QR doesn't crash downstream steps
+    - Ensures config changes propagate correctly through pipeline
+
+    Parameters
+    ----------
+    project_root : Path
+        Fixture providing absolute path to project root
+
+    Raises
+    ------
+    AssertionError
+        If QR step runs when disabled or pipeline returns non-zero exit code
+
+    Notes
+    -----
+    Modifies real config.yaml but restores it in finally block to prevent
+    test pollution. Use this for real config parsing; use unit tests for
+    logic verification.
+    """
     config_path = project_root / "config" / "parameters.yaml"
     
     with open(config_path) as f:
@@ -361,8 +505,26 @@ Use pytest's `tmp_path` fixture for all file I/O:
 
 ```python
 @pytest.mark.unit
-def test_cleanup_removes_intermediate_files(tmp_path):
-    """Cleanup removes .typ files but preserves PDFs."""
+def test_cleanup_removes_intermediate_files(tmp_path: Path) -> None:
+    """Cleanup removes .typ files but preserves PDFs.
+
+    Real-world significance:
+    - Temp files (.typ) take disk space and should be cleaned after PDF generation
+    - PDFs must be preserved for delivery to users
+    - Cleanup must be deterministic and safe
+
+    Parameters
+    ----------
+    tmp_path : Path
+        Pytest fixture providing temporary directory
+
+    Raises
+    ------
+    AssertionError
+        If .typ file not removed or PDFs accidentally deleted
+
+    Assertion: Only .typ files removed; PDF files remain intact
+    """
     artifacts = tmp_path / "artifacts"
     artifacts.mkdir()
     
@@ -383,8 +545,28 @@ from unittest.mock import patch, MagicMock
 
 @pytest.mark.unit
 @patch("subprocess.run")
-def test_compile_notices_calls_typst(mock_run, tmp_path):
-    """Verify compile step invokes typst command."""
+def test_compile_notices_calls_typst(mock_run: MagicMock, tmp_path: Path) -> None:
+    """Verify compile step invokes typst command.
+
+    Real-world significance:
+    - Typst compilation is external and slow; mocking enables fast testing
+    - Ensures CLI arguments are constructed correctly
+    - Tests error handling without actual compilation
+
+    Parameters
+    ----------
+    mock_run : MagicMock
+        Mocked subprocess.run function
+    tmp_path : Path
+        Pytest fixture providing temporary directory
+
+    Raises
+    ------
+    AssertionError
+        If typst command not called or arguments incorrect
+
+    Assertion: subprocess.run called with correct typst command
+    """
     mock_run.return_value = MagicMock(returncode=0)
     
     compile_notices.compile_with_config(artifacts_dir, pdf_dir, config)
@@ -401,8 +583,28 @@ Both English and French are first-class concerns:
 ```python
 @pytest.mark.parametrize("language", ["en", "fr"])
 @pytest.mark.unit
-def test_preprocess_handles_language(language, tmp_path):
-    """Verify preprocessing works for both languages."""
+def test_preprocess_handles_language(language: str, tmp_path: Path) -> None:
+    """Verify preprocessing works for both languages.
+
+    Real-world significance:
+    - Notices are generated in both English and French
+    - Language affects vaccine name mapping, address formatting, etc.
+    - Both variants must be deterministic and testable
+
+    Parameters
+    ----------
+    language : str
+        Language code: "en" or "fr"
+    tmp_path : Path
+        Pytest fixture providing temporary directory
+
+    Raises
+    ------
+    AssertionError
+        If language not set correctly in result
+
+    Assertion: Result clients have correct language assigned
+    """
     result = preprocess.build_preprocess_result(
         df, language=language, ...
     )
