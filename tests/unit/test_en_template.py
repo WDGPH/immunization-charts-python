@@ -44,6 +44,7 @@ class TestRenderNotice:
             "vaccines_due_array": '("MMR", "DPT")',
             "received": '(("MMR", "2020-05-15"), ("DPT", "2019-03-15"))',
             "num_rows": "2",
+            "chart_diseases_translated": '("Diphtheria", "Tetanus", "Pertussis")',
         }
 
         result = render_notice(
@@ -72,6 +73,7 @@ class TestRenderNotice:
             "vaccines_due_array": "()",
             "received": "()",
             "num_rows": "0",
+            "chart_diseases_translated": '("Diphtheria", "Tetanus", "Pertussis")',
         }
 
         with pytest.raises(KeyError, match="Missing context keys"):
@@ -116,6 +118,7 @@ class TestRenderNotice:
             "vaccines_due_array": "()",
             "received": "()",
             "num_rows": "0",
+            "chart_diseases_translated": '("Diphtheria", "Tetanus", "Pertussis")',
         }
 
         logo_path = "/custom/logo/path.png"
@@ -142,6 +145,7 @@ class TestRenderNotice:
             "vaccines_due_array": "()",
             "received": "()",
             "num_rows": "0",
+            "chart_diseases_translated": '("Diphtheria", "Tetanus", "Pertussis")',
         }
 
         signature_path = "/custom/signature.png"
@@ -168,6 +172,7 @@ class TestRenderNotice:
             "vaccines_due_array": "()",
             "received": "()",
             "num_rows": "0",
+            "chart_diseases_translated": '("Diphtheria", "Tetanus", "Pertussis")',
         }
 
         parameters_path = "/etc/config/parameters.yaml"
@@ -194,6 +199,7 @@ class TestRenderNotice:
             "vaccines_due_array": "()",
             "received": "()",
             "num_rows": "0",
+            "chart_diseases_translated": '("Diphtheria", "Tetanus", "Pertussis")',
         }
 
         result = render_notice(
@@ -220,6 +226,7 @@ class TestRenderNotice:
             "vaccines_due_array": '("MMR")',
             "received": "()",
             "num_rows": "1",
+            "chart_diseases_translated": '("Diphtheria", "Tetanus", "Pertussis")',
         }
 
         result = render_notice(
@@ -248,6 +255,7 @@ class TestRenderNotice:
             "vaccines_due_array": '("Measles", "Mumps", "Rubella")',
             "received": '(("Measles", "2020-05-01"), ("Mumps", "2020-05-01"))',
             "num_rows": "5",
+            "chart_diseases_translated": '("Diphtheria", "Tetanus", "Pertussis")',
         }
 
         result = render_notice(
@@ -276,6 +284,7 @@ class TestRenderNotice:
             "vaccines_due_array": "()",
             "received": "()",
             "num_rows": "0",
+            "chart_diseases_translated": '("Diphtheria", "Tetanus", "Pertussis")',
         }
 
         result = render_notice(

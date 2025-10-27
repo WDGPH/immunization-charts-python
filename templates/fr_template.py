@@ -49,13 +49,7 @@ TEMPLATE_PREFIX = """// --- CCEYA NOTICE TEMPLATE (TEST VERSION) --- //
 #let date(contents) = {
   contents.date_today
 }
-
-// Read diseases from yaml file 
-#let diseases_yaml(contents) = {
-    contents.chart_diseases_header
-}
   
-#let diseases = diseases_yaml(yaml("__PARAMETERS_PATH__"))
 #let date = date(yaml("__PARAMETERS_PATH__"))
 
 // Immunization Notice Section
@@ -136,6 +130,7 @@ DYNAMIC_BLOCK = """
 #let vaccines_due_array = __VACCINES_DUE_ARRAY__
 #let received = __RECEIVED__
 #let num_rows = __NUM_ROWS__
+#let diseases = __CHART_DISEASES_TRANSLATED__
 
 #set page(margin: (top: 1cm, bottom: 2cm, left: 1.75cm, right: 2cm))
 
@@ -166,6 +161,7 @@ def render_notice(
         - vaccines_due_array: Array of vaccines due
         - received: Received vaccine data
         - num_rows: Number of table rows
+        - chart_diseases_translated: Translated disease names for chart columns
 
     logo_path : str
         Absolute path to logo image file
@@ -191,6 +187,7 @@ def render_notice(
         "vaccines_due_array",
         "received",
         "num_rows",
+        "chart_diseases_translated",
     )
     missing = [key for key in required_keys if key not in context]
     if missing:
@@ -210,5 +207,6 @@ def render_notice(
         .replace("__VACCINES_DUE_ARRAY__", context["vaccines_due_array"])
         .replace("__RECEIVED__", context["received"])
         .replace("__NUM_ROWS__", context["num_rows"])
+        .replace("__CHART_DISEASES_TRANSLATED__", context["chart_diseases_translated"])
     )
     return prefix + dynamic

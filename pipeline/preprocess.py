@@ -490,8 +490,30 @@ def enrich_grouped_records(
     grouped: List[Dict[str, Any]],
     vaccine_reference: Dict[str, Any],
     language: str,
+    chart_diseases_header: List[str] | None = None,
 ) -> List[Dict[str, Any]]:
-    """Enrich grouped vaccine records with disease information."""
+    """Enrich grouped vaccine records with disease information.
+
+    If chart_diseases_header is provided, diseases not in the list are
+    collapsed into the "Other" category.
+
+    Parameters
+    ----------
+    grouped : List[Dict[str, Any]]
+        Grouped vaccine records with date_given and vaccine list.
+    vaccine_reference : Dict[str, Any]
+        Map of vaccine codes to disease names.
+    language : str
+        Language code for logging.
+    chart_diseases_header : List[str], optional
+        List of diseases to include in chart. Diseases not in this list
+        are mapped to "Other".
+
+    Returns
+    -------
+    List[Dict[str, Any]]
+        Enriched records with date_given, vaccine, and diseases fields.
+    """
     enriched: List[Dict[str, Any]] = []
     for item in grouped:
         vaccines = [
@@ -505,6 +527,20 @@ def enrich_grouped_records(
                 diseases.extend(ref)
             else:
                 diseases.append(ref)
+
+        # Collapse diseases not in chart to "Other"
+        if chart_diseases_header:
+            filtered_diseases: List[str] = []
+            has_unmapped = False
+            for disease in diseases:
+                if disease in chart_diseases_header:
+                    filtered_diseases.append(disease)
+                else:
+                    has_unmapped = True
+            if has_unmapped and "Other" not in filtered_diseases:
+                filtered_diseases.append("Other")
+            diseases = filtered_diseases
+
         enriched.append(
             {
                 "date_given": item["date_given"],
@@ -525,15 +561,20 @@ def build_preprocess_result(
 
     Calculates per-client age at time of delivery for determining
     communication recipient (parent vs. student).
+
+    Filters received vaccine diseases to only include those in the
+    chart_diseases_header configuration, mapping unmapped diseases
+    to "Other".
     """
     warnings: set[str] = set()
     working = normalize_dataframe(df)
 
-    # Load delivery_date from parameters.yaml for age calculations only
+    # Load parameters for delivery_date and chart_diseases_header
     params = {}
     if PARAMETERS_PATH.exists():
         params = yaml.safe_load(PARAMETERS_PATH.read_text(encoding="utf-8")) or {}
     delivery_date: Optional[str] = params.get("delivery_date")
+    chart_diseases_header: List[str] = params.get("chart_diseases_header", [])
 
     working["SCHOOL_ID"] = working.apply(
         lambda row: synthesize_identifier(
@@ -587,7 +628,9 @@ def build_preprocess_result(
             item.strip() for item in vaccines_due.split(",") if item.strip()
         ]
         received_grouped = process_received_agents(row.IMMS_GIVEN, ignore_agents)  # type: ignore[attr-defined]
-        received = enrich_grouped_records(received_grouped, vaccine_reference, language)
+        received = enrich_grouped_records(
+            received_grouped, vaccine_reference, language, chart_diseases_header
+        )
 
         postal_code = row.POSTAL_CODE if row.POSTAL_CODE else "Not provided"  # type: ignore[attr-defined]
         address_line = " ".join(

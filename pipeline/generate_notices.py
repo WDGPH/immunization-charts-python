@@ -44,6 +44,7 @@ import logging
 from pathlib import Path
 from typing import Dict, List, Mapping, Sequence
 
+from .config_loader import load_config
 from .data_models import (
     ArtifactPayload,
     ClientRecord,
@@ -235,6 +236,35 @@ def to_typ_value(value) -> str:
     raise TypeError(f"Unsupported value type for Typst conversion: {type(value)!r}")
 
 
+def load_and_translate_chart_diseases(language: str) -> List[str]:
+    """Load and translate the chart disease list from configuration.
+
+    Loads chart_diseases_header from config/parameters.yaml and translates each
+    disease name to the target language using the diseases_chart translation domain.
+    This ensures chart column headers match the configured set of diseases and are
+    properly localized.
+
+    Parameters
+    ----------
+    language : str
+        Language code (e.g., "en", "fr").
+
+    Returns
+    -------
+    List[str]
+        List of translated disease names in order.
+    """
+    config = load_config()
+    chart_diseases_header = config.get("chart_diseases_header", [])
+
+    translated_diseases: List[str] = []
+    for disease in chart_diseases_header:
+        label = display_label("diseases_chart", disease, language, strict=False)
+        translated_diseases.append(label)
+
+    return translated_diseases
+
+
 def build_template_context(
     client: ClientRecord, qr_output_dir: Path | None = None
 ) -> Dict[str, str]:
@@ -242,6 +272,7 @@ def build_template_context(
 
     Translates disease names in vaccines_due_list and received records to
     localized display strings using the configured translation files.
+    Also loads and translates the chart disease header list from configuration.
 
     Parameters
     ----------
@@ -270,6 +301,9 @@ def build_template_context(
         qr_path = qr_output_dir / qr_filename
         if qr_path.exists():
             client_data["qr_code"] = to_root_relative(qr_path)
+
+    # Load and translate chart disease header
+    chart_diseases_translated = load_and_translate_chart_diseases(client.language)
 
     # Translate vaccines_due_list to display labels
     vaccines_due_array_translated: List[str] = []
@@ -312,6 +346,7 @@ def build_template_context(
         "vaccines_due_array": to_typ_value(vaccines_due_array_translated),
         "received": to_typ_value(received_translated),
         "num_rows": str(len(received_translated)),
+        "chart_diseases_translated": to_typ_value(chart_diseases_translated),
     }
 
 

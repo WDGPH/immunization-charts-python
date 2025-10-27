@@ -12,16 +12,18 @@ Raw Input (from CSV/Excel)
 [preprocess.py]
     ├─ disease_normalization.json → normalize variants
     ├─ vaccine_reference.json → expand vaccines to diseases
-    └─ Emit artifact with canonical disease names
+    ├─ parameters.yaml.chart_diseases_header → filter diseases not in chart → "Other"
+    └─ Emit artifact with filtered disease names
     ↓
-Artifact JSON (canonical English disease names)
+Artifact JSON (canonical English disease names, filtered by chart config)
     ↓
 [generate_notices.py]
+    ├─ parameters.yaml.chart_diseases_header → load chart disease list
+    ├─ translations/{lang}_diseases_chart.json → translate each disease name
     ├─ translations/{lang}_diseases_overdue.json → translate vaccines_due list
-    ├─ translations/{lang}_diseases_chart.json → translate chart diseases
-    └─ Inject into Typst template
+    └─ Inject translated diseases into Typst template
     ↓
-Typst Files (with localized disease names)
+Typst Files (with localized, filtered disease names)
     ↓
 [compile_notices.py]
     └─ Generate PDFs
@@ -33,15 +35,53 @@ Typst Files (with localized disease names)
 ---
 
 ### `parameters.yaml`
-**Purpose**: Pipeline behavior configuration (feature flags, settings)
-
-**Status**: Keep (not related to disease/vaccine reference)
+**Purpose**: Pipeline behavior configuration (feature flags, settings, and chart disease filtering)
 
 **Usage**:
 - QR code generation settings
 - PDF encryption settings
 - Batching configuration
-- Chart disease selection
+- **Chart disease selection via `chart_diseases_header` (CRITICAL)**
+
+**`chart_diseases_header` Configuration:**
+
+This list defines which diseases appear as columns in the immunization chart:
+
+```yaml
+chart_diseases_header:
+  - Diphtheria
+  - Tetanus
+  - Pertussis
+  - Polio
+  - Hib
+  - Pneumococcal
+  - Rotavirus
+  - Measles
+  - Mumps
+  - Rubella
+  - Meningococcal
+  - Varicella
+  - Other
+```
+
+**Disease Filtering and "Other" Category:**
+
+1. **During Preprocessing (`preprocess.py`):**
+   - Diseases from vaccine records are checked against `chart_diseases_header`
+   - Diseases **not** in the list are **collapsed into "Other"**
+   - This ensures only configured diseases appear as separate columns
+
+2. **During Notice Generation (`generate_notices.py`):**
+   - Each disease name in `chart_diseases_header` is **translated to the target language**
+   - Translations come from `translations/{lang}_diseases_chart.json`
+   - Translated list is passed to Typst template
+   - The template renders column headers using **Python-translated names**, not raw config values
+
+**Impact:**
+- Chart columns only show diseases in this list
+- Unplanned/unexpected diseases are grouped under "Other"
+- All column headers are properly localized before template rendering
+- No runtime lookups needed in Typst; translations applied in Python
 
 ---
 
