@@ -28,11 +28,12 @@ CONFIG_DIR = Path(__file__).resolve().parent.parent / "config"
 _encryption_config = None
 
 
-def _load_encryption_config():
+def load_encryption_config():
     """Load and cache encryption configuration from parameters.yaml.
 
-    Configuration is loaded once and cached globally for subsequent function calls.
-    This avoids repeated file I/O when generating passwords for multiple PDFs.
+    Module-internal helper. Configuration is loaded once and cached globally
+    for subsequent function calls. This avoids repeated file I/O when generating
+    passwords for multiple PDFs.
 
     Returns
     -------
@@ -63,7 +64,7 @@ def get_encryption_config():
     dict
         Cached encryption configuration.
     """
-    return _load_encryption_config()
+    return load_encryption_config()
 
 
 def encrypt_pdf(file_path: str, context: dict) -> str:
@@ -117,10 +118,28 @@ def encrypt_pdf(file_path: str, context: dict) -> str:
     return str(encrypted_path)
 
 
-def _load_notice_metadata(json_path: Path, language: str) -> tuple:
+def load_notice_metadata(json_path: Path, language: str) -> tuple:
     """Load client data and context from JSON notice metadata.
 
-    Returns both the client data dict and the context for password template rendering.
+    Module-internal helper for encrypt_notice(). Returns both the client data dict
+    and the context for password template rendering.
+
+    Parameters
+    ----------
+    json_path : Path
+        Path to JSON metadata file.
+    language : str
+        Language code ('en' or 'fr').
+
+    Returns
+    -------
+    tuple
+        (client_data: dict, context: dict) for password generation.
+
+    Raises
+    ------
+    ValueError
+        If JSON is invalid or has unexpected structure.
     """
     try:
         payload = json.loads(json_path.read_text())
@@ -176,7 +195,7 @@ def encrypt_notice(json_path: str | Path, pdf_path: str | Path, language: str) -
         except OSError:
             pass
 
-    client_data, context = _load_notice_metadata(json_path, language)
+    client_data, context = load_notice_metadata(json_path, language)
     return encrypt_pdf(str(pdf_path), context)
 
 

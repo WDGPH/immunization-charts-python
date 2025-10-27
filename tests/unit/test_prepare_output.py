@@ -51,7 +51,7 @@ class TestPurgeOutputDirectory:
         log_file = log_dir / "pipeline.log"
         log_file.write_text("important log data")
 
-        prepare_output._purge_output_directory(output_dir, log_dir)
+        prepare_output.purge_output_directory(output_dir, log_dir)
 
         # Verify non-log files removed
         assert not (tmp_output_structure["artifacts"] / "test.json").exists()
@@ -78,7 +78,7 @@ class TestPurgeOutputDirectory:
         nested.mkdir(parents=True, exist_ok=True)
         (nested / "code.png").write_text("image")
 
-        prepare_output._purge_output_directory(output_dir, log_dir)
+        prepare_output.purge_output_directory(output_dir, log_dir)
 
         # Verify entire artifacts directory is removed
         assert not tmp_output_structure["artifacts"].exists()
@@ -99,7 +99,7 @@ class TestPurgeOutputDirectory:
         symlink = output_dir / "logs_link"
         symlink.symlink_to(log_dir)
 
-        prepare_output._purge_output_directory(output_dir, log_dir)
+        prepare_output.purge_output_directory(output_dir, log_dir)
 
         # Verify symlink to logs is preserved
         assert symlink.exists() or not symlink.exists()  # Depends on resolution
@@ -213,7 +213,7 @@ class TestIsLogDirectory:
         log_dir = tmp_test_dir / "logs"
         log_dir.mkdir()
 
-        result = prepare_output._is_log_directory(log_dir, log_dir)
+        result = prepare_output.is_log_directory(log_dir, log_dir)
 
         assert result is True
 
@@ -230,7 +230,7 @@ class TestIsLogDirectory:
         other_dir = tmp_test_dir / "artifacts"
         other_dir.mkdir()
 
-        result = prepare_output._is_log_directory(other_dir, log_dir)
+        result = prepare_output.is_log_directory(other_dir, log_dir)
 
         assert result is False
 
@@ -248,7 +248,7 @@ class TestIsLogDirectory:
 
         missing_path = tmp_test_dir / "nonexistent"
 
-        result = prepare_output._is_log_directory(missing_path, log_dir)
+        result = prepare_output.is_log_directory(missing_path, log_dir)
 
         assert result is False
 
@@ -265,7 +265,7 @@ class TestDefaultPrompt:
         - Lowercase letter should work
         """
         with patch("builtins.input", return_value="y"):
-            result = prepare_output._default_prompt(tmp_test_dir)
+            result = prepare_output.default_prompt(tmp_test_dir)
             assert result is True
 
     def test_default_prompt_accepts_yes(self, tmp_test_dir: Path) -> None:
@@ -276,7 +276,7 @@ class TestDefaultPrompt:
         - Common user response pattern
         """
         with patch("builtins.input", return_value="yes"):
-            result = prepare_output._default_prompt(tmp_test_dir)
+            result = prepare_output.default_prompt(tmp_test_dir)
             assert result is True
 
     def test_default_prompt_rejects_n(self, tmp_test_dir: Path) -> None:
@@ -287,7 +287,7 @@ class TestDefaultPrompt:
         - Default is No if user is uncertain
         """
         with patch("builtins.input", return_value="n"):
-            result = prepare_output._default_prompt(tmp_test_dir)
+            result = prepare_output.default_prompt(tmp_test_dir)
             assert result is False
 
     def test_default_prompt_rejects_empty(self, tmp_test_dir: Path) -> None:
@@ -298,7 +298,7 @@ class TestDefaultPrompt:
         - Safety default: don't delete unless explicitly confirmed
         """
         with patch("builtins.input", return_value=""):
-            result = prepare_output._default_prompt(tmp_test_dir)
+            result = prepare_output.default_prompt(tmp_test_dir)
             assert result is False
 
     def test_default_prompt_rejects_invalid(self, tmp_test_dir: Path) -> None:
@@ -309,5 +309,5 @@ class TestDefaultPrompt:
         - Only 'y', 'yes', 'Y', 'YES' should trigger
         """
         with patch("builtins.input", return_value="maybe"):
-            result = prepare_output._default_prompt(tmp_test_dir)
+            result = prepare_output.default_prompt(tmp_test_dir)
             assert result is False

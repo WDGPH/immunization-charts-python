@@ -105,7 +105,7 @@ class TestReadArtifact:
 
 @pytest.mark.unit
 class TestEscapeString:
-    """Unit tests for _escape_string function."""
+    """Unit tests for escape_string function."""
 
     def test_escape_string_handles_backslashes(self) -> None:
         """Verify backslashes are escaped for Typst.
@@ -114,7 +114,7 @@ class TestEscapeString:
         - Client names/addresses may contain backslashes (rare but possible)
         - Must not break Typst syntax
         """
-        result = generate_notices._escape_string("test\\path")
+        result = generate_notices.escape_string("test\\path")
 
         assert result == "test\\\\path"
 
@@ -125,7 +125,7 @@ class TestEscapeString:
         - Names like O'Brien contain apostrophes
         - Typst string syntax uses double quotes
         """
-        result = generate_notices._escape_string('test "quoted"')
+        result = generate_notices.escape_string('test "quoted"')
 
         assert result == 'test \\"quoted\\"'
 
@@ -136,7 +136,7 @@ class TestEscapeString:
         - Multi-line addresses may appear in data
         - Must be escaped to preserve Typst syntax
         """
-        result = generate_notices._escape_string("line1\nline2")
+        result = generate_notices.escape_string("line1\nline2")
 
         assert result == "line1\\nline2"
 
@@ -147,7 +147,7 @@ class TestEscapeString:
         - Real-world data may have multiple special chars
         - All must be properly escaped
         """
-        result = generate_notices._escape_string('test\\"path\nmore')
+        result = generate_notices.escape_string('test\\"path\nmore')
 
         assert "\\\\" in result
         assert '\\"' in result
@@ -156,7 +156,7 @@ class TestEscapeString:
 
 @pytest.mark.unit
 class TestToTypValue:
-    """Unit tests for _to_typ_value function."""
+    """Unit tests for to_typ_value function."""
 
     def test_to_typ_value_string(self) -> None:
         """Verify string values convert to Typst string syntax.
@@ -165,7 +165,7 @@ class TestToTypValue:
         - Most template data is strings
         - Must wrap in quotes and escape special chars
         """
-        result = generate_notices._to_typ_value("test string")
+        result = generate_notices.to_typ_value("test string")
 
         assert result == '"test string"'
 
@@ -176,13 +176,13 @@ class TestToTypValue:
         - Boolean flags in template context (e.g., has_qr_code)
         - Must convert to Typst boolean syntax
         """
-        result = generate_notices._to_typ_value(True)
+        result = generate_notices.to_typ_value(True)
 
         assert result == "true"
 
     def test_to_typ_value_boolean_false(self) -> None:
         """Verify False converts to Typst 'false'."""
-        result = generate_notices._to_typ_value(False)
+        result = generate_notices.to_typ_value(False)
 
         assert result == "false"
 
@@ -193,19 +193,19 @@ class TestToTypValue:
         - Missing optional fields should map to 'none'
         - Typst templates handle none gracefully
         """
-        result = generate_notices._to_typ_value(None)
+        result = generate_notices.to_typ_value(None)
 
         assert result == "none"
 
     def test_to_typ_value_int(self) -> None:
         """Verify integers convert to Typst number syntax."""
-        result = generate_notices._to_typ_value(42)
+        result = generate_notices.to_typ_value(42)
 
         assert result == "42"
 
     def test_to_typ_value_float(self) -> None:
         """Verify floats convert to Typst number syntax."""
-        result = generate_notices._to_typ_value(3.14)
+        result = generate_notices.to_typ_value(3.14)
 
         assert result == "3.14"
 
@@ -216,7 +216,7 @@ class TestToTypValue:
         - vaccines_due_list is a list of disease names
         - Must convert to Typst tuple/array syntax
         """
-        result = generate_notices._to_typ_value(["Measles", "Mumps"])
+        result = generate_notices.to_typ_value(["Measles", "Mumps"])
 
         assert "Measles" in result
         assert "Mumps" in result
@@ -231,7 +231,7 @@ class TestToTypValue:
         - Typst requires trailing comma for single-item tuples
         - Must match Typst syntax exactly
         """
-        result = generate_notices._to_typ_value(["Measles"])
+        result = generate_notices.to_typ_value(["Measles"])
 
         assert "Measles" in result
         assert "," in result
@@ -244,7 +244,7 @@ class TestToTypValue:
         - Must convert to Typst named tuple format
         """
         data = {"name": "John Doe", "age": 10}
-        result = generate_notices._to_typ_value(data)
+        result = generate_notices.to_typ_value(data)
 
         assert "name" in result
         assert "John Doe" in result
@@ -262,7 +262,7 @@ class TestToTypValue:
             pass
 
         with pytest.raises(TypeError):
-            generate_notices._to_typ_value(CustomClass())
+            generate_notices.to_typ_value(CustomClass())
 
 
 @pytest.mark.unit

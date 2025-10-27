@@ -739,7 +739,7 @@ class TestLoadNoticeMetadata:
             )
         )
 
-        record, context = encrypt_notice._load_notice_metadata(json_path, "en")
+        record, context = encrypt_notice.load_notice_metadata(json_path, "en")
 
         assert record["client_id"] == "12345"
         assert context["client_id"] == "12345"
@@ -755,7 +755,7 @@ class TestLoadNoticeMetadata:
         json_path.write_text("not valid json")
 
         with pytest.raises(ValueError, match="Invalid JSON"):
-            encrypt_notice._load_notice_metadata(json_path, "en")
+            encrypt_notice.load_notice_metadata(json_path, "en")
 
     def test_load_notice_metadata_empty_json(self, tmp_test_dir: Path) -> None:
         """Verify error for empty JSON.
@@ -767,7 +767,7 @@ class TestLoadNoticeMetadata:
         json_path.write_text("{}")
 
         with pytest.raises(ValueError, match="No client data"):
-            encrypt_notice._load_notice_metadata(json_path, "en")
+            encrypt_notice.load_notice_metadata(json_path, "en")
 
 
 @pytest.mark.unit
