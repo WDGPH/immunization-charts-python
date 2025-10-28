@@ -186,8 +186,8 @@ class TemplateField(Enum):
         Postal/ZIP code.
     LANGUAGE_CODE : str
         ISO 639-1 language code: 'en' or 'fr'.
-    DELIVERY_DATE : str
-        Delivery date of notice (from config parameter, if set).
+    NOTICE_DELIVERY_DATE : str
+        Notice delivery date (from config parameter, if set).
 
     See Also
     --------
@@ -220,7 +220,7 @@ class TemplateField(Enum):
 
     # Metadata
     LANGUAGE_CODE = "language_code"
-    DELIVERY_DATE = "delivery_date"
+    NOTICE_DELIVERY_DATE = "date_notice_delivery"
 
     @classmethod
     def all_values(cls) -> set[str]:

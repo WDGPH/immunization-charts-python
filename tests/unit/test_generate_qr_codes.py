@@ -46,15 +46,15 @@ class TestLoadQrSettings:
                     "qr": {
                         "payload_template": "https://example.com/update?client_id={client_id}"
                     },
-                    "delivery_date": "2025-04-08",
+                    "date_notice_delivery": "2025-04-08",
                 }
             )
         )
 
-        template, delivery_date = generate_qr_codes.load_qr_settings(config_path)
+        template, date_notice_delivery = generate_qr_codes.load_qr_settings(config_path)
 
         assert template == "https://example.com/update?client_id={client_id}"
-        assert delivery_date == "2025-04-08"
+        assert date_notice_delivery == "2025-04-08"
 
     def test_load_qr_settings_missing_template_raises_error(
         self, tmp_test_dir: Path

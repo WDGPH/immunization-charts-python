@@ -69,7 +69,6 @@ class TestRenderNotice:
             context,
             logo_path="/path/to/logo.png",
             signature_path="/path/to/signature.png",
-            parameters_path="/path/to/parameters.yaml",
         )
 
         assert isinstance(result, str)
@@ -99,7 +98,6 @@ class TestRenderNotice:
                 context,
                 logo_path="/path/to/logo.png",
                 signature_path="/path/to/signature.png",
-                parameters_path="/path/to/parameters.yaml",
             )
 
     def test_render_notice_missing_multiple_keys_raises_error(self) -> None:
@@ -119,7 +117,6 @@ class TestRenderNotice:
                 context,
                 logo_path="/path/to/logo.png",
                 signature_path="/path/to/signature.png",
-                parameters_path="/path/to/parameters.yaml",
             )
 
     def test_render_notice_substitutes_logo_path(self) -> None:
@@ -144,7 +141,6 @@ class TestRenderNotice:
             context,
             logo_path=logo_path,
             signature_path="/sig.png",
-            parameters_path="/params.yaml",
         )
 
         assert logo_path in result
@@ -171,37 +167,9 @@ class TestRenderNotice:
             context,
             logo_path="/logo.png",
             signature_path=signature_path,
-            parameters_path="/params.yaml",
         )
 
         assert signature_path in result
-
-    def test_render_notice_substitutes_parameters_path(self) -> None:
-        """Verify parameters path is substituted in template (French).
-
-        Real-world significance:
-        - Typst template needs to read config from parameters.yaml
-        - Path must match where config file is located
-        """
-        context = {
-            "client_row": "()",
-            "client_data": "{}",
-            "vaccines_due_str": '""',
-            "vaccines_due_array": "()",
-            "received": "()",
-            "num_rows": "0",
-            "chart_diseases_translated": '("Diphtérie", "Tétanos", "Coqueluche")',
-        }
-
-        parameters_path = "/etc/config/parameters.yaml"
-        result = render_notice(
-            context,
-            logo_path="/logo.png",
-            signature_path="/sig.png",
-            parameters_path=parameters_path,
-        )
-
-        assert parameters_path in result
 
     def test_render_notice_includes_template_prefix(self) -> None:
         """Verify output includes template header and imports (French).
@@ -224,7 +192,6 @@ class TestRenderNotice:
             context,
             logo_path="/logo.png",
             signature_path="/sig.png",
-            parameters_path="/params.yaml",
         )
 
         # Should include import statement
@@ -251,7 +218,6 @@ class TestRenderNotice:
             context,
             logo_path="/logo.png",
             signature_path="/sig.png",
-            parameters_path="/params.yaml",
         )
 
         # Dynamic block placeholders should be substituted
@@ -280,7 +246,6 @@ class TestRenderNotice:
             context,
             logo_path="/logo.png",
             signature_path="/sig.png",
-            parameters_path="/params.yaml",
         )
 
         # Verify complex values are included
@@ -309,7 +274,6 @@ class TestRenderNotice:
             context,
             logo_path="/logo.png",
             signature_path="/sig.png",
-            parameters_path="/params.yaml",
         )
 
         # Should still render successfully
@@ -337,7 +301,6 @@ class TestRenderNotice:
             context,
             logo_path="/logo.png",
             signature_path="/sig.png",
-            parameters_path="/params.yaml",
         )
 
         # Should contain French text markers
@@ -385,11 +348,11 @@ class TestTemplateConstants:
         """Verify TEMPLATE_PREFIX has path placeholders to substitute (French).
 
         Real-world significance:
-        - Logo, signature, and parameters paths must be replaceable
+        - Logo and signature paths must be replaceable
+        - Parameters path no longer used (date pre-formatted in Python)
         """
         assert "__LOGO_PATH__" in TEMPLATE_PREFIX
         assert "__SIGNATURE_PATH__" in TEMPLATE_PREFIX
-        assert "__PARAMETERS_PATH__" in TEMPLATE_PREFIX
 
     def test_french_template_uses_french_client_info_function(self) -> None:
         """Verify French template calls French-specific functions.

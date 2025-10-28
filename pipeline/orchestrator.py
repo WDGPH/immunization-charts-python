@@ -254,7 +254,6 @@ def run_step_4_generate_notices(
     artifacts_dir = output_dir / "artifacts"
     logo_path = assets_dir / "logo.png"
     signature_path = assets_dir / "signature.png"
-    parameters_path = config_dir / "parameters.yaml"
 
     # Generate Typst files using main function
     generated = generate_notices.main(
@@ -262,7 +261,6 @@ def run_step_4_generate_notices(
         artifacts_dir,
         logo_path,
         signature_path,
-        parameters_path,
     )
     print(f"Generated {len(generated)} Typst files in {artifacts_dir}")
 

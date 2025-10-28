@@ -45,13 +45,6 @@ TEMPLATE_PREFIX = """// --- CCEYA NOTICE TEMPLATE (TEST VERSION) --- //
   size: 10pt
 )
 
-// Read current date from yaml file
-#let date(contents) = {
-  contents.date_today
-}
-  
-#let date = date(yaml("__PARAMETERS_PATH__"))
-
 // Immunization Notice Section
 #let immunization_notice(client, client_id, immunizations_due, date, font_size) = block[
 
@@ -131,6 +124,7 @@ DYNAMIC_BLOCK = """
 #let received = __RECEIVED__
 #let num_rows = __NUM_ROWS__
 #let diseases = __CHART_DISEASES_TRANSLATED__
+#let date = data.date_data_cutoff
 
 #set page(margin: (top: 1cm, bottom: 2cm, left: 1.75cm, right: 2cm))
 
@@ -147,7 +141,6 @@ def render_notice(
     *,
     logo_path: str,
     signature_path: str,
-    parameters_path: str,
 ) -> str:
     """Render the Typst document for a single French notice.
 
@@ -167,8 +160,6 @@ def render_notice(
         Absolute path to logo image file
     signature_path : str
         Absolute path to signature image file
-    parameters_path : str
-        Absolute path to parameters YAML file
 
     Returns
     -------
@@ -194,10 +185,8 @@ def render_notice(
         missing_keys = ", ".join(missing)
         raise KeyError(f"Missing context keys: {missing_keys}")
 
-    prefix = (
-        TEMPLATE_PREFIX.replace("__LOGO_PATH__", logo_path)
-        .replace("__SIGNATURE_PATH__", signature_path)
-        .replace("__PARAMETERS_PATH__", parameters_path)
+    prefix = TEMPLATE_PREFIX.replace("__LOGO_PATH__", logo_path).replace(
+        "__SIGNATURE_PATH__", signature_path
     )
 
     dynamic = (

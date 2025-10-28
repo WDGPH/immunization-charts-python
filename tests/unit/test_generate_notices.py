@@ -349,6 +349,27 @@ class TestBuildTemplateContext:
 
         assert int(context["num_rows"]) == 0
 
+    def test_build_template_context_includes_formatted_date(self) -> None:
+        """Verify context includes formatted date_data_cutoff in client_data.
+
+        Real-world significance:
+        - Notices must display the date_data_cutoff from configuration
+        - Date must be formatted in the client's language (en or fr)
+        - Template receives date as part of client_data dict
+        """
+        client = sample_input.create_test_client_record()
+
+        context = generate_notices.build_template_context(client)
+
+        # client_data is Typst-serialized; should contain date_data_cutoff key
+        assert "client_data" in context
+        client_data_str = context["client_data"]
+        # The serialized dict should contain the date_data_cutoff key
+        assert (
+            "date_data_cutoff:" in client_data_str
+            or "date_data_cutoff" in client_data_str
+        )
+
 
 @pytest.mark.unit
 class TestLanguageSupport:
