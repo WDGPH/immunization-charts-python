@@ -159,7 +159,7 @@ class TemplateField(Enum):
     Fields
     ------
     CLIENT_ID : str
-        Unique client identifier (OEN or similar).
+        Unique client identifier
     FIRST_NAME : str
         Client's given name.
     LAST_NAME : str
@@ -186,8 +186,6 @@ class TemplateField(Enum):
         Postal/ZIP code.
     LANGUAGE_CODE : str
         ISO 639-1 language code: 'en' or 'fr'.
-    NOTICE_DELIVERY_DATE : str
-        Notice delivery date (from config parameter, if set).
 
     See Also
     --------
@@ -220,7 +218,6 @@ class TemplateField(Enum):
 
     # Metadata
     LANGUAGE_CODE = "language_code"
-    NOTICE_DELIVERY_DATE = "date_notice_delivery"
 
     @classmethod
     def all_values(cls) -> set[str]:

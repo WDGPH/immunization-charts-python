@@ -214,38 +214,6 @@ uv run pytest -m "not e2e"
 
 > ✅ Before running tests, make sure you've installed the `dev` group at least once (`uv sync --group dev`) so that testing dependencies are available.
 
-## 🏷️ Template Field Reference
-
-Both QR code payloads and PDF password generation use **centralized template field validation** through the `TemplateField` enum (see `pipeline/enums.py`). This ensures consistent, safe placeholder handling across all template rendering steps.
-
-### Available Template Fields
-
-| Field | Format | Example | Notes |
-|-------|--------|---------|-------|
-| `client_id` | String | `12345` | Unique client identifier |
-| `first_name` | String | `John` | Client's given name |
-| `last_name` | String | `Doe` | Client's family name |
-| `name` | String | `John Doe` | Full name (auto-combined) |
-| `date_of_birth` | Localized date | `Jan 1, 2020` or `1 janvier 2020` | Formatted per language |
-| `date_of_birth_iso` | ISO 8601 | `2020-01-01` | YYYY-MM-DD format |
-| `date_of_birth_iso_compact` | Compact ISO | `20200101` | YYYYMMDD format (no hyphens) |
-| `school` | String | `Lincoln School` | School name |
-| `board` | String | `TDSB` | School board name |
-| `street_address` | String | `123 Main St` | Full street address |
-| `city` | String | `Toronto` | City/municipality |
-| `province` | String | `ON` | Province/territory |
-| `postal_code` | String | `M5V 3A8` | Postal/ZIP code |
-| `language_code` | String | `en` or `fr` | ISO 639-1 language code |
-| `delivery_date` | Date string | `2025-04-08` | From `delivery_date` config parameter |
-
-### Template Validation
-
-All template placeholders are **validated at runtime**:
-- ✅ Placeholders must exist in the generated context
-- ✅ Placeholders must be in the allowed field list (no typos like `{client_ID}`)
-- ✅ Invalid placeholders raise clear error messages with allowed fields listed
-
-This prevents silent failures from configuration typos and ensures templates are correct before processing.
 
 ## 📂 Input Data
 

@@ -266,7 +266,6 @@ class TestTemplateField:
         assert TemplateField.PROVINCE.value == "province"
         assert TemplateField.POSTAL_CODE.value == "postal_code"
         assert TemplateField.LANGUAGE_CODE.value == "language_code"
-        assert TemplateField.NOTICE_DELIVERY_DATE.value == "date_notice_delivery"
 
     def test_template_field_enum_has_all_fields(self) -> None:
         """Verify TemplateField enum contains all expected fields.
@@ -290,7 +289,6 @@ class TestTemplateField:
             "province",
             "postal_code",
             "language_code",
-            "date_notice_delivery",
         }
         assert TemplateField.all_values() == expected
 
@@ -302,7 +300,7 @@ class TestTemplateField:
         """
         values = TemplateField.all_values()
         assert isinstance(values, set)
-        assert len(values) == 15
+        assert len(values) == 14
 
     def test_template_field_count_matches_enum(self) -> None:
         """Verify number of fields matches enum member count.

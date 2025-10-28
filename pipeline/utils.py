@@ -134,7 +134,6 @@ def validate_and_format_template(
 def build_client_context(
     client_data: dict,
     language: str,
-    date_notice_delivery: str | None = None,
 ) -> dict[str, str]:
     """Build template context dict from client metadata for templating.
 
@@ -156,8 +155,6 @@ def build_client_context(
         ISO 639-1 language code ('en' for English, 'fr' for French). Must be a valid
         Language enum value (see pipeline.enums.Language). Validated using
         Language.from_string() at entry points; this function assumes language is valid.
-    date_notice_delivery : str | None
-        Optional notice delivery date for template rendering
 
     Returns
     -------
@@ -171,7 +168,6 @@ def build_client_context(
         - school, board
         - postal_code, city, province, street_address
         - language_code ('en' or 'fr')
-        - date_notice_delivery (if provided)
 
     Examples
     --------
@@ -222,8 +218,5 @@ def build_client_context(
         "street_address": string_or_empty(contact.get("street", "")),
         "language_code": language,  # ISO code: 'en' or 'fr'
     }
-
-    if date_notice_delivery:
-        context["date_notice_delivery"] = string_or_empty(date_notice_delivery)
 
     return context

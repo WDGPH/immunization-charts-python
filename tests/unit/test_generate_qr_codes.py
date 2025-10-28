@@ -45,16 +45,14 @@ class TestLoadQrSettings:
                 {
                     "qr": {
                         "payload_template": "https://example.com/update?client_id={client_id}"
-                    },
-                    "date_notice_delivery": "2025-04-08",
+                    }
                 }
             )
         )
 
-        template, date_notice_delivery = generate_qr_codes.load_qr_settings(config_path)
+        template = generate_qr_codes.load_qr_settings(config_path)
 
         assert template == "https://example.com/update?client_id={client_id}"
-        assert date_notice_delivery == "2025-04-08"
 
     def test_load_qr_settings_missing_template_raises_error(
         self, tmp_test_dir: Path
@@ -99,11 +97,11 @@ class TestLoadQrSettings:
             generate_qr_codes.load_qr_settings(Path("/nonexistent/config.yaml"))
 
     def test_load_qr_settings_without_delivery_date(self, tmp_test_dir: Path) -> None:
-        """Verify delivery_date is optional.
+        """Verify template is loaded when delivery_date is not provided.
 
         Real-world significance:
         - Some deployments may not need delivery_date in QR payloads
-        - Should default to None if not provided
+        - Should load template successfully regardless
         """
         config_path = tmp_test_dir / "config.yaml"
         config_path.write_text(
@@ -112,10 +110,9 @@ class TestLoadQrSettings:
             )
         )
 
-        template, delivery_date = generate_qr_codes.load_qr_settings(config_path)
+        template = generate_qr_codes.load_qr_settings(config_path)
 
         assert template == "https://example.com?id={client_id}"
-        assert delivery_date is None
 
 
 @pytest.mark.unit
