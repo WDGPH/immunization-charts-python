@@ -650,8 +650,15 @@ def batch_pdfs(config: BatchConfig) -> List[BatchResult]:
 
 
 if __name__ == "__main__":
-    # This script is now called only from orchestrator.py
-    # and should not be invoked directly
-    raise RuntimeError(
-        "batch_pdfs.py should not be invoked directly. Use orchestrator.py instead."
+    import sys
+
+    print(
+        "⚠️  Direct invocation: This module is typically executed via orchestrator.py.\n"
+        "   Re-running a single step is valid when pipeline artifacts are retained on disk,\n"
+        "   allowing you to skip earlier steps and regenerate output.\n"
+        "   Note: Output will overwrite any previous files.\n"
+        "\n"
+        "   For typical usage, run: uv run viper <input> <language>\n",
+        file=sys.stderr,
     )
+    sys.exit(1)
