@@ -172,13 +172,13 @@ def read_preprocessed_artifact(path: Path) -> Dict[str, Any]:
         raise ValueError(f"Preprocessed artifact is not valid JSON: {path}") from exc
 
 
-def load_qr_settings(config_path: Path | None = None) -> tuple[str, Optional[str]]:
-    """Load QR configuration from parameters.yaml file.
+def load_qr_settings(config_path: Path | None = None) -> str:
+    """Load QR payload template from parameters.yaml file.
 
     Raises ValueError if qr.payload_template is not specified in the configuration.
 
     Returns:
-        Tuple of (payload_template, date_notice_delivery)
+        QR payload template string
     """
     if config_path is None:
         config_path = PARAMETERS_PATH
@@ -204,9 +204,8 @@ def load_qr_settings(config_path: Path | None = None) -> tuple[str, Optional[str
         )
 
     payload_template = template_config
-    date_notice_delivery = params.get("date_notice_delivery")
 
-    return payload_template, date_notice_delivery
+    return payload_template
 
 
 def generate_qr_codes(
@@ -253,7 +252,7 @@ def generate_qr_codes(
 
     # Load QR settings (will raise ValueError if template not specified)
     try:
-        payload_template, date_notice_delivery = load_qr_settings(config_path)
+        payload_template = load_qr_settings(config_path)
     except (FileNotFoundError, ValueError) as exc:
         raise RuntimeError(f"Cannot generate QR codes: {exc}") from exc
 
@@ -268,7 +267,7 @@ def generate_qr_codes(
         client_id = client.get("client_id")
 
         # Build context using centralized utility (handles all field extraction)
-        qr_context = build_client_context(client, language, date_notice_delivery)
+        qr_context = build_client_context(client, language)
 
         # Generate payload (template is now required)
         try:
