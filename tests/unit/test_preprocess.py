@@ -456,3 +456,102 @@ class TestBuildPreprocessResult:
         )
 
         assert len(result.clients) == 1
+
+    def test_build_result_detects_duplicate_client_ids(
+        self, default_vaccine_reference
+    ) -> None:
+        """Verify duplicate client IDs are detected and warned.
+
+        Real-world significance:
+        - Source data may contain duplicate client IDs (data entry errors)
+        - Must warn about this data quality issue
+        - Later records with same ID will overwrite earlier ones in notice generation
+        """
+        df = sample_input.create_test_input_dataframe(num_clients=2)
+        # Force duplicate client IDs
+        df.loc[0, "CLIENT ID"] = "C123456789"
+        df.loc[1, "CLIENT ID"] = "C123456789"
+
+        normalized = preprocess.ensure_required_columns(df)
+
+        result = preprocess.build_preprocess_result(
+            normalized,
+            language="en",
+            vaccine_reference=default_vaccine_reference,
+            ignore_agents=[],
+        )
+
+        # Should have 2 clients (no deduplication)
+        assert len(result.clients) == 2
+
+        # Should have a warning about duplicates
+        duplicate_warnings = [w for w in result.warnings if "Duplicate client ID" in w]
+        assert len(duplicate_warnings) == 1
+        assert "C123456789" in duplicate_warnings[0]
+        assert "2 times" in duplicate_warnings[0]
+        assert "overwrite" in duplicate_warnings[0]
+
+    def test_build_result_detects_multiple_duplicate_client_ids(
+        self, default_vaccine_reference
+    ) -> None:
+        """Verify multiple sets of duplicate client IDs are detected.
+
+        Real-world significance:
+        - May have multiple different client IDs that are duplicated
+        - Each duplicate set should generate a separate warning
+        """
+        df = sample_input.create_test_input_dataframe(num_clients=5)
+        # Create two sets of duplicates
+        df.loc[0, "CLIENT ID"] = "C111111111"
+        df.loc[1, "CLIENT ID"] = "C111111111"
+        df.loc[2, "CLIENT ID"] = "C111111111"
+        df.loc[3, "CLIENT ID"] = "C222222222"
+        df.loc[4, "CLIENT ID"] = "C222222222"
+
+        normalized = preprocess.ensure_required_columns(df)
+
+        result = preprocess.build_preprocess_result(
+            normalized,
+            language="en",
+            vaccine_reference=default_vaccine_reference,
+            ignore_agents=[],
+        )
+
+        # Should have 5 clients (no deduplication)
+        assert len(result.clients) == 5
+
+        # Should have warnings for both duplicates
+        duplicate_warnings = [w for w in result.warnings if "Duplicate client ID" in w]
+        assert len(duplicate_warnings) == 2
+
+        # Check each duplicate is mentioned
+        warning_text = " ".join(duplicate_warnings)
+        assert "C111111111" in warning_text
+        assert "3 times" in warning_text
+        assert "C222222222" in warning_text
+        assert "2 times" in warning_text
+
+    def test_build_result_no_warning_for_unique_client_ids(
+        self, default_vaccine_reference
+    ) -> None:
+        """Verify no warning when all client IDs are unique.
+
+        Real-world significance:
+        - Normal case with clean data should not produce duplicate warnings
+        """
+        df = sample_input.create_test_input_dataframe(num_clients=3)
+        normalized = preprocess.ensure_required_columns(df)
+
+        result = preprocess.build_preprocess_result(
+            normalized,
+            language="en",
+            vaccine_reference=default_vaccine_reference,
+            ignore_agents=[],
+        )
+
+        # Should have 3 unique clients
+        assert len(result.clients) == 3
+
+        # Should have NO warnings about duplicates
+        duplicate_warnings = [w for w in result.warnings if "Duplicate client ID" in w]
+        assert len(duplicate_warnings) == 0

@@ -671,9 +671,24 @@ def build_preprocess_result(
 
         clients.append(client)
 
+    # Detect and warn about duplicate client IDs
+    client_id_counts: dict[str, int] = {}
+    for client in clients:
+        client_id_counts[client.client_id] = (
+            client_id_counts.get(client.client_id, 0) + 1
+        )
+
+    duplicates = {cid: count for cid, count in client_id_counts.items() if count > 1}
+    if duplicates:
+        for cid in sorted(duplicates.keys()):
+            warnings.add(
+                f"Duplicate client ID '{cid}' found {duplicates[cid]} times. "
+                "Later records will overwrite earlier ones in generated notices."
+            )
+
     return PreprocessResult(
         clients=clients,
-        warnings=sorted(warnings),
+        warnings=list(warnings),
     )
 
 
