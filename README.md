@@ -153,13 +153,13 @@ uv run viper <input_file> <language> [--output-dir PATH]
 - `--config-dir PATH`: Configuration directory (default: ../config)
 
 **Configuration:**
-All pipeline behavior is controlled via `config/parameters.yaml`:
-- `pipeline.auto_remove_output`: Automatically remove existing output before processing (true/false)
-- `pipeline.keep_intermediate_files`: Preserve intermediate .typ, .json, and per-client .pdf files (true/false)
-- `qr.enabled`: Enable or disable QR code generation (true/false)
-- `encryption.enabled`: Enable or disable PDF encryption (true/false, disables batching if true)
-- `batching.batch_size`: Enable batching with at most N clients per batch (0 disables batching)
-- `batching.group_by`: Batch grouping strategy (null for sequential, "school", or "board")
+See the complete configuration reference and examples in `config/README.md`:
+- Configuration overview and feature flags
+- QR Code settings (payload templating)
+- PDF encryption settings (password templating)
+- Disease/chart/translation files
+
+Direct link: [Configuration Reference](./config/README.md)
 
 **Examples:**
 ```bash
@@ -231,7 +231,7 @@ The `preprocess.py` (Step 2) module reads raw input data and produces a normaliz
 - **Processing:**
   - Validates schema (required columns, data types)
   - Cleans and transforms client data (dates, addresses, vaccine history)
-  - Determines over/under 16 years old for recipient determination (uses `delivery_date` from `parameters.yaml`)
+  - Determines over/under 16 years old for recipient determination (uses `date_notice_delivery` from `parameters.yaml`)
   - Assigns deterministic per-client sequence numbers sorted by: school → last name → first name → client ID
   - Maps vaccine history against disease reference data
   - Synthesizes stable school/board identifiers when missing
@@ -264,100 +264,10 @@ The preprocessed artifact contains:
 }
 ```
 
-## QR Code Configuration
+## Configuration quick links
 
-QR code generation can be enabled/disabled in `config/parameters.yaml` under the `qr` section. The payload supports flexible templating using client metadata as placeholders.
-
-**Available placeholders for QR payloads**
-
-See [Template Field Reference](#-template-field-reference) above for the complete list and examples.
-
-**Common examples**
-- `client_id`: Client identifier
-- `date_of_birth_iso`: ISO date format (YYYY-MM-DD)
-- `date_of_birth_iso_compact`: Compact format (YYYYMMDD)
-- `first_name`, `last_name`, `name`: Name variations
-- `school`, `postal_code`, `city`, `province`: Location info
-- `language_code`: ISO language code ('en' or 'fr')
-- `delivery_date`: Notice delivery date from config
-
-**Sample override in `config/parameters.yaml`**
-```yaml
-qr:
-  payload_template: https://www.test-immunization.ca/update?client_id={client_id}&dob={date_of_birth_iso}&lang={language_code}
-```
-
-Update the configuration file, rerun the pipeline, and regenerated notices will reflect the new QR payload.
-
-## PDF Encryption Configuration
-
-PDF encryption can be customised in `config/parameters.yaml` under the `encryption` section. The password generation supports flexible templating similar to QR payloads, allowing you to combine multiple fields with custom formats.
-
-**Available placeholders for password templates**
-
-See [Template Field Reference](#-template-field-reference) above for the complete list and examples.
-
-**Common password template strategies**
-- Simple: `{date_of_birth_iso_compact}` – DOB only
-- Compound: `{client_id}{date_of_birth_iso_compact}` – ID + DOB
-- Formatted: `{client_id}-{date_of_birth_iso}` – ID-DOB with hyphens
-
-**Sample configurations in `config/parameters.yaml`**
-```yaml
-encryption:
-  # Use only DOB in compact format (default)
-  password:
-    template: "{date_of_birth_iso_compact}"
-
-  # Combine client_id and DOB
-  password:
-    template: "{client_id}{date_of_birth_iso_compact}"
-
-  # Use formatted DOB with dashes
-  password:
-    template: "{client_id}-{date_of_birth_iso}"
-```
-
-All templates are validated at pipeline runtime to catch configuration errors early and provide clear error messages.
-
-## PDF Encryption Configuration
-
-PDF encryption can be customised in `config/parameters.yaml` under the `encryption` section. The password generation supports flexible templating similar to QR payloads, allowing you to combine multiple fields with custom formats.
-
-**Available placeholders for password templates**
-- `client_id`
-- `first_name`
-- `last_name`
-- `name`
-- `date_of_birth` (language-formatted string)
-- `date_of_birth_iso` (`YYYY-MM-DD`)
-- `date_of_birth_iso_compact` (`YYYYMMDD` - compact format)
-- `school`
-- `city`
-- `postal_code`
-- `province`
-- `street_address`
-- `language` (`english` or `french`)
-- `language_code` (`en` or `fr`)
-- `delivery_date`
-
-**Sample configurations in `config/parameters.yaml`**
-```yaml
-encryption:
-  # Use only DOB in compact format (default)
-  password:
-    template: "{date_of_birth_iso_compact}"
-
-  # Combine client_id and DOB
-  password:
-    template: "{client_id}{date_of_birth_iso_compact}"
-
-  # Use formatted DOB with dashes
-  password:
-    template: "{client_id}-{date_of_birth_iso}"
-```
-
-Update the configuration file, rerun the pipeline, and regenerated notices will reflect the new QR payload.
+- QR Code settings: see [QR Code Configuration](./config/README.md#qr-code-configuration)
+- PDF Encryption settings: see [PDF Encryption Configuration](./config/README.md#pdf-encryption-configuration)
 ## Changelog
 
 See [CHANGELOG.md](./CHANGELOG.md) for details of each release.
