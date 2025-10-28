@@ -4,6 +4,22 @@ This directory contains all configuration files for the immunization pipeline. E
 
 ---
 
+## Contents
+
+- [Data Flow Through Configuration Files](#data-flow-through-configuration-files)
+- [Required Configuration Files](#required-configuration-files)
+  - [`parameters.yaml`](#parametersyaml)
+    - [Feature flags overview](#feature-flags-overview)
+    - [Date controls](#date-controls)
+    - [Chart diseases header](#chart_diseases_header-configuration)
+  - [`vaccine_reference.json`](#vaccine_referencejson)
+  - [`disease_normalization.json`](#disease_normalizationjson)
+  - [`translations/` Directory](#translations-directory)
+- [QR Code Configuration](#qr-code-configuration)
+- [PDF Encryption Configuration](#pdf-encryption-configuration)
+- [🏷️ Template Field Reference](#template-field-reference)
+- [Adding New Configurations](#adding-new-configurations)
+
 ## Data Flow Through Configuration Files
 
 ```
@@ -44,7 +60,18 @@ Typst Files (with localized, filtered disease names)
 - **Date controls for data freshness and eligibility logic**
 - **Chart disease selection via `chart_diseases_header` (CRITICAL)**
 
-**Date controls:**
+#### Feature flags overview
+
+These are the most commonly adjusted options in `parameters.yaml`:
+
+- `pipeline.auto_remove_output`: Automatically remove existing output before processing (true/false)
+- `pipeline.keep_intermediate_files`: Preserve intermediate .typ, .json, and per-client .pdf files (true/false)
+- `qr.enabled`: Enable or disable QR code generation (true/false)
+- `encryption.enabled`: Enable or disable PDF encryption (true/false; disables batching if true)
+- `batching.batch_size`: Enable batching with at most N clients per batch (0 disables batching)
+- `batching.group_by`: Batch grouping strategy (null for sequential, `school`, or `board`)
+
+#### Date controls
 - `date_data_cutoff` (ISO 8601 string) records when the source data was extracted. It renders in notices using the client's language via Babel so that readers see a localized calendar date. Change this only when regenerating notices from a fresher extract.
 - `date_notice_delivery` (ISO 8601 string) fixes the reference point for age-based eligibility checks and QR payloads. Preprocessing uses this value to decide if a client is 16 or older, so adjust it cautiously and keep it aligned with the actual delivery or mailing date.
 
@@ -234,6 +261,60 @@ All template placeholders are **validated at runtime**:
 - ✅ Invalid placeholders raise clear error messages with allowed fields listed
 
 This prevents silent failures from configuration typos and ensures templates are correct before processing.
+
+---
+
+## QR Code Configuration
+
+QR code generation can be enabled/disabled in `config/parameters.yaml` under the `qr` section. The payload supports flexible templating using client metadata as placeholders.
+
+Refer to the [Template Field Reference](#template-field-reference) for the complete list of supported placeholders.
+
+Example override in `config/parameters.yaml`:
+
+```yaml
+qr:
+  enabled: true
+  payload_template: https://www.test-immunization.ca/update?client_id={client_id}&dob={date_of_birth_iso}&lang={language_code}
+```
+
+Tip:
+- Use `{date_of_birth_iso}` or `{date_of_birth_iso_compact}` for predictable date formats
+- The delivery date available to templates is `date_notice_delivery`
+
+After updating the configuration, rerun the pipeline and regenerated notices will reflect the new QR payload.
+
+---
+
+## PDF Encryption Configuration
+
+PDF encryption can be customized in `config/parameters.yaml` under the `encryption` section. Passwords are built via the same placeholder templating used for QR payloads.
+
+Refer to the [Template Field Reference](#template-field-reference) for the complete list of supported placeholders.
+
+Common strategies:
+- Simple: `{date_of_birth_iso_compact}` – DOB only
+- Compound: `{client_id}{date_of_birth_iso_compact}` – ID + DOB
+- Formatted: `{client_id}-{date_of_birth_iso}` – hyphenated
+
+Sample configurations in `config/parameters.yaml`:
+
+```yaml
+encryption:
+  enabled: false
+  password:
+    template: "{date_of_birth_iso_compact}"
+
+  # Or combine fields
+  password:
+    template: "{client_id}{date_of_birth_iso_compact}"
+
+  # Or hyphenate
+  password:
+    template: "{client_id}-{date_of_birth_iso}"
+```
+
+All templates are validated at runtime to catch configuration errors early and provide clear, allowed-field guidance.
 
 ---
 
