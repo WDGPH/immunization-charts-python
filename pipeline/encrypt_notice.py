@@ -120,7 +120,7 @@ def encrypt_pdf(file_path: str, context: dict) -> str:
     reader = PdfReader(file_path, strict=False)
     writer = PdfWriter()
 
-    # Use pypdf's standard append method (pinned via uv.lock)
+    # Use pypdf's standard append method
     writer.append(reader)
 
     if reader.metadata:
