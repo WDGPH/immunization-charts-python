@@ -174,7 +174,6 @@ class TestNoticeToCompileArtifactContract:
         # Notice generation needs these fields for template rendering
         assert client.person["first_name"]
         assert client.person["last_name"]
-        assert client.person["full_name"]
         assert client.person["date_of_birth_display"]
         assert client.vaccines_due  # List of diseases needing immunization
         assert client.vaccines_due_list  # Expanded list

@@ -38,7 +38,11 @@ class TestCriticalStepErrorPropagation:
                     sequence="00001",
                     client_id="C001",
                     language="fr",  # Mismatch!
-                    person={"full_name": "Test", "date_of_birth_display": "2010-01-01"},
+                    person={
+                        "first_name": "Test",
+                        "last_name": "",
+                        "date_of_birth_display": "2010-01-01",
+                    },
                     school={"name": "Test School"},
                     board={"name": "Test Board"},
                     contact={
@@ -86,7 +90,8 @@ class TestCriticalStepErrorPropagation:
                     client_id="C001",
                     language="en",
                     person={
-                        "full_name": "Alice",
+                        "first_name": "Alice",
+                        "last_name": "",
                         "date_of_birth_display": "2010-01-01",
                     },
                     school={"name": "Test School"},
@@ -106,7 +111,11 @@ class TestCriticalStepErrorPropagation:
                     sequence="00002",
                     client_id="C002",
                     language="en",
-                    person={"full_name": "Bob", "date_of_birth_display": "2010-02-02"},
+                    person={
+                        "first_name": "Bob",
+                        "last_name": "",
+                        "date_of_birth_display": "2010-02-02",
+                    },
                     school={"name": "Test School"},
                     board={"name": "Test Board"},
                     contact={
