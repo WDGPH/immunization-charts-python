@@ -25,8 +25,8 @@ cleanup:
   - typ
   - json
   - csv
-date_today: August 31, 2025
-delivery_date: '2025-04-08'
+date_data_cutoff: '2025-08-31'
+date_notice_delivery: '2025-04-08'
 encryption:
   enabled: false
   password:

@@ -113,6 +113,42 @@ def convert_date_string(
     return format_date(date_obj, format="long", locale=locale)
 
 
+def format_iso_date_for_language(iso_date: str, language: str) -> str:
+    """Format an ISO date string with locale-aware formatting for the given language.
+
+    Converts a date from ISO format (YYYY-MM-DD) to a long, locale-specific
+    display format using Babel. This function handles language-specific date
+    formatting for templates.
+
+    Parameters
+    ----------
+    iso_date : str
+        Date in ISO format (YYYY-MM-DD), e.g., "2025-08-31".
+    language : str
+        ISO 639-1 language code ("en", "fr", etc.).
+
+    Returns
+    -------
+    str
+        Formatted date in the specified language, e.g.,
+        "August 31, 2025" (en) or "31 août 2025" (fr).
+
+    Raises
+    ------
+    ValueError
+        If iso_date is not in YYYY-MM-DD format.
+    """
+    locale_map = {"en": "en_US", "fr": "fr_FR"}
+    locale = locale_map.get(language, language)
+
+    try:
+        date_obj = datetime.strptime(iso_date.strip(), "%Y-%m-%d")
+    except ValueError:
+        raise ValueError(f"Invalid ISO date format: {iso_date}. Expected YYYY-MM-DD.")
+
+    return format_date(date_obj, format="long", locale=locale)
+
+
 def convert_date_iso(date_str: str) -> str:
     """Convert a date from English display format to ISO format.
 
@@ -133,24 +169,24 @@ def convert_date_iso(date_str: str) -> str:
     return date_obj.strftime("%Y-%m-%d")
 
 
-def over_16_check(date_of_birth, delivery_date):
-    """Check if a client is over 16 years old on delivery date.
+def over_16_check(date_of_birth, date_notice_delivery):
+    """Check if a client is over 16 years old on notice delivery date.
 
     Parameters
     ----------
     date_of_birth : str
         Date of birth in YYYY-MM-DD format.
-    delivery_date : str
-        Delivery date in YYYY-MM-DD format.
+    date_notice_delivery : str
+        Notice delivery date in YYYY-MM-DD format.
 
     Returns
     -------
     bool
-        True if the client is over 16 years old on delivery_date, False otherwise.
+        True if the client is over 16 years old on date_notice_delivery, False otherwise.
     """
 
     birth_datetime = datetime.strptime(date_of_birth, "%Y-%m-%d")
-    delivery_datetime = datetime.strptime(delivery_date, "%Y-%m-%d")
+    delivery_datetime = datetime.strptime(date_notice_delivery, "%Y-%m-%d")
 
     age = delivery_datetime.year - birth_datetime.year
 
@@ -550,11 +586,11 @@ def build_preprocess_result(
     warnings: set[str] = set()
     working = normalize_dataframe(df)
 
-    # Load parameters for delivery_date and chart_diseases_header
+    # Load parameters for date_notice_delivery and chart_diseases_header
     params = {}
     if PARAMETERS_PATH.exists():
         params = yaml.safe_load(PARAMETERS_PATH.read_text(encoding="utf-8")) or {}
-    delivery_date: Optional[str] = params.get("delivery_date")
+    date_notice_delivery: Optional[str] = params.get("date_notice_delivery")
     chart_diseases_header: List[str] = params.get("chart_diseases_header", [])
 
     working["SCHOOL_ID"] = working.apply(
@@ -602,7 +638,7 @@ def build_preprocess_result(
         formatted_dob = (
             convert_date_string(dob_iso, locale="fr")
             if language_enum == Language.FRENCH and dob_iso
-            else convert_date_string(dob_iso, locale="en")
+            else (convert_date_string(dob_iso, locale="en") if dob_iso else None)
         )
         vaccines_due = process_vaccines_due(row.OVERDUE_DISEASE, language)  # type: ignore[attr-defined]
         vaccines_due_list = [
@@ -620,8 +656,8 @@ def build_preprocess_result(
 
         if not pd.isna(row.AGE):  # type: ignore[attr-defined]
             over_16 = bool(row.AGE >= 16)  # type: ignore[attr-defined]
-        elif dob_iso and delivery_date:
-            over_16 = over_16_check(dob_iso, delivery_date)
+        elif dob_iso and date_notice_delivery:
+            over_16 = over_16_check(dob_iso, date_notice_delivery)
         else:
             over_16 = False
 

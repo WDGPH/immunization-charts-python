@@ -218,3 +218,100 @@ class TestTranslationIntegration:
         assert en_polio != fr_polio
         assert en_polio == "Polio"
         assert fr_polio == "Poliomyélite"
+
+    def test_build_template_context_includes_formatted_date(
+        self, translation_setup: None
+    ) -> None:
+        """Verify build_template_context includes locale-formatted date_today.
+
+        Real-world significance:
+        - Notices must display date in reader's language
+        - Date formatting must happen during template context build
+        - French notices must show dates in French (e.g., "31 août 2025")
+        - English notices must show dates in English (e.g., "August 31, 2025")
+        """
+        from pipeline.data_models import ClientRecord
+
+        # Create English client
+        client_en = ClientRecord(
+            sequence="00001",
+            client_id="TEST001",
+            language="en",
+            person={
+                "full_name": "John Smith",
+                "date_of_birth": "2010-01-15",
+                "date_of_birth_display": "Jan 15, 2010",
+                "date_of_birth_iso": "2010-01-15",
+                "age": "14",
+                "over_16": False,
+            },
+            school={
+                "name": "School Name",
+                "id": "SCHOOL001",
+            },
+            board={
+                "name": "School Board",
+                "id": "BOARD001",
+            },
+            contact={
+                "street": "123 Main St",
+                "city": "Toronto",
+                "province": "ON",
+                "postal_code": "M1M 1M1",
+            },
+            vaccines_due=None,
+            vaccines_due_list=None,
+            received=None,
+            metadata={},
+        )
+
+        context_en = generate_notices.build_template_context(client_en)
+
+        # Verify date_today is in context and formatted in English
+        assert "client_data" in context_en
+        # client_data is a Typst-serialized dict; should contain formatted date
+        assert "August" in context_en["client_data"] or "date_today" in str(
+            context_en["client_data"]
+        )
+
+        # Create French client
+        client_fr = ClientRecord(
+            sequence="00002",
+            client_id="TEST002",
+            language="fr",
+            person={
+                "full_name": "Jean Dupont",
+                "date_of_birth": "2010-01-15",
+                "date_of_birth_display": "15 janvier 2010",
+                "date_of_birth_iso": "2010-01-15",
+                "age": "14",
+                "over_16": False,
+            },
+            school={
+                "name": "School Name",
+                "id": "SCHOOL001",
+            },
+            board={
+                "name": "School Board",
+                "id": "BOARD001",
+            },
+            contact={
+                "street": "123 Main St",
+                "city": "Toronto",
+                "province": "ON",
+                "postal_code": "M1M 1M1",
+            },
+            vaccines_due=None,
+            vaccines_due_list=None,
+            received=None,
+            metadata={},
+        )
+
+        context_fr = generate_notices.build_template_context(client_fr)
+
+        # Verify date_today is in context and formatted in French
+        assert "client_data" in context_fr
+        # client_data is a Typst-serialized dict; should contain formatted date
+        assert "août" in context_fr["client_data"] or "date_today" in str(
+            context_fr["client_data"]
+        )

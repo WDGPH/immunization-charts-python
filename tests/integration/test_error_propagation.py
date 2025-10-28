@@ -61,7 +61,6 @@ class TestCriticalStepErrorPropagation:
         assets_dir = Path(__file__).parent.parent.parent / "templates" / "assets"
         logo = assets_dir / "logo.png"
         signature = assets_dir / "signature.png"
-        parameters = Path(__file__).parent.parent.parent / "config" / "parameters.yaml"
 
         if not logo.exists() or not signature.exists():
             pytest.skip("Logo or signature assets not found")
@@ -73,7 +72,6 @@ class TestCriticalStepErrorPropagation:
                 tmp_path,
                 logo,
                 signature,
-                parameters,
             )
 
     def test_notice_generation_returns_all_or_nothing(self, tmp_path):
@@ -131,7 +129,6 @@ class TestCriticalStepErrorPropagation:
         assets_dir = Path(__file__).parent.parent.parent / "templates" / "assets"
         logo = assets_dir / "logo.png"
         signature = assets_dir / "signature.png"
-        parameters = Path(__file__).parent.parent.parent / "config" / "parameters.yaml"
 
         if not logo.exists() or not signature.exists():
             pytest.skip("Logo or signature assets not found")
@@ -142,7 +139,6 @@ class TestCriticalStepErrorPropagation:
             tmp_path,
             logo,
             signature,
-            parameters,
         )
 
         # All-or-nothing: either 2 files or exception

@@ -266,7 +266,7 @@ class TestTemplateField:
         assert TemplateField.PROVINCE.value == "province"
         assert TemplateField.POSTAL_CODE.value == "postal_code"
         assert TemplateField.LANGUAGE_CODE.value == "language_code"
-        assert TemplateField.DELIVERY_DATE.value == "delivery_date"
+        assert TemplateField.NOTICE_DELIVERY_DATE.value == "date_notice_delivery"
 
     def test_template_field_enum_has_all_fields(self) -> None:
         """Verify TemplateField enum contains all expected fields.
@@ -290,7 +290,7 @@ class TestTemplateField:
             "province",
             "postal_code",
             "language_code",
-            "delivery_date",
+            "date_notice_delivery",
         }
         assert TemplateField.all_values() == expected
 

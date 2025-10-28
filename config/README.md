@@ -41,7 +41,12 @@ Typst Files (with localized, filtered disease names)
 - QR code generation settings
 - PDF encryption settings
 - Batching configuration
+- **Date controls for data freshness and eligibility logic**
 - **Chart disease selection via `chart_diseases_header` (CRITICAL)**
+
+**Date controls:**
+- `date_data_cutoff` (ISO 8601 string) records when the source data was extracted. It renders in notices using the client's language via Babel so that readers see a localized calendar date. Change this only when regenerating notices from a fresher extract.
+- `date_notice_delivery` (ISO 8601 string) fixes the reference point for age-based eligibility checks and QR payloads. Preprocessing uses this value to decide if a client is 16 or older, so adjust it cautiously and keep it aligned with the actual delivery or mailing date.
 
 **`chart_diseases_header` Configuration:**
 

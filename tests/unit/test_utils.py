@@ -367,7 +367,7 @@ class TestBuildClientContext:
         assert context["date_of_birth_iso_compact"] == "20150315"
 
     def test_build_context_with_delivery_date(self) -> None:
-        """Verify delivery_date is included in context when provided.
+        """Verify date_notice_delivery is included in context when provided.
 
         Real-world significance:
         - QR template might include delivery date
@@ -375,22 +375,24 @@ class TestBuildClientContext:
         """
         client = {"client_id": "12345"}
 
-        context = utils.build_client_context(client, "en", delivery_date="2025-04-08")
+        context = utils.build_client_context(
+            client, "en", date_notice_delivery="2025-04-08"
+        )
 
-        assert context["delivery_date"] == "2025-04-08"
+        assert context["date_notice_delivery"] == "2025-04-08"
 
     def test_build_context_without_delivery_date(self) -> None:
-        """Verify delivery_date is omitted when not provided.
+        """Verify date_notice_delivery is omitted when not provided.
 
         Real-world significance:
-        - Most templates won't use delivery_date
+        - Most templates won't use date_notice_delivery
         - Should be optional parameter
         """
         client = {"client_id": "12345"}
 
-        context = utils.build_client_context(client, "en", delivery_date=None)
+        context = utils.build_client_context(client, "en", date_notice_delivery=None)
 
-        assert "delivery_date" not in context
+        assert "date_notice_delivery" not in context
 
     def test_build_context_language_variants(self) -> None:
         """Verify language_code is set correctly.

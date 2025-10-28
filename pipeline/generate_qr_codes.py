@@ -178,7 +178,7 @@ def load_qr_settings(config_path: Path | None = None) -> tuple[str, Optional[str
     Raises ValueError if qr.payload_template is not specified in the configuration.
 
     Returns:
-        Tuple of (payload_template, delivery_date)
+        Tuple of (payload_template, date_notice_delivery)
     """
     if config_path is None:
         config_path = PARAMETERS_PATH
@@ -204,9 +204,9 @@ def load_qr_settings(config_path: Path | None = None) -> tuple[str, Optional[str
         )
 
     payload_template = template_config
-    delivery_date = params.get("delivery_date")
+    date_notice_delivery = params.get("date_notice_delivery")
 
-    return payload_template, delivery_date
+    return payload_template, date_notice_delivery
 
 
 def generate_qr_codes(
@@ -253,7 +253,7 @@ def generate_qr_codes(
 
     # Load QR settings (will raise ValueError if template not specified)
     try:
-        payload_template, delivery_date = load_qr_settings(config_path)
+        payload_template, date_notice_delivery = load_qr_settings(config_path)
     except (FileNotFoundError, ValueError) as exc:
         raise RuntimeError(f"Cannot generate QR codes: {exc}") from exc
 
@@ -268,7 +268,7 @@ def generate_qr_codes(
         client_id = client.get("client_id")
 
         # Build context using centralized utility (handles all field extraction)
-        qr_context = build_client_context(client, language, delivery_date)
+        qr_context = build_client_context(client, language, date_notice_delivery)
 
         # Generate payload (template is now required)
         try:

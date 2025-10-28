@@ -234,6 +234,89 @@ class TestAgeCalculation:
 
 
 @pytest.mark.unit
+class TestDateFormatting:
+    """Unit tests for date formatting functions with locale support."""
+
+    def test_format_iso_date_english(self) -> None:
+        """Verify format_iso_date_for_language formats dates in English.
+
+        Real-world significance:
+        - English notices must display dates in readable format
+        - Format should be long form, e.g., "August 31, 2025"
+        """
+        result = preprocess.format_iso_date_for_language("2025-08-31", "en")
+
+        assert result == "August 31, 2025"
+
+    def test_format_iso_date_french(self) -> None:
+        """Verify format_iso_date_for_language formats dates in French.
+
+        Real-world significance:
+        - French notices must display dates in French locale format
+        - Format should be locale-specific, e.g., "31 août 2025"
+        """
+        result = preprocess.format_iso_date_for_language("2025-08-31", "fr")
+
+        assert result == "31 août 2025"
+
+    def test_format_iso_date_different_months(self) -> None:
+        """Verify formatting works correctly for all months.
+
+        Real-world significance:
+        - Date formatting must be reliable across the entire calendar year
+        """
+        # January
+        assert "January" in preprocess.format_iso_date_for_language("2025-01-15", "en")
+        # June
+        assert "June" in preprocess.format_iso_date_for_language("2025-06-15", "en")
+        # December
+        assert "December" in preprocess.format_iso_date_for_language("2025-12-15", "en")
+
+    def test_format_iso_date_leap_year(self) -> None:
+        """Verify formatting handles leap year dates.
+
+        Real-world significance:
+        - Some students may have birthdays on Feb 29
+        - Must handle leap year dates correctly
+        """
+        result = preprocess.format_iso_date_for_language("2024-02-29", "en")
+
+        assert "February" in result and "29" in result and "2024" in result
+
+    def test_format_iso_date_invalid_format_raises(self) -> None:
+        """Verify format_iso_date_for_language raises ValueError for invalid input.
+
+        Real-world significance:
+        - Invalid date formats should fail fast with clear error
+        - Prevents silent failures in template rendering
+        """
+        with pytest.raises(ValueError, match="Invalid ISO date format"):
+            preprocess.format_iso_date_for_language("31/08/2025", "en")
+
+    def test_format_iso_date_invalid_date_raises(self) -> None:
+        """Verify format_iso_date_for_language raises ValueError for impossible dates.
+
+        Real-world significance:
+        - February 30 does not exist; must reject cleanly
+        """
+        with pytest.raises(ValueError):
+            preprocess.format_iso_date_for_language("2025-02-30", "en")
+
+    def test_convert_date_string_with_locale(self) -> None:
+        """Verify convert_date_string supports locale-aware formatting.
+
+        Real-world significance:
+        - Existing convert_date_string() should work with different locales
+        - Babel formatting enables multilingual date display
+        """
+        result_en = preprocess.convert_date_string("2025-08-31", locale="en")
+        result_fr = preprocess.convert_date_string("2025-08-31", locale="fr")
+
+        assert result_en == "August 31, 2025"
+        assert result_fr == "31 août 2025"
+
+
+@pytest.mark.unit
 class TestBuildPreprocessResult:
     """Unit tests for build_preprocess_result function."""
 

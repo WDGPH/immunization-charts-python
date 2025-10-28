@@ -28,7 +28,7 @@ What this module assumes (validated upstream):
 - Artifact file exists and is valid JSON (validated by read_artifact())
 - Language code is valid (validated at CLI by argparse choices)
 - Client records have all required fields (validated by preprocessing step)
-- File paths exist (output_dir, logo_path, signature_path, parameters_path)
+- File paths exist (output_dir, logo_path, signature_path)
 
 Functions with special validation notes:
 - render_notice(): Calls Language.from_string() on client.language to convert
@@ -50,6 +50,7 @@ from .data_models import (
     ClientRecord,
 )
 from .enums import Language
+from .preprocess import format_iso_date_for_language
 from .translation_helpers import display_label
 
 from templates.en_template import render_notice as render_notice_en
@@ -273,6 +274,7 @@ def build_template_context(
     Translates disease names in vaccines_due_list and received records to
     localized display strings using the configured translation files.
     Also loads and translates the chart disease header list from configuration.
+    Formats the notice date_data_cutoff with locale-aware formatting using Babel.
 
     Parameters
     ----------
@@ -284,8 +286,19 @@ def build_template_context(
     Returns
     -------
     Dict[str, str]
-        Template context with translated disease names.
+        Template context with translated disease names and formatted date.
     """
+    config = load_config()
+
+    # Load and format date_data_cutoff for the client's language
+    date_data_cutoff_iso = config.get("date_data_cutoff")
+    if date_data_cutoff_iso:
+        date_data_cutoff_formatted = format_iso_date_for_language(
+            date_data_cutoff_iso, client.language
+        )
+    else:
+        date_data_cutoff_formatted = ""
+
     client_data = {
         "name": client.person["full_name"],
         "address": client.contact["street"],
@@ -293,6 +306,7 @@ def build_template_context(
         "postal_code": client.contact["postal_code"],
         "date_of_birth": client.person["date_of_birth_display"],
         "school": client.school["name"],
+        "date_data_cutoff": date_data_cutoff_formatted,
     }
 
     # Check if QR code PNG exists from prior generation step
@@ -388,7 +402,6 @@ def render_notice(
     output_dir: Path,
     logo: Path,
     signature: Path,
-    parameters: Path,
     qr_output_dir: Path | None = None,
 ) -> str:
     language = Language.from_string(client.language)
@@ -398,7 +411,6 @@ def render_notice(
         context,
         logo_path=to_root_relative(logo),
         signature_path=to_root_relative(signature),
-        parameters_path=to_root_relative(parameters),
     )
 
 
@@ -407,7 +419,6 @@ def generate_typst_files(
     output_dir: Path,
     logo_path: Path,
     signature_path: Path,
-    parameters_path: Path,
 ) -> List[Path]:
     output_dir.mkdir(parents=True, exist_ok=True)
     qr_output_dir = output_dir / "qr_codes"
@@ -425,7 +436,6 @@ def generate_typst_files(
             output_dir=output_dir,
             logo=logo_path,
             signature=signature_path,
-            parameters=parameters_path,
             qr_output_dir=qr_output_dir,
         )
         filename = f"{language}_notice_{client.sequence}_{client.client_id}.typ"
@@ -441,7 +451,6 @@ def main(
     output_dir: Path,
     logo_path: Path,
     signature_path: Path,
-    parameters_path: Path,
 ) -> List[Path]:
     """Main entry point for Typst notice generation.
 
@@ -455,8 +464,6 @@ def main(
         Path to the logo image.
     signature_path : Path
         Path to the signature image.
-    parameters_path : Path
-        Path to the YAML parameters file.
 
     Returns
     -------
@@ -469,7 +476,6 @@ def main(
         output_dir,
         logo_path,
         signature_path,
-        parameters_path,
     )
     print(
         f"Generated {len(generated)} Typst files in {output_dir} for language {payload.language}"
