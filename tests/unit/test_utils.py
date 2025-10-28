@@ -281,7 +281,8 @@ class TestBuildClientContext:
         client = {
             "client_id": "12345",
             "person": {
-                "full_name": "John Doe",
+                "first_name": "John",
+                "last_name": "Doe",
                 "date_of_birth_iso": "2015-03-15",
             },
             "school": {"name": "Lincoln School"},
@@ -301,39 +302,39 @@ class TestBuildClientContext:
         assert context["language_code"] == "en"
 
     def test_build_context_extracts_name_components(self) -> None:
-        """Verify first/last name extraction from full name.
+        """Verify first/last name are used directly from data.
 
         Real-world significance:
-        - Full name "John Q. Doe" should split to first="John", last="Doe"
-        - Templates might use individual name parts
+        - First/last names are stored directly in data
+        - Templates use individual name parts
         """
         client = {
-            "person": {"full_name": "John Quincy Doe"},
+            "person": {"first_name": "John", "last_name": "Quincy"},
         }
 
         context = utils.build_client_context(client, "en")
 
         assert context["first_name"] == "John"
-        assert context["last_name"] == "Doe"
-        assert context["name"] == "John Quincy Doe"
+        assert context["last_name"] == "Quincy"
+        assert context["name"] == "John Quincy"
 
     def test_build_context_handles_single_name(self) -> None:
         """Verify handling of single name (no last name).
 
         Real-world significance:
         - Some clients might have single name
-        - Current implementation: last_name is last word (empty if single word)
+        - Last name can be empty string
         - This test documents current behavior
         """
         client = {
-            "person": {"full_name": "Cher"},
+            "person": {"first_name": "Cher", "last_name": ""},
         }
 
         context = utils.build_client_context(client, "en")
 
         assert context["first_name"] == "Cher"
-        # With single name, last_name is empty (only 1 word, last_name requires 2+ words)
         assert context["last_name"] == ""
+        assert context["name"] == "Cher"
 
     def test_build_context_handles_missing_fields(self) -> None:
         """Verify safe handling of missing nested fields.
@@ -389,13 +390,14 @@ class TestBuildClientContext:
         - Templates should work with trimmed values
         """
         client = {
-            "person": {"full_name": "  John Doe  "},
+            "person": {"first_name": "  John", "last_name": "Doe  "},
             "school": {"name": "  Lincoln School  "},
         }
 
         context = utils.build_client_context(client, "en")
 
         assert context["first_name"] == "John"
+        assert context["last_name"] == "Doe"
         assert context["school"] == "Lincoln School"
 
     def test_build_context_handles_all_contact_fields(self) -> None:

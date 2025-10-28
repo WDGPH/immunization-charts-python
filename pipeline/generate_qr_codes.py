@@ -61,10 +61,7 @@ except ImportError:
 
 from .config_loader import load_config
 from .enums import TemplateField
-from .utils import (
-    build_client_context,
-    validate_and_format_template,
-)
+from .utils import build_client_context, validate_and_format_template
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 ROOT_DIR = SCRIPT_DIR.parent
@@ -243,7 +240,6 @@ def generate_qr_codes(
 
     # Read artifact
     artifact = read_preprocessed_artifact(artifact_path)
-    language = artifact.get("language", "en")
     clients = artifact.get("clients", [])
 
     if not clients:
@@ -265,9 +261,8 @@ def generate_qr_codes(
     # Generate QR code for each client
     for client in clients:
         client_id = client.get("client_id")
-
-        # Build context using centralized utility (handles all field extraction)
-        qr_context = build_client_context(client, language)
+        # Build context directly from client data using shared helper
+        qr_context = build_client_context(client)
 
         # Generate payload (template is now required)
         try:

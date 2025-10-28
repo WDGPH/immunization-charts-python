@@ -136,23 +136,21 @@ def encrypt_pdf(file_path: str, context: dict) -> str:
     return str(encrypted_path)
 
 
-def load_notice_metadata(json_path: Path, language: str) -> tuple:
-    """Load client data and context from JSON notice metadata.
+def load_notice_metadata(json_path: Path) -> tuple:
+    """Load client data dict and context from JSON notice metadata.
 
-    Module-internal helper for encrypt_notice(). Returns both the client data dict
-    and the context for password template rendering.
+    Module-internal helper for encrypt_notice(). Loads the JSON, extracts
+    the client data dict, builds the templating context, and returns both.
 
     Parameters
     ----------
     json_path : Path
         Path to JSON metadata file.
-    language : str
-        Language code ('en' or 'fr').
 
     Returns
     -------
     tuple
-        (client_data: dict, context: dict) for password generation.
+        (client_dict: dict, context: dict) for password generation.
 
     Raises
     ------
@@ -168,14 +166,15 @@ def load_notice_metadata(json_path: Path, language: str) -> tuple:
         raise ValueError(f"No client data in {json_path.name}")
 
     first_key = next(iter(payload))
-    record = payload[first_key]
+    client_dict = payload[first_key]
 
-    # Ensure record has required fields for context building
-    if not isinstance(record, dict):
+    # Ensure record is a dict
+    if not isinstance(client_dict, dict):
         raise ValueError(f"Invalid client record format in {json_path.name}")
 
-    context = build_client_context(record, language)
-    return record, context
+    # Build context using shared helper
+    context = build_client_context(client_dict)
+    return client_dict, context
 
 
 def encrypt_notice(json_path: str | Path, pdf_path: str | Path, language: str) -> str:
@@ -213,7 +212,7 @@ def encrypt_notice(json_path: str | Path, pdf_path: str | Path, language: str) -
         except OSError:
             pass
 
-    client_data, context = load_notice_metadata(json_path, language)
+    client_data, context = load_notice_metadata(json_path)
     return encrypt_pdf(str(pdf_path), context)
 
 
@@ -313,10 +312,10 @@ def encrypt_pdfs_in_directory(
             skipped.append((pdf_name, f"No metadata found for client_id {client_id}"))
             continue
 
-        # Build password template context from client metadata
+        # Build context directly from client dict using shared helper
         try:
-            context = build_client_context(client_data, language)
-        except ValueError as exc:
+            context = build_client_context(client_data)
+        except (ValueError, KeyError) as exc:
             skipped.append((pdf_name, str(exc)))
             continue
 

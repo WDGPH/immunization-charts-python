@@ -48,7 +48,8 @@ class TestReadArtifact:
                     "client_id": "C001",
                     "language": "en",
                     "person": {
-                        "full_name": "John Doe",
+                        "first_name": "John",
+                        "last_name": "Doe",
                         "date_of_birth": "2015-01-01",
                         "date_of_birth_display": "Jan 01, 2015",
                         "date_of_birth_iso": "2015-01-01",
@@ -77,7 +78,8 @@ class TestReadArtifact:
         assert payload.language == "en"
         assert len(payload.clients) == 1
         assert payload.clients[0].client_id == "C001"
-        assert payload.clients[0].person["full_name"] == "John Doe"
+        assert payload.clients[0].person.get("first_name") == "John"
+        assert payload.clients[0].person.get("last_name") == "Doe"
 
     def test_read_artifact_missing_file_raises_error(self, tmp_test_dir: Path) -> None:
         """Verify error when artifact file doesn't exist.

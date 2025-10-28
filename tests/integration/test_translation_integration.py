@@ -66,7 +66,8 @@ class TestTranslationIntegration:
             client_id="TEST001",
             language="fr",
             person={
-                "full_name": "Jean Dupont",
+                "first_name": "Jean",
+                "last_name": "Dupont",
                 "date_of_birth": "2010-01-15",
                 "date_of_birth_display": "15 janvier 2010",
                 "date_of_birth_iso": "2010-01-15",
@@ -112,7 +113,8 @@ class TestTranslationIntegration:
             client_id="TEST001",
             language="en",
             person={
-                "full_name": "John Smith",
+                "first_name": "John",
+                "last_name": "Smith",
                 "date_of_birth": "2010-01-15",
                 "date_of_birth_display": "Jan 15, 2010",
                 "date_of_birth_iso": "2010-01-15",
@@ -158,7 +160,8 @@ class TestTranslationIntegration:
             client_id="TEST001",
             language="fr",
             person={
-                "full_name": "Jean Dupont",
+                "first_name": "Jean",
+                "last_name": "Dupont",
                 "date_of_birth": "2010-01-15",
                 "date_of_birth_display": "15 janvier 2010",
                 "date_of_birth_iso": "2010-01-15",
@@ -198,8 +201,8 @@ class TestTranslationIntegration:
     def test_disease_normalization_integration(self) -> None:
         """Verify disease normalization works correctly in preprocessing.
 
-        DEPRECATED: disease_map removed. This test now verifies that normalization
-        alone is sufficient for disease name handling.
+        Confirms that the normalized output handles variant disease names using
+        the current translation resources.
         """
         translation_helpers.clear_caches()
 
@@ -238,7 +241,8 @@ class TestTranslationIntegration:
             client_id="TEST001",
             language="en",
             person={
-                "full_name": "John Smith",
+                "first_name": "John",
+                "last_name": "Smith",
                 "date_of_birth": "2010-01-15",
                 "date_of_birth_display": "Jan 15, 2010",
                 "date_of_birth_iso": "2010-01-15",
@@ -280,7 +284,8 @@ class TestTranslationIntegration:
             client_id="TEST002",
             language="fr",
             person={
-                "full_name": "Jean Dupont",
+                "first_name": "Jean",
+                "last_name": "Dupont",
                 "date_of_birth": "2010-01-15",
                 "date_of_birth_display": "15 janvier 2010",
                 "date_of_birth_iso": "2010-01-15",

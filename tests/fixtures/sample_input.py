@@ -164,7 +164,6 @@ def create_test_client_record(
     person_dict: Dict[str, Any] = {
         "first_name": first_name,
         "last_name": last_name,
-        "full_name": f"{first_name} {last_name}",
         "date_of_birth": date_of_birth,
         "date_of_birth_iso": date_of_birth,
         "date_of_birth_display": date_of_birth,

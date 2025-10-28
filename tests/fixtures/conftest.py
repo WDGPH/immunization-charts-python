@@ -176,37 +176,6 @@ def config_file(tmp_test_dir: Path, default_config: Dict[str, Any]) -> Path:
 
 
 @pytest.fixture
-def disease_map_file(tmp_test_dir: Path, default_disease_map: Dict[str, str]) -> Path:
-    """Create a temporary disease map file.
-
-    DEPRECATED: This fixture is no longer used. disease_map.json has been removed
-    from the pipeline. All disease name mapping now uses disease_normalization.json
-    and config/translations/*.json.
-
-    Real-world significance:
-    - Tests that need disease mapping can load from disk
-    - Enables testing of disease name normalization
-    - Matches production disease_map.json location/format
-
-    Parameters
-    ----------
-    tmp_test_dir : Path
-        Root temporary directory
-    default_disease_map : Dict[str, str]
-        Disease mapping dict
-
-    Returns
-    -------
-    Path
-        Path to created JSON disease map file
-    """
-    disease_map_path = tmp_test_dir / "disease_map.json"
-    with open(disease_map_path, "w") as f:
-        json.dump(default_disease_map, f)
-    return disease_map_path
-
-
-@pytest.fixture
 def vaccine_reference_file(
     tmp_test_dir: Path, default_vaccine_reference: Dict[str, list]
 ) -> Path:

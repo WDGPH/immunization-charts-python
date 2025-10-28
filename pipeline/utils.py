@@ -8,7 +8,10 @@ and safe formatting of client data for use in downstream templates."""
 from __future__ import annotations
 
 from string import Formatter
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from .data_models import ClientRecord
 
 # Template formatter for extracting field names from format strings
 _FORMATTER = Formatter()
@@ -132,29 +135,33 @@ def validate_and_format_template(
 
 
 def build_client_context(
-    client_data: dict,
-    language: str,
+    client_data,
+    language: str | None = None,
 ) -> dict[str, str]:
     """Build template context dict from client metadata for templating.
 
     Extracts and formats all available client fields for use in templates,
     supporting both QR code payloads and PDF encryption passwords.
 
+    Accepts either a dict (from JSON) or a ClientRecord dataclass instance.
+    Both provide the same fields; the function handles both transparently.
+
     Parameters
     ----------
-    client_data : dict
-        Client dict (from preprocessed artifact) with nested structure:
-        {
-            "client_id": "...",
-            "person": {"full_name": "...", "date_of_birth_iso": "..."},
-            "school": {"name": "..."},
-            "board": {"name": "..."},
-            "contact": {"postal_code": "...", "city": "...", ...}
-        }
-    language : str
-        ISO 639-1 language code ('en' for English, 'fr' for French). Must be a valid
-        Language enum value (see pipeline.enums.Language). Validated using
-        Language.from_string() at entry points; this function assumes language is valid.
+    client_data : dict or ClientRecord
+        Client data as either:
+        - A dict (from preprocessed artifact JSON) with nested structure:
+          {
+              "client_id": "...",
+              "person": {"first_name": "...", "last_name": "...", "date_of_birth_iso": "..."},
+              "school": {"name": "..."},
+              "board": {"name": "..."},
+              "contact": {"postal_code": "...", "city": "...", ...}
+          }
+        - A ClientRecord dataclass instance with same nested fields.
+    language : str, optional
+        ISO 639-1 language code ('en' or 'fr'). When omitted, falls back to the
+        client's own language field if present, otherwise an empty string.
 
     Returns
     -------
@@ -171,37 +178,50 @@ def build_client_context(
 
     Examples
     --------
-    >>> client = {
+    >>> client_dict = {
     ...     "client_id": "12345",
-    ...     "person": {"full_name": "John Doe", "date_of_birth_iso": "2015-03-15"},
+    ...     "person": {"first_name": "John", "last_name": "Doe", "date_of_birth_iso": "2015-03-15"},
     ...     "school": {"name": "Lincoln School"},
     ...     "contact": {"postal_code": "M5V 3A8"}
     ... }
-    >>> ctx = build_client_context(client, "en")
+    >>> ctx = build_client_context(client_dict)
     >>> ctx["client_id"]
     '12345'
     >>> ctx["first_name"]
     'John'
     """
-    # Extract person data (handle nested structure)
-    person = client_data.get("person", {})
-    contact = client_data.get("contact", {})
-    school = client_data.get("school", {})
-    board = client_data.get("board", {})
+    # Handle both dict and ClientRecord: extract nested fields uniformly
+    if isinstance(client_data, dict):
+        person = client_data.get("person", {})
+        contact = client_data.get("contact", {})
+        school = client_data.get("school", {})
+        board = client_data.get("board", {})
+        client_id = client_data.get("client_id", "")
+        client_language = client_data.get("language", "")
+    else:
+        # Assume ClientRecord dataclass
+        person = client_data.person or {}
+        contact = client_data.contact or {}
+        school = client_data.school or {}
+        board = client_data.board or {}
+        client_id = client_data.client_id
+        client_language = client_data.language
 
     # Get DOB in ISO format
     dob_iso = person.get("date_of_birth_iso") or person.get("date_of_birth", "")
     dob_display = person.get("date_of_birth_display", "") or dob_iso
 
-    # Extract name components
-    full_name = person.get("full_name", "")
-    name_parts = full_name.split() if full_name else ["", ""]
-    first_name = name_parts[0] if len(name_parts) > 0 else ""
-    last_name = name_parts[-1] if len(name_parts) > 1 else ""
+    # Extract name components (from authoritative first/last fields)
+    first_name = person.get("first_name", "")
+    last_name = person.get("last_name", "")
+    # Combine for display purposes
+    full_name = " ".join(filter(None, [first_name, last_name])).strip()
+
+    language_code = string_or_empty(language or client_language)
 
     # Build context dict for template rendering
     context = {
-        "client_id": string_or_empty(client_data.get("client_id", "")),
+        "client_id": string_or_empty(client_id),
         "first_name": string_or_empty(first_name),
         "last_name": string_or_empty(last_name),
         "name": string_or_empty(full_name),
@@ -216,7 +236,65 @@ def build_client_context(
         "city": string_or_empty(contact.get("city", "")),
         "province": string_or_empty(contact.get("province", "")),
         "street_address": string_or_empty(contact.get("street", "")),
-        "language_code": language,  # ISO code: 'en' or 'fr'
+        "language_code": language_code,
     }
 
     return context
+
+
+def deserialize_client_record(client_dict: dict) -> ClientRecord:
+    """Deserialize a dict to a ClientRecord dataclass instance.
+
+    Constructs a ClientRecord from a dict (typically from JSON), handling
+    all required and optional fields uniformly. This is the canonical
+    deserialization utility shared across modules for type safety and
+    reduced code duplication.
+
+    Parameters
+    ----------
+    client_dict : dict
+        Client dict with structure:
+        {
+            "sequence": "...",
+            "client_id": "...",
+            "language": "...",
+            "person": {...},
+            "school": {...},
+            "board": {...},
+            "contact": {...},
+            "vaccines_due": "...",
+            "vaccines_due_list": [...],
+            "received": [...],
+            "metadata": {...},
+            "qr": {...}  (optional)
+        }
+
+    Returns
+    -------
+    ClientRecord
+        Constructed dataclass instance.
+
+    Raises
+    ------
+    TypeError
+        If dict cannot be converted (missing required fields or type mismatch).
+    """
+    from .data_models import ClientRecord
+
+    try:
+        return ClientRecord(
+            sequence=client_dict.get("sequence", ""),
+            client_id=client_dict.get("client_id", ""),
+            language=client_dict.get("language", ""),
+            person=client_dict.get("person", {}),
+            school=client_dict.get("school", {}),
+            board=client_dict.get("board", {}),
+            contact=client_dict.get("contact", {}),
+            vaccines_due=client_dict.get("vaccines_due"),
+            vaccines_due_list=client_dict.get("vaccines_due_list"),
+            received=client_dict.get("received"),
+            metadata=client_dict.get("metadata", {}),
+            qr=client_dict.get("qr"),
+        )
+    except TypeError as exc:
+        raise TypeError(f"Cannot deserialize dict to ClientRecord: {exc}") from exc

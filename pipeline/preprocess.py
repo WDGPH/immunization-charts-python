@@ -662,9 +662,8 @@ def build_preprocess_result(
             over_16 = False
 
         person = {
-            "full_name": " ".join(
-                filter(None, [row.FIRST_NAME, row.LAST_NAME])  # type: ignore[attr-defined]
-            ).strip(),
+            "first_name": row.FIRST_NAME or "",  # type: ignore[attr-defined]
+            "last_name": row.LAST_NAME or "",  # type: ignore[attr-defined]
             "date_of_birth": dob_iso or "",
             "date_of_birth_display": formatted_dob or "",
             "date_of_birth_iso": dob_iso or "",
@@ -757,7 +756,8 @@ def write_artifact(
                 "client_id": client.client_id,
                 "language": client.language,
                 "person": {
-                    "full_name": client.person["full_name"],
+                    "first_name": client.person["first_name"],
+                    "last_name": client.person["last_name"],
                     "date_of_birth": client.person["date_of_birth"],
                     "date_of_birth_display": client.person["date_of_birth_display"],
                     "date_of_birth_iso": client.person["date_of_birth_iso"],

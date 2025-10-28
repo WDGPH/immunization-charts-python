@@ -145,7 +145,9 @@ class TestQrToNoticeGenerationIntegration:
             "client_id": client.client_id,
             "first_name": client.person["first_name"],
             "last_name": client.person["last_name"],
-            "name": client.person["full_name"],
+            "name": " ".join(
+                filter(None, [client.person["first_name"], client.person["last_name"]])
+            ).strip(),
             "date_of_birth_iso": client.person["date_of_birth_iso"],
             "school": client.school["name"],
             "city": client.contact["city"],
@@ -227,7 +229,9 @@ class TestNoticeToCompileIntegration:
         template_vars = {
             "client_first_name": client.person["first_name"],
             "client_last_name": client.person["last_name"],
-            "client_full_name": client.person["full_name"],
+            "client_full_name": " ".join(
+                filter(None, [client.person["first_name"], client.person["last_name"]])
+            ).strip(),
             "client_dob": client.person["date_of_birth_display"],
             "school_name": client.school["name"],
             "vaccines_list": client.vaccines_due_list,

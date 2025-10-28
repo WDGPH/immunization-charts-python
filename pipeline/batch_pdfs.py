@@ -573,7 +573,15 @@ def write_batch(
             {
                 "sequence": record.sequence,
                 "client_id": record.client_id,
-                "full_name": record.client["person"]["full_name"],
+                "full_name": " ".join(
+                    filter(
+                        None,
+                        [
+                            record.client["person"]["first_name"],
+                            record.client["person"]["last_name"],
+                        ],
+                    )
+                ).strip(),
                 "school": record.client["school"]["name"],
                 "board": record.client["board"]["name"],
                 "pdf_path": relative(record.pdf_path, config.output_dir),

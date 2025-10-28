@@ -307,7 +307,8 @@ class TestEncryptNotice:
             "12345": {
                 "client_id": "12345",
                 "person": {
-                    "full_name": "John Doe",
+                    "first_name": "John",
+                    "last_name": "Doe",
                     "date_of_birth_iso": "2015-03-15",
                 },
                 "school": {"name": "Lincoln School"},
@@ -393,7 +394,8 @@ class TestEncryptNotice:
                     "12345": {
                         "client_id": "12345",
                         "person": {
-                            "full_name": "John Doe",
+                            "first_name": "John",
+                            "last_name": "Doe",
                             "date_of_birth_iso": "2015-03-15",
                         },
                         "contact": {},
@@ -451,7 +453,8 @@ class TestEncryptPdfsInDirectory:
                 {
                     "client_id": f"{100 + i}",
                     "person": {
-                        "full_name": f"Client {i}",
+                        "first_name": f"Client{i}",
+                        "last_name": f"Test{i}",
                         "date_of_birth_iso": "2015-03-15",
                     },
                     "contact": {},
@@ -594,7 +597,8 @@ class TestEncryptPdfsInDirectory:
                         {
                             "client_id": "101",
                             "person": {
-                                "full_name": "John",
+                                "first_name": "John",
+                                "last_name": "Doe",
                                 "date_of_birth_iso": "2015-03-15",
                             },
                             "contact": {},
@@ -688,7 +692,8 @@ class TestEncryptPdfsInDirectory:
                         {
                             "client_id": "101",
                             "person": {
-                                "full_name": "John",
+                                "first_name": "John",
+                                "last_name": "Doe",
                                 "date_of_birth_iso": "2015-03-15",
                             },
                             "contact": {},
@@ -729,7 +734,8 @@ class TestLoadNoticeMetadata:
                     "12345": {
                         "client_id": "12345",
                         "person": {
-                            "full_name": "John Doe",
+                            "first_name": "John",
+                            "last_name": "Doe",
                             "date_of_birth_iso": "2015-03-15",
                         },
                         "school": {"name": "Lincoln"},
@@ -739,7 +745,7 @@ class TestLoadNoticeMetadata:
             )
         )
 
-        record, context = encrypt_notice.load_notice_metadata(json_path, "en")
+        record, context = encrypt_notice.load_notice_metadata(json_path)
 
         assert record["client_id"] == "12345"
         assert context["client_id"] == "12345"
@@ -755,7 +761,7 @@ class TestLoadNoticeMetadata:
         json_path.write_text("not valid json")
 
         with pytest.raises(ValueError, match="Invalid JSON"):
-            encrypt_notice.load_notice_metadata(json_path, "en")
+            encrypt_notice.load_notice_metadata(json_path)
 
     def test_load_notice_metadata_empty_json(self, tmp_test_dir: Path) -> None:
         """Verify error for empty JSON.
@@ -767,7 +773,7 @@ class TestLoadNoticeMetadata:
         json_path.write_text("{}")
 
         with pytest.raises(ValueError, match="No client data"):
-            encrypt_notice.load_notice_metadata(json_path, "en")
+            encrypt_notice.load_notice_metadata(json_path)
 
 
 @pytest.mark.unit

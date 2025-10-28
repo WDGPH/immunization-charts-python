@@ -52,6 +52,7 @@ from .data_models import (
 from .enums import Language
 from .preprocess import format_iso_date_for_language
 from .translation_helpers import display_label
+from .utils import deserialize_client_record
 
 from templates.en_template import render_notice as render_notice_en
 from templates.fr_template import render_notice as render_notice_fr
@@ -140,20 +141,7 @@ def read_artifact(path: Path) -> ArtifactPayload:
     clients = []
 
     for client_dict in payload_dict["clients"]:
-        client = ClientRecord(
-            sequence=client_dict["sequence"],
-            client_id=client_dict["client_id"],
-            language=client_dict["language"],
-            person=client_dict["person"],
-            school=client_dict["school"],
-            board=client_dict["board"],
-            contact=client_dict["contact"],
-            vaccines_due=client_dict.get("vaccines_due"),
-            vaccines_due_list=client_dict.get("vaccines_due_list"),
-            received=client_dict.get("received"),
-            metadata=client_dict.get("metadata", {}),
-            qr=client_dict.get("qr"),
-        )
+        client = deserialize_client_record(client_dict)
         clients.append(client)
 
     return ArtifactPayload(
@@ -300,7 +288,9 @@ def build_template_context(
         date_data_cutoff_formatted = ""
 
     client_data = {
-        "name": client.person["full_name"],
+        "name": " ".join(
+            filter(None, [client.person["first_name"], client.person["last_name"]])
+        ).strip(),
         "address": client.contact["street"],
         "city": client.contact["city"],
         "postal_code": client.contact["postal_code"],
