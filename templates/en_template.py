@@ -125,7 +125,10 @@ DYNAMIC_BLOCK = """
 #let diseases = __CHART_DISEASES_TRANSLATED__
 #let date = data.date_data_cutoff
 
-#set page(margin: (top: 1cm, bottom: 2cm, left: 1.75cm, right: 2cm))
+#set page(
+  margin: (top: 1cm, bottom: 2cm, left: 1.75cm, right: 2cm),
+  footer: align(center, context numbering("1 / " + str(counter(page).final().first()), counter(page).get().first()))
+)
 
 #immunization_notice(data, client_row, vaccines_due_array, date, 11pt)
 #pagebreak()
