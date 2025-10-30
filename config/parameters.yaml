@@ -37,6 +37,11 @@ ignore_agents:
 - HBIg
 - RabIg
 - Ig
+pdf_validation:
+  # Validation rules: "disabled" (skip check), "warn" (log only), or "error" (halt pipeline)
+  rules:
+    exactly_two_pages: warn         # Ensure PDF has exactly 2 pages (notice + immunization record)
+    signature_overflow: warn        # Signature block not on page 1
 pipeline:
   auto_remove_output: true
   keep_intermediate_files: true

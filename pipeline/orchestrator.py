@@ -41,7 +41,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 # Import pipeline steps
-from . import batch_pdfs, cleanup, compile_notices, count_pdfs
+from . import batch_pdfs, cleanup, compile_notices, validate_pdfs
 from . import (
     encrypt_notice,
     generate_notices,
@@ -293,20 +293,26 @@ def run_step_6_validate_pdfs(
     output_dir: Path,
     language: str,
     run_id: str,
+    config_dir: Path,
 ) -> None:
-    """Step 6: Validating compiled PDF lengths."""
-    print_step(6, "Validating compiled PDF lengths")
+    """Step 6: Validating compiled PDFs."""
+    print_step(6, "Validating compiled PDFs")
 
     pdf_dir = output_dir / "pdf_individual"
     metadata_dir = output_dir / "metadata"
-    count_json = metadata_dir / f"{language}_page_counts_{run_id}.json"
+    validation_json = metadata_dir / f"{language}_validation_{run_id}.json"
 
-    # Count and validate PDFs
-    count_pdfs.main(
+    # Load config for validation rules
+    config = load_config(config_dir / "parameters.yaml")
+    validation_config = config.get("pdf_validation", {})
+    enabled_rules = validation_config.get("rules", {})
+
+    # Validate PDFs (print_summary always enabled)
+    validate_pdfs.main(
         pdf_dir,
         language=language,
-        verbose=False,
-        json_output=count_json,
+        enabled_rules=enabled_rules,
+        json_output=validation_json,
     )
 
 
@@ -497,10 +503,10 @@ def main() -> int:
 
         # Step 6: Validating PDFs
         step_start = time.time()
-        run_step_6_validate_pdfs(output_dir, args.language, run_id)
+        run_step_6_validate_pdfs(output_dir, args.language, run_id, config_dir)
         step_duration = time.time() - step_start
         step_times.append(("PDF Validation", step_duration))
-        print_step_complete(6, "Length validation", step_duration)
+        print_step_complete(6, "PDF validation", step_duration)
 
         # Step 7: Encrypting PDFs (optional)
         if encryption_enabled:
