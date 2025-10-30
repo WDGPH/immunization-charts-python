@@ -59,7 +59,7 @@ The `pipeline/` package is organized by pipeline function, not by layer. Each st
 | 3 | `generate_qr_codes.py` | QR code PNG generation (optional) |
 | 4 | `generate_notices.py` | Typst template rendering |
 | 5 | `compile_notices.py` | Typst → PDF compilation |
-| 6 | `count_pdfs.py` | PDF validation & page counts |
+| 6 | `validate_pdfs.py` | PDF validation (rules, summary, JSON report) |
 | 7 | `encrypt_notice.py` | PDF encryption (optional) |
 | 8 | `batch_pdfs.py` | PDF batching & grouping (optional) |
 | 9 | `cleanup.py` | Intermediate file cleanup |
@@ -126,8 +126,11 @@ The main pipeline orchestrator (`orchestrator.py`) automates the end-to-end work
 5. **Compiling Notices** (`compile_notices.py`)  
    Compiles Typst templates into individual PDF notices using the `typst` command-line tool.
 
-6. **Validating PDFs** (`count_pdfs.py`)  
-   Validates the page count of each compiled PDF and generates a page count manifest for quality control.
+6. **Validating PDFs** (`validate_pdfs.py`)  
+   Runs rule-based PDF validation and prints a summary. Writes a JSON report to `output/metadata/<lang>_validation_<run_id>.json`. Rules and severities are configured in `config/parameters.yaml` (see config README). Default rules include:
+   - `exactly_two_pages` (ensure each notice is 2 pages)
+   - `signature_overflow` (detect signature block on page 2 using invisible markers)
+   Severity levels: `disabled`, `warn`, `error` (error halts the pipeline).
 
 7. **Encrypting PDFs** (`encrypt_notice.py`, optional)  
    When `encryption.enabled: true`, encrypts individual PDFs using client metadata as password.
@@ -156,6 +159,7 @@ uv run viper <input_file> <language> [--output-dir PATH]
 See the complete configuration reference and examples in `config/README.md`:
 - Configuration overview and feature flags
 - QR Code settings (payload templating)
+- PDF Validation settings (rule-based quality checks)
 - PDF encryption settings (password templating)
 - Disease/chart/translation files
 
