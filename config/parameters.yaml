@@ -15,16 +15,6 @@ chart_diseases_header:
 - Meningococcal
 - Varicella
 - Other
-cleanup:
-  delete_unencrypted_pdfs: false
-  remove_directories:
-  - artifacts
-  - pdf_individual
-  - pdf_combined
-  remove_extensions:
-  - typ
-  - json
-  - csv
 date_data_cutoff: '2025-08-31'
 date_notice_delivery: '2025-04-08'
 encryption:
@@ -44,10 +34,13 @@ pdf_validation:
     exactly_two_pages: warn
     signature_overflow: warn
 pipeline:
-  auto_remove_output: true
-  keep_intermediate_files: true
+  after_run:
+    remove_artifacts: false
+    remove_unencrypted_pdfs: false
+  before_run:
+    clear_output_directory: true
 qr:
-  enabled: true
+  enabled: false
   payload_template: https://www.test-immunization.ca/update?client_id={client_id}&dob={date_of_birth_iso}&lang={language_code}
 typst:
   bin: typst
