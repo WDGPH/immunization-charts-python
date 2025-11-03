@@ -83,7 +83,7 @@ The pipeline has two lifecycle phases controlled under `pipeline.*`:
 
 **After Run (`pipeline.after_run`)**:
 - `remove_artifacts`: When true, removes the `output/artifacts` directory (QR codes, Typst files). Use this to reclaim disk space after successful compilation and validation.
-- `remove_unencrypted_pdfs`: When true and encryption is enabled, removes non-encrypted PDFs from `output/pdf_individual/` after encryption completes. Use this if you only need encrypted versions. Has no effect if encryption is disabled.
+- `remove_unencrypted_pdfs`: When true and either encryption OR batching is enabled, removes non-encrypted PDFs from `output/pdf_individual/` after encryption/batching completes. When both encryption and batching are disabled, individual non-encrypted PDFs are assumed to be the final output and are preserved regardless of this setting.
 
 #### Date controls
 - `date_data_cutoff` (ISO 8601 string) records when the source data was extracted. It renders in notices using the client's language via Babel so that readers see a localized calendar date. Change this only when regenerating notices from a fresher extract.

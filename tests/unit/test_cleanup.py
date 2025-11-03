@@ -204,19 +204,98 @@ class TestCleanupWithConfig:
             tmp_output_structure["pdf_individual"] / "en_notice_00001_0000000001.pdf"
         ).write_text("pdf content")
 
-        # Modify config to have encryption disabled but removal requested
+        # Modify config to have encryption disabled and batching disabled, but removal requested
         import yaml
 
         with open(config_file) as f:
             config = yaml.safe_load(f)
         config["encryption"]["enabled"] = False
+        config["bundling"]["bundle_size"] = 0
         config["pipeline"]["after_run"]["remove_unencrypted_pdfs"] = True
         with open(config_file, "w") as f:
             yaml.dump(config, f)
 
         cleanup.cleanup_with_config(output_dir, config_file)
 
-        # PDF preserved because encryption is disabled
+        # PDF preserved because both encryption and batching are disabled
+        assert (
+            tmp_output_structure["pdf_individual"] / "en_notice_00001_0000000001.pdf"
+        ).exists()
+
+    def test_cleanup_removes_unencrypted_pdfs_when_batching_enabled(
+        self, tmp_output_structure: dict, config_file: Path
+    ) -> None:
+        """Verify unencrypted PDFs removed when batching is enabled.
+
+        Real-world significance:
+        - When batching groups PDFs and remove_unencrypted_pdfs: true
+        - Original individual PDFs are deleted
+        - Only batched PDFs remain for distribution
+        - This assumes individual PDFs are intermediate artifacts
+        """
+        output_dir = tmp_output_structure["root"]
+
+        # Create test PDFs
+        (
+            tmp_output_structure["pdf_individual"] / "en_notice_00001_0000000001.pdf"
+        ).write_text("original")
+        (
+            tmp_output_structure["pdf_individual"] / "en_notice_00002_0000000002.pdf"
+        ).write_text("original2")
+
+        # Modify config to enable batching and unencrypted PDF removal
+        import yaml
+
+        with open(config_file) as f:
+            config = yaml.safe_load(f)
+        config["encryption"]["enabled"] = False
+        config["bundling"]["bundle_size"] = 10
+        config["pipeline"]["after_run"]["remove_unencrypted_pdfs"] = True
+        with open(config_file, "w") as f:
+            yaml.dump(config, f)
+
+        cleanup.cleanup_with_config(output_dir, config_file)
+
+        # Individual PDFs removed because batching is enabled
+        assert not (
+            tmp_output_structure["pdf_individual"] / "en_notice_00001_0000000001.pdf"
+        ).exists()
+        assert not (
+            tmp_output_structure["pdf_individual"] / "en_notice_00002_0000000002.pdf"
+        ).exists()
+
+    def test_cleanup_preserves_unencrypted_pdfs_when_both_disabled(
+        self, tmp_output_structure: dict, config_file: Path
+    ) -> None:
+        """Verify individual non-encrypted PDFs preserved when encryption and batching disabled.
+
+        Real-world significance:
+        - When both encryption and batching are disabled
+        - Individual non-encrypted PDFs are assumed to be final output
+        - remove_unencrypted_pdfs setting is ignored (has no effect)
+        - This is the default use case: generate individual notices
+        """
+        output_dir = tmp_output_structure["root"]
+
+        # Create test PDF
+        (
+            tmp_output_structure["pdf_individual"] / "en_notice_00001_0000000001.pdf"
+        ).write_text("pdf content")
+
+        # Ensure both encryption and batching are disabled
+        import yaml
+
+        with open(config_file) as f:
+            config = yaml.safe_load(f)
+        config["encryption"]["enabled"] = False
+        config["bundling"]["bundle_size"] = 0
+        config["pipeline"]["after_run"]["remove_unencrypted_pdfs"] = True
+        with open(config_file, "w") as f:
+            yaml.dump(config, f)
+
+        cleanup.cleanup_with_config(output_dir, config_file)
+
+        # PDF preserved because both encryption and batching are disabled
         assert (
             tmp_output_structure["pdf_individual"] / "en_notice_00001_0000000001.pdf"
         ).exists()
