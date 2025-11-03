@@ -301,18 +301,33 @@ def run_step_6_validate_pdfs(
     pdf_dir = output_dir / "pdf_individual"
     metadata_dir = output_dir / "metadata"
     validation_json = metadata_dir / f"{language}_validation_{run_id}.json"
+    artifacts_dir = output_dir / "artifacts"
+    preprocessed_json = artifacts_dir / f"preprocessed_clients_{run_id}.json"
 
-    # Load config for validation rules
-    config = load_config(config_dir / "parameters.yaml")
-    validation_config = config.get("pdf_validation", {})
-    enabled_rules = validation_config.get("rules", {})
+    # Load preprocessed clients to build client ID mapping
+    client_id_map = {}
+    import json
 
-    # Validate PDFs (print_summary always enabled)
+    with open(preprocessed_json, "r", encoding="utf-8") as f:
+        preprocessed = json.load(f)
+        clients = preprocessed.get("clients", [])
+        # Build map: filename -> client_id
+        # Filename format: {language}_notice_{sequence:05d}_{client_id}.pdf
+        for idx, client in enumerate(clients, start=1):
+            client_id = str(client.get("client_id", ""))
+            # Try to match any expected filename format
+            for ext in [".pdf"]:
+                for lang_prefix in ["en", "fr"]:
+                    filename = f"{lang_prefix}_notice_{idx:05d}_{client_id}{ext}"
+                    client_id_map[filename] = client_id
+
+    # Validate PDFs (module loads validation rules from config_dir)
     validate_pdfs.main(
         pdf_dir,
         language=language,
-        enabled_rules=enabled_rules,
         json_output=validation_json,
+        client_id_map=client_id_map,
+        config_dir=config_dir,
     )
 
 

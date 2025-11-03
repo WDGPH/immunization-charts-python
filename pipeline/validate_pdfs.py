@@ -48,6 +48,8 @@ from typing import List
 
 from pypdf import PdfReader
 
+from .config_loader import load_config
+
 
 @dataclass
 class ValidationResult:
@@ -173,6 +175,31 @@ def filter_by_language(files: List[Path], language: str | None) -> List[Path]:
     return [path for path in files if path.name.startswith(prefix)]
 
 
+def find_client_id_in_text(page_text: str) -> str | None:
+    """Find a 10-digit client ID in extracted PDF page text.
+
+    Searches for any 10-digit number; assumes the first match is the client ID.
+    May be preceded by "Client ID: " or "Identifiant du client: " (optional).
+
+    Parameters
+    ----------
+    page_text : str
+        Extracted text from a PDF page.
+
+    Returns
+    -------
+    str | None
+        10-digit client ID if found, None otherwise.
+    """
+    import re
+
+    # Search for any 10-digit number (word boundary on both sides to avoid false matches)
+    match = re.search(r"\b(\d{10})\b", page_text)
+    if match:
+        return match.group(1)
+    return None
+
+
 def extract_measurements_from_markers(page_text: str) -> dict[str, float]:
     """Extract dimension measurements from invisible text markers.
 
@@ -206,7 +233,10 @@ def extract_measurements_from_markers(page_text: str) -> dict[str, float]:
 
 
 def validate_pdf_layout(
-    pdf_path: Path, reader: PdfReader, enabled_rules: dict[str, str]
+    pdf_path: Path,
+    reader: PdfReader,
+    enabled_rules: dict[str, str],
+    client_id_map: dict[str, str] | None = None,
 ) -> tuple[List[str], dict[str, float]]:
     """Check PDF for layout issues using invisible markers and metadata.
 
@@ -218,6 +248,9 @@ def validate_pdf_layout(
         Opened PDF reader instance.
     enabled_rules : dict[str, str]
         Validation rules configuration (rule_name -> "disabled"/"warn"/"error").
+    client_id_map : dict[str, str], optional
+        Mapping of PDF filename (without path) to expected client ID.
+        If provided, client_id_presence validation uses this as source of truth.
 
     Returns
     -------
@@ -272,12 +305,48 @@ def validate_pdf_layout(
             # If measurement extraction fails, skip this check
             pass
 
+    # Check client ID presence (markerless: search for 10-digit number in text)
+    client_id_rule = enabled_rules.get("client_id_presence", "disabled")
+    if client_id_rule != "disabled" and client_id_map:
+        try:
+            # Get expected client ID from the mapping (source of truth: preprocessed_clients.json)
+            expected_client_id = client_id_map.get(pdf_path.name)
+            if expected_client_id:
+                # Search all pages for the client ID
+                found_client_id = None
+                for page_num, page in enumerate(reader.pages, start=1):
+                    page_text = page.extract_text()
+                    found_id = find_client_id_in_text(page_text)
+                    if found_id:
+                        found_client_id = found_id
+                        measurements["client_id_found_page"] = float(page_num)
+                        break
+
+                # Warn if ID not found or doesn't match
+                if found_client_id is None:
+                    warnings.append(
+                        f"client_id_presence: Client ID {expected_client_id} not found in PDF"
+                    )
+                elif found_client_id != expected_client_id:
+                    warnings.append(
+                        f"client_id_presence: Found ID {found_client_id}, expected {expected_client_id}"
+                    )
+                else:
+                    # Store the found ID for debugging
+                    measurements["client_id_found_value"] = float(
+                        int(found_client_id)
+                    )
+        except Exception:
+            # If client ID check fails, skip silently (parsing error)
+            pass
+
     return warnings, measurements
 
 
 def validate_pdf_structure(
     pdf_path: Path,
     enabled_rules: dict[str, str] | None = None,
+    client_id_map: dict[str, str] | None = None,
 ) -> ValidationResult:
     """Validate a single PDF file for structure and layout.
 
@@ -287,6 +356,8 @@ def validate_pdf_structure(
         Path to the PDF file to validate.
     enabled_rules : dict[str, str], optional
         Validation rules configuration (rule_name -> "disabled"/"warn"/"error").
+    client_id_map : dict[str, str], optional
+        Mapping of PDF filename to expected client ID (from preprocessed_clients.json).
 
     Returns
     -------
@@ -316,7 +387,7 @@ def validate_pdf_structure(
 
     # Validate layout using markers
     layout_warnings, layout_measurements = validate_pdf_layout(
-        pdf_path, reader, enabled_rules
+        pdf_path, reader, enabled_rules, client_id_map=client_id_map
     )
     warnings.extend(layout_warnings)
     measurements.update(layout_measurements)
@@ -374,6 +445,7 @@ def compute_rule_results(
 def validate_pdfs(
     files: List[Path],
     enabled_rules: dict[str, str] | None = None,
+    client_id_map: dict[str, str] | None = None,
 ) -> ValidationSummary:
     """Validate all PDF files and generate summary.
 
@@ -383,6 +455,8 @@ def validate_pdfs(
         PDF file paths to validate.
     enabled_rules : dict[str, str], optional
         Validation rules configuration (rule_name -> "disabled"/"warn"/"error").
+    client_id_map : dict[str, str], optional
+        Mapping of PDF filename to expected client ID (from preprocessed_clients.json).
 
     Returns
     -------
@@ -391,13 +465,17 @@ def validate_pdfs(
     """
     if enabled_rules is None:
         enabled_rules = {}
+    if client_id_map is None:
+        client_id_map = {}
 
     results: List[ValidationResult] = []
     page_buckets: Counter = Counter()
     warning_type_counts: Counter = Counter()
 
     for pdf_path in files:
-        result = validate_pdf_structure(pdf_path, enabled_rules=enabled_rules)
+        result = validate_pdf_structure(
+            pdf_path, enabled_rules=enabled_rules, client_id_map=client_id_map
+        )
         results.append(result)
         page_count = int(result.measurements.get("page_count", 0))
         page_buckets[page_count] += 1
@@ -510,6 +588,8 @@ def main(
     language: str | None = None,
     enabled_rules: dict[str, str] | None = None,
     json_output: Path | None = None,
+    client_id_map: dict[str, str] | None = None,
+    config_dir: Path | None = None,
 ) -> ValidationSummary:
     """Main entry point for PDF validation.
 
@@ -521,8 +601,15 @@ def main(
         Optional language prefix to filter PDF filenames (e.g., 'en').
     enabled_rules : dict[str, str], optional
         Validation rules configuration (rule_name -> "disabled"/"warn"/"error").
+        If not provided and config_dir is given, loads from config_dir/parameters.yaml.
     json_output : Path, optional
         Optional path to write validation summary as JSON.
+    client_id_map : dict[str, str], optional
+        Mapping of PDF filename to expected client ID (from preprocessed_clients.json).
+    config_dir : Path, optional
+        Path to config directory containing parameters.yaml.
+        Used to load enabled_rules if not explicitly provided.
+        If not provided, uses default location (config/parameters.yaml in project root).
 
     Returns
     -------
@@ -534,12 +621,19 @@ def main(
     RuntimeError
         If any validation rule with severity 'error' fails.
     """
+    # Load enabled_rules from config if not provided
     if enabled_rules is None:
-        enabled_rules = {}
+        config_path = None if config_dir is None else config_dir / "parameters.yaml"
+        config = load_config(config_path)
+        validation_config = config.get("pdf_validation", {})
+        enabled_rules = validation_config.get("rules", {})
+
+    if client_id_map is None:
+        client_id_map = {}
 
     files = discover_pdfs(target)
     filtered = filter_by_language(files, language)
-    summary = validate_pdfs(filtered, enabled_rules=enabled_rules)
+    summary = validate_pdfs(filtered, enabled_rules=enabled_rules, client_id_map=client_id_map)
     summary.language = language
 
     if json_output:
