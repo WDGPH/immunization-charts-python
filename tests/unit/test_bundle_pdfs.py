@@ -1,15 +1,15 @@
-"""Unit tests for batch_pdfs module - PDF batching for distribution.
+"""Unit tests for bundle_pdfs module - PDF bundling for distribution.
 
 Tests cover:
-- Batch grouping strategies (size, school, board)
-- Batch manifest generation
-- Error handling for empty batches
-- Batch metadata tracking
+- Bundle grouping strategies (size, school, board)
+- Bundle manifest generation
+- Error handling for empty bundlees
+- Bundle metadata tracking
 
 Real-world significance:
-- Step 7 of pipeline (optional): groups PDFs into batches by school/size
+- Step 7 of pipeline (optional): groups PDFs into bundlees by school/size
 - Enables efficient shipping of notices to schools and districts
-- Batching strategy affects how notices are organized for distribution
+- Bundleing strategy affects how notices are organized for distribution
 """
 
 from __future__ import annotations
@@ -19,9 +19,9 @@ from pathlib import Path
 
 import pytest
 
-from pipeline import batch_pdfs
+from pipeline import bundle_pdfs
 from pipeline.data_models import PdfRecord
-from pipeline.enums import BatchStrategy, BatchType
+from pipeline.enums import BundleStrategy, BundleType
 from tests.fixtures import sample_input
 
 
@@ -77,10 +77,10 @@ class TestChunked:
         """Verify chunked splits sequence into equal-sized chunks.
 
         Real-world significance:
-        - Chunking ensures batches don't exceed max_size limit
+        - Chunking ensures bundlees don't exceed max_size limit
         """
         items = [1, 2, 3, 4, 5, 6]
-        chunks = list(batch_pdfs.chunked(items, 2))
+        chunks = list(bundle_pdfs.chunked(items, 2))
         assert len(chunks) == 3
         assert chunks[0] == [1, 2]
         assert chunks[1] == [3, 4]
@@ -90,10 +90,10 @@ class TestChunked:
         """Verify chunked handles sequences not evenly divisible.
 
         Real-world significance:
-        - Last batch may be smaller than batch_size
+        - Last bundle may be smaller than bundle_size
         """
         items = [1, 2, 3, 4, 5]
-        chunks = list(batch_pdfs.chunked(items, 2))
+        chunks = list(bundle_pdfs.chunked(items, 2))
         assert len(chunks) == 3
         assert chunks[0] == [1, 2]
         assert chunks[1] == [3, 4]
@@ -103,10 +103,10 @@ class TestChunked:
         """Verify chunked with size >= len(items) produces single chunk.
 
         Real-world significance:
-        - Small batches fit in one chunk
+        - Small bundlees fit in one chunk
         """
         items = [1, 2, 3]
-        chunks = list(batch_pdfs.chunked(items, 10))
+        chunks = list(bundle_pdfs.chunked(items, 10))
         assert len(chunks) == 1
         assert chunks[0] == [1, 2, 3]
 
@@ -114,21 +114,21 @@ class TestChunked:
         """Verify chunked raises error for zero or negative size.
 
         Real-world significance:
-        - Invalid batch_size should fail explicitly
+        - Invalid bundle_size should fail explicitly
         """
         items = [1, 2, 3]
         with pytest.raises(ValueError, match="chunk size must be positive"):
-            list(batch_pdfs.chunked(items, 0))
+            list(bundle_pdfs.chunked(items, 0))
 
     def test_chunked_negative_size_raises_error(self) -> None:
         """Verify chunked raises error for negative size.
 
         Real-world significance:
-        - Negative batch_size is invalid
+        - Negative bundle_size is invalid
         """
         items = [1, 2, 3]
         with pytest.raises(ValueError, match="chunk size must be positive"):
-            list(batch_pdfs.chunked(items, -1))
+            list(bundle_pdfs.chunked(items, -1))
 
 
 @pytest.mark.unit
@@ -141,8 +141,8 @@ class TestSlugify:
         Real-world significance:
         - School/board names may contain special characters unsafe for filenames
         """
-        assert batch_pdfs.slugify("School #1") == "school_1"
-        assert batch_pdfs.slugify("District (East)") == "district_east"
+        assert bundle_pdfs.slugify("School #1") == "school_1"
+        assert bundle_pdfs.slugify("District (East)") == "district_east"
 
     def test_slugify_lowercases_string(self) -> None:
         """Verify slugify converts to lowercase.
@@ -150,7 +150,7 @@ class TestSlugify:
         Real-world significance:
         - Consistent filename convention
         """
-        assert batch_pdfs.slugify("NORTH DISTRICT") == "north_district"
+        assert bundle_pdfs.slugify("NORTH DISTRICT") == "north_district"
 
     def test_slugify_condenses_multiple_underscores(self) -> None:
         """Verify slugify removes redundant underscores.
@@ -158,7 +158,7 @@ class TestSlugify:
         Real-world significance:
         - Filenames don't have confusing multiple underscores
         """
-        assert batch_pdfs.slugify("School   &   #$  Name") == "school_name"
+        assert bundle_pdfs.slugify("School   &   #$  Name") == "school_name"
 
     def test_slugify_strips_leading_trailing_underscores(self) -> None:
         """Verify slugify removes leading/trailing underscores.
@@ -166,7 +166,7 @@ class TestSlugify:
         Real-world significance:
         - Filenames start/end with alphanumeric characters
         """
-        assert batch_pdfs.slugify("___school___") == "school"
+        assert bundle_pdfs.slugify("___school___") == "school"
 
     def test_slugify_empty_or_whitespace_returns_unknown(self) -> None:
         """Verify slugify returns 'unknown' for empty/whitespace strings.
@@ -174,8 +174,8 @@ class TestSlugify:
         Real-world significance:
         - Missing school/board name doesn't break filename generation
         """
-        assert batch_pdfs.slugify("") == "unknown"
-        assert batch_pdfs.slugify("   ") == "unknown"
+        assert bundle_pdfs.slugify("") == "unknown"
+        assert bundle_pdfs.slugify("   ") == "unknown"
 
 
 @pytest.mark.unit
@@ -186,7 +186,7 @@ class TestLoadArtifact:
         """Verify load_artifact reads preprocessed artifact JSON.
 
         Real-world significance:
-        - Batching step depends on artifact created by preprocess step
+        - Bundleing step depends on artifact created by preprocess step
         """
         run_id = "test_001"
         artifact = sample_input.create_test_artifact_payload(
@@ -199,7 +199,7 @@ class TestLoadArtifact:
         with open(artifact_path, "w") as f:
             json.dump(artifact_to_dict(artifact), f)
 
-        loaded = batch_pdfs.load_artifact(tmp_path, run_id)
+        loaded = bundle_pdfs.load_artifact(tmp_path, run_id)
 
         assert loaded["run_id"] == run_id
         assert isinstance(loaded["clients"], list)
@@ -209,10 +209,10 @@ class TestLoadArtifact:
         """Verify load_artifact raises error for missing artifact.
 
         Real-world significance:
-        - Batching cannot proceed without preprocessing artifact
+        - Bundleing cannot proceed without preprocessing artifact
         """
         with pytest.raises(FileNotFoundError, match="not found"):
-            batch_pdfs.load_artifact(tmp_path, "nonexistent_run")
+            bundle_pdfs.load_artifact(tmp_path, "nonexistent_run")
 
 
 @pytest.mark.unit
@@ -229,7 +229,7 @@ class TestBuildClientLookup:
             num_clients=3, run_id="test"
         )
         artifact_dict = artifact_to_dict(artifact)
-        lookup = batch_pdfs.build_client_lookup(artifact_dict)
+        lookup = bundle_pdfs.build_client_lookup(artifact_dict)
 
         assert len(lookup) == 3
         # Verify keys are (sequence, client_id) tuples
@@ -247,7 +247,7 @@ class TestBuildClientLookup:
             num_clients=1, run_id="test"
         )
         artifact_dict = artifact_to_dict(artifact)
-        lookup = batch_pdfs.build_client_lookup(artifact_dict)
+        lookup = bundle_pdfs.build_client_lookup(artifact_dict)
 
         client = artifact_dict["clients"][0]
         sequence = client["sequence"]
@@ -265,7 +265,7 @@ class TestDiscoverPdfs:
         """Verify discover_pdfs finds PDFs with correct language prefix.
 
         Real-world significance:
-        - Batching only processes PDFs in requested language
+        - Bundleing only processes PDFs in requested language
         """
         pdf_dir = tmp_path / "pdf_individual"
         pdf_dir.mkdir()
@@ -275,8 +275,8 @@ class TestDiscoverPdfs:
         (pdf_dir / "en_notice_00002_client2.pdf").write_bytes(b"test")
         (pdf_dir / "fr_notice_00001_client1.pdf").write_bytes(b"test")
 
-        en_pdfs = batch_pdfs.discover_pdfs(tmp_path, "en")
-        fr_pdfs = batch_pdfs.discover_pdfs(tmp_path, "fr")
+        en_pdfs = bundle_pdfs.discover_pdfs(tmp_path, "en")
+        fr_pdfs = bundle_pdfs.discover_pdfs(tmp_path, "fr")
 
         assert len(en_pdfs) == 2
         assert len(fr_pdfs) == 1
@@ -285,7 +285,7 @@ class TestDiscoverPdfs:
         """Verify discover_pdfs returns files in sorted order.
 
         Real-world significance:
-        - Consistent PDF ordering for reproducible batches
+        - Consistent PDF ordering for reproducible bundlees
         """
         pdf_dir = tmp_path / "pdf_individual"
         pdf_dir.mkdir()
@@ -294,7 +294,7 @@ class TestDiscoverPdfs:
         (pdf_dir / "en_notice_00001_client1.pdf").write_bytes(b"test")
         (pdf_dir / "en_notice_00002_client2.pdf").write_bytes(b"test")
 
-        pdfs = batch_pdfs.discover_pdfs(tmp_path, "en")
+        pdfs = bundle_pdfs.discover_pdfs(tmp_path, "en")
         names = [p.name for p in pdfs]
 
         assert names == [
@@ -309,9 +309,9 @@ class TestDiscoverPdfs:
         """Verify discover_pdfs returns empty list for missing directory.
 
         Real-world significance:
-        - No PDFs generated means nothing to batch
+        - No PDFs generated means nothing to bundle
         """
-        pdfs = batch_pdfs.discover_pdfs(tmp_path, "en")
+        pdfs = bundle_pdfs.discover_pdfs(tmp_path, "en")
         assert pdfs == []
 
 
@@ -325,7 +325,7 @@ class TestBuildPdfRecords:
         """Verify build_pdf_records creates PdfRecord for each PDF.
 
         Real-world significance:
-        - Records capture PDF metadata needed for batching
+        - Records capture PDF metadata needed for bundling
         """
         artifact = sample_input.create_test_artifact_payload(
             num_clients=2, run_id="test"
@@ -341,8 +341,8 @@ class TestBuildPdfRecords:
             pdf_path = pdf_dir / f"en_notice_{seq}_{cid}.pdf"
             create_test_pdf(pdf_path, num_pages=2)
 
-        clients = batch_pdfs.build_client_lookup(artifact_dict)
-        records = batch_pdfs.build_pdf_records(tmp_path, "en", clients)
+        clients = bundle_pdfs.build_client_lookup(artifact_dict)
+        records = bundle_pdfs.build_pdf_records(tmp_path, "en", clients)
 
         assert len(records) == 2
         for record in records:
@@ -353,7 +353,7 @@ class TestBuildPdfRecords:
         """Verify build_pdf_records returns records sorted by sequence.
 
         Real-world significance:
-        - Consistent batch ordering
+        - Consistent bundle ordering
         """
         artifact = sample_input.create_test_artifact_payload(
             num_clients=3, run_id="test"
@@ -369,8 +369,8 @@ class TestBuildPdfRecords:
             pdf_path = pdf_dir / f"en_notice_{seq}_{cid}.pdf"
             create_test_pdf(pdf_path, num_pages=1)
 
-        clients = batch_pdfs.build_client_lookup(artifact_dict)
-        records = batch_pdfs.build_pdf_records(tmp_path, "en", clients)
+        clients = bundle_pdfs.build_client_lookup(artifact_dict)
+        records = bundle_pdfs.build_pdf_records(tmp_path, "en", clients)
 
         sequences = [r.sequence for r in records]
         assert sequences == sorted(sequences)
@@ -379,7 +379,7 @@ class TestBuildPdfRecords:
         """Verify build_pdf_records logs and skips malformed PDF filenames.
 
         Real-world significance:
-        - Invalid PDFs don't crash batching, only logged as warning
+        - Invalid PDFs don't crash bundling, only logged as warning
         """
         artifact = sample_input.create_test_artifact_payload(
             num_clients=1, run_id="test"
@@ -396,8 +396,8 @@ class TestBuildPdfRecords:
         # Create invalid PDF filename
         (pdf_dir / "invalid_name.pdf").write_bytes(b"test")
 
-        clients = batch_pdfs.build_client_lookup(artifact_dict)
-        records = batch_pdfs.build_pdf_records(tmp_path, "en", clients)
+        clients = bundle_pdfs.build_client_lookup(artifact_dict)
+        records = bundle_pdfs.build_pdf_records(tmp_path, "en", clients)
 
         assert len(records) == 1  # Only valid PDF counted
 
@@ -419,10 +419,10 @@ class TestBuildPdfRecords:
         # Create PDF for non-existent client
         create_test_pdf(pdf_dir / "en_notice_00099_orphan_client.pdf", num_pages=1)
 
-        clients = batch_pdfs.build_client_lookup(artifact_dict)
+        clients = bundle_pdfs.build_client_lookup(artifact_dict)
 
         with pytest.raises(KeyError, match="No client metadata"):
-            batch_pdfs.build_pdf_records(tmp_path, "en", clients)
+            bundle_pdfs.build_pdf_records(tmp_path, "en", clients)
 
 
 @pytest.mark.unit
@@ -433,7 +433,7 @@ class TestEnsureIds:
         """Verify ensure_ids passes when all clients have school IDs.
 
         Real-world significance:
-        - School/board identifiers required for grouped batching
+        - School/board identifiers required for grouped bundling
         """
         artifact = sample_input.create_test_artifact_payload(
             num_clients=2, run_id="test"
@@ -448,11 +448,11 @@ class TestEnsureIds:
             pdf_path = pdf_dir / f"en_notice_{seq}_{cid}.pdf"
             create_test_pdf(pdf_path, num_pages=1)
 
-        clients = batch_pdfs.build_client_lookup(artifact_dict)
-        records = batch_pdfs.build_pdf_records(tmp_path, "en", clients)
+        clients = bundle_pdfs.build_client_lookup(artifact_dict)
+        records = bundle_pdfs.build_pdf_records(tmp_path, "en", clients)
 
         # Should not raise
-        batch_pdfs.ensure_ids(
+        bundle_pdfs.ensure_ids(
             records, attr="school", log_path=tmp_path / "preprocess.log"
         )
 
@@ -476,11 +476,11 @@ class TestEnsureIds:
         pdf_path = pdf_dir / f"en_notice_{client.sequence}_{client.client_id}.pdf"
         create_test_pdf(pdf_path, num_pages=1)
 
-        clients = batch_pdfs.build_client_lookup(artifact_dict)
-        records = batch_pdfs.build_pdf_records(tmp_path, "en", clients)
+        clients = bundle_pdfs.build_client_lookup(artifact_dict)
+        records = bundle_pdfs.build_pdf_records(tmp_path, "en", clients)
 
         with pytest.raises(ValueError, match="Missing school"):
-            batch_pdfs.ensure_ids(
+            bundle_pdfs.ensure_ids(
                 records, attr="school", log_path=tmp_path / "preprocess.log"
             )
 
@@ -493,7 +493,7 @@ class TestGroupRecords:
         """Verify group_records groups records by specified key.
 
         Real-world significance:
-        - School-based batching requires grouping by school identifier
+        - School-based bundling requires grouping by school identifier
         """
         artifact = sample_input.create_test_artifact_payload(
             num_clients=4, run_id="test"
@@ -511,10 +511,10 @@ class TestGroupRecords:
             pdf_path = pdf_dir / f"en_notice_{seq}_{cid}.pdf"
             create_test_pdf(pdf_path, num_pages=1)
 
-        clients = batch_pdfs.build_client_lookup(artifact_dict)
-        records = batch_pdfs.build_pdf_records(tmp_path, "en", clients)
+        clients = bundle_pdfs.build_client_lookup(artifact_dict)
+        records = bundle_pdfs.build_pdf_records(tmp_path, "en", clients)
 
-        grouped = batch_pdfs.group_records(records, "school")
+        grouped = bundle_pdfs.group_records(records, "school")
 
         assert len(grouped) >= 1  # At least one group
 
@@ -522,7 +522,7 @@ class TestGroupRecords:
         """Verify group_records returns groups sorted by key.
 
         Real-world significance:
-        - Consistent batch ordering across runs
+        - Consistent bundle ordering across runs
         """
         artifact = sample_input.create_test_artifact_payload(
             num_clients=3, run_id="test"
@@ -542,24 +542,24 @@ class TestGroupRecords:
             pdf_path = pdf_dir / f"en_notice_{seq}_{cid}.pdf"
             create_test_pdf(pdf_path, num_pages=1)
 
-        clients = batch_pdfs.build_client_lookup(artifact_dict)
-        records = batch_pdfs.build_pdf_records(tmp_path, "en", clients)
+        clients = bundle_pdfs.build_client_lookup(artifact_dict)
+        records = bundle_pdfs.build_pdf_records(tmp_path, "en", clients)
 
-        grouped = batch_pdfs.group_records(records, "school")
+        grouped = bundle_pdfs.group_records(records, "school")
         keys = list(grouped.keys())
 
         assert keys == sorted(keys)
 
 
 @pytest.mark.unit
-class TestPlanBatches:
-    """Unit tests for plan_batches function."""
+class TestPlanBundlees:
+    """Unit tests for plan_bundlees function."""
 
-    def test_plan_batches_size_based(self, tmp_path: Path) -> None:
-        """Verify plan_batches creates size-based batches.
+    def test_plan_bundlees_size_based(self, tmp_path: Path) -> None:
+        """Verify plan_bundlees creates size-based bundlees.
 
         Real-world significance:
-        - Default batching strategy chunks PDFs by fixed size
+        - Default bundling strategy chunks PDFs by fixed size
         """
         artifact = sample_input.create_test_artifact_payload(
             num_clients=5, run_id="test"
@@ -574,29 +574,29 @@ class TestPlanBatches:
             pdf_path = pdf_dir / f"en_notice_{seq}_{cid}.pdf"
             create_test_pdf(pdf_path, num_pages=1)
 
-        clients = batch_pdfs.build_client_lookup(artifact_dict)
-        records = batch_pdfs.build_pdf_records(tmp_path, "en", clients)
+        clients = bundle_pdfs.build_client_lookup(artifact_dict)
+        records = bundle_pdfs.build_pdf_records(tmp_path, "en", clients)
 
-        config = batch_pdfs.BatchConfig(
+        config = bundle_pdfs.BundleConfig(
             output_dir=tmp_path,
             language="en",
-            batch_size=2,
-            batch_strategy=BatchStrategy.SIZE,
+            bundle_size=2,
+            bundle_strategy=BundleStrategy.SIZE,
             run_id="test",
         )
 
-        plans = batch_pdfs.plan_batches(config, records, tmp_path / "preprocess.log")
+        plans = bundle_pdfs.plan_bundles(config, records, tmp_path / "preprocess.log")
 
-        assert len(plans) == 3  # 5 records / 2 per batch = 3 batches
-        assert plans[0].batch_type == BatchType.SIZE_BASED
+        assert len(plans) == 3  # 5 records / 2 per bundle = 3 bundlees
+        assert plans[0].bundle_type == BundleType.SIZE_BASED
         assert len(plans[0].clients) == 2
         assert len(plans[2].clients) == 1
 
-    def test_plan_batches_school_grouped(self, tmp_path: Path) -> None:
-        """Verify plan_batches creates school-grouped batches.
+    def test_plan_bundlees_school_grouped(self, tmp_path: Path) -> None:
+        """Verify plan_bundlees creates school-grouped bundlees.
 
         Real-world significance:
-        - School-based batching groups records by school first
+        - School-based bundling groups records by school first
         """
         artifact = sample_input.create_test_artifact_payload(
             num_clients=6, run_id="test"
@@ -615,27 +615,27 @@ class TestPlanBatches:
             pdf_path = pdf_dir / f"en_notice_{seq}_{cid}.pdf"
             create_test_pdf(pdf_path, num_pages=1)
 
-        clients = batch_pdfs.build_client_lookup(artifact_dict)
-        records = batch_pdfs.build_pdf_records(tmp_path, "en", clients)
+        clients = bundle_pdfs.build_client_lookup(artifact_dict)
+        records = bundle_pdfs.build_pdf_records(tmp_path, "en", clients)
 
-        config = batch_pdfs.BatchConfig(
+        config = bundle_pdfs.BundleConfig(
             output_dir=tmp_path,
             language="en",
-            batch_size=2,
-            batch_strategy=BatchStrategy.SCHOOL,
+            bundle_size=2,
+            bundle_strategy=BundleStrategy.SCHOOL,
             run_id="test",
         )
 
-        plans = batch_pdfs.plan_batches(config, records, tmp_path / "preprocess.log")
+        plans = bundle_pdfs.plan_bundles(config, records, tmp_path / "preprocess.log")
 
-        assert all(p.batch_type == BatchType.SCHOOL_GROUPED for p in plans)
-        assert all(p.batch_identifier in ["school_a", "school_b"] for p in plans)
+        assert all(p.bundle_type == BundleType.SCHOOL_GROUPED for p in plans)
+        assert all(p.bundle_identifier in ["school_a", "school_b"] for p in plans)
 
-    def test_plan_batches_board_grouped(self, tmp_path: Path) -> None:
-        """Verify plan_batches creates board-grouped batches.
+    def test_plan_bundlees_board_grouped(self, tmp_path: Path) -> None:
+        """Verify plan_bundlees creates board-grouped bundlees.
 
         Real-world significance:
-        - Board-based batching groups by board identifier
+        - Board-based bundling groups by board identifier
         """
         artifact = sample_input.create_test_artifact_payload(
             num_clients=4, run_id="test"
@@ -653,28 +653,28 @@ class TestPlanBatches:
             pdf_path = pdf_dir / f"en_notice_{seq}_{cid}.pdf"
             create_test_pdf(pdf_path, num_pages=1)
 
-        clients = batch_pdfs.build_client_lookup(artifact_dict)
-        records = batch_pdfs.build_pdf_records(tmp_path, "en", clients)
+        clients = bundle_pdfs.build_client_lookup(artifact_dict)
+        records = bundle_pdfs.build_pdf_records(tmp_path, "en", clients)
 
-        config = batch_pdfs.BatchConfig(
+        config = bundle_pdfs.BundleConfig(
             output_dir=tmp_path,
             language="en",
-            batch_size=1,
-            batch_strategy=BatchStrategy.BOARD,
+            bundle_size=1,
+            bundle_strategy=BundleStrategy.BOARD,
             run_id="test",
         )
 
-        plans = batch_pdfs.plan_batches(config, records, tmp_path / "preprocess.log")
+        plans = bundle_pdfs.plan_bundles(config, records, tmp_path / "preprocess.log")
 
-        assert all(p.batch_type == BatchType.BOARD_GROUPED for p in plans)
+        assert all(p.bundle_type == BundleType.BOARD_GROUPED for p in plans)
 
-    def test_plan_batches_returns_empty_for_zero_batch_size(
+    def test_plan_bundlees_returns_empty_for_zero_bundle_size(
         self, tmp_path: Path
     ) -> None:
-        """Verify plan_batches returns empty list when batch_size is 0.
+        """Verify plan_bundlees returns empty list when bundle_size is 0.
 
         Real-world significance:
-        - Batching disabled (batch_size=0) skips grouping
+        - Bundleing disabled (bundle_size=0) skips grouping
         """
         artifact = sample_input.create_test_artifact_payload(
             num_clients=3, run_id="test"
@@ -689,18 +689,18 @@ class TestPlanBatches:
             pdf_path = pdf_dir / f"en_notice_{seq}_{cid}.pdf"
             create_test_pdf(pdf_path, num_pages=1)
 
-        clients = batch_pdfs.build_client_lookup(artifact_dict)
-        records = batch_pdfs.build_pdf_records(tmp_path, "en", clients)
+        clients = bundle_pdfs.build_client_lookup(artifact_dict)
+        records = bundle_pdfs.build_pdf_records(tmp_path, "en", clients)
 
-        config = batch_pdfs.BatchConfig(
+        config = bundle_pdfs.BundleConfig(
             output_dir=tmp_path,
             language="en",
-            batch_size=0,
-            batch_strategy=BatchStrategy.SIZE,
+            bundle_size=0,
+            bundle_strategy=BundleStrategy.SIZE,
             run_id="test",
         )
 
-        plans = batch_pdfs.plan_batches(config, records, tmp_path / "preprocess.log")
+        plans = bundle_pdfs.plan_bundles(config, records, tmp_path / "preprocess.log")
 
         assert plans == []
 
@@ -713,7 +713,7 @@ class TestMergePdfFiles:
         """Verify merge_pdf_files combines PDFs into single file.
 
         Real-world significance:
-        - Multiple per-client PDFs merged into single batch PDF
+        - Multiple per-client PDFs merged into single bundle PDF
         """
         pdf_paths = []
         for i in range(3):
@@ -722,7 +722,7 @@ class TestMergePdfFiles:
             pdf_paths.append(pdf_path)
 
         output = tmp_path / "merged.pdf"
-        batch_pdfs.merge_pdf_files(pdf_paths, output)
+        bundle_pdfs.merge_pdf_files(pdf_paths, output)
 
         assert output.exists()
 
@@ -730,7 +730,7 @@ class TestMergePdfFiles:
         """Verify merged PDF is readable and valid.
 
         Real-world significance:
-        - Batch PDFs must be valid for downstream processing
+        - Bundle PDFs must be valid for downstream processing
         """
         pdf_paths = []
         for i in range(2):
@@ -739,21 +739,21 @@ class TestMergePdfFiles:
             pdf_paths.append(pdf_path)
 
         output = tmp_path / "merged.pdf"
-        batch_pdfs.merge_pdf_files(pdf_paths, output)
+        bundle_pdfs.merge_pdf_files(pdf_paths, output)
 
         assert output.exists()
         assert output.stat().st_size > 0
 
 
 @pytest.mark.unit
-class TestWriteBatch:
-    """Unit tests for write_batch function."""
+class TestWriteBundle:
+    """Unit tests for write_bundle function."""
 
-    def test_write_batch_creates_pdf_and_manifest(self, tmp_path: Path) -> None:
-        """Verify write_batch creates both merged PDF and manifest JSON.
+    def test_write_bundle_creates_pdf_and_manifest(self, tmp_path: Path) -> None:
+        """Verify write_bundle creates both merged PDF and manifest JSON.
 
         Real-world significance:
-        - Batch operation produces both PDF and metadata
+        - Bundle operation produces both PDF and metadata
         """
         artifact = sample_input.create_test_artifact_payload(
             num_clients=2, run_id="test"
@@ -768,32 +768,32 @@ class TestWriteBatch:
             pdf_path = pdf_dir / f"en_notice_{seq}_{cid}.pdf"
             create_test_pdf(pdf_path, num_pages=1)
 
-        clients = batch_pdfs.build_client_lookup(artifact_dict)
-        records = batch_pdfs.build_pdf_records(tmp_path, "en", clients)
+        clients = bundle_pdfs.build_client_lookup(artifact_dict)
+        records = bundle_pdfs.build_pdf_records(tmp_path, "en", clients)
 
         combined_dir = tmp_path / "pdf_combined"
         metadata_dir = tmp_path / "metadata"
         combined_dir.mkdir()
         metadata_dir.mkdir()
 
-        plan = batch_pdfs.BatchPlan(
-            batch_type=BatchType.SIZE_BASED,
-            batch_identifier=None,
-            batch_number=1,
-            total_batches=1,
+        plan = bundle_pdfs.BundlePlan(
+            bundle_type=BundleType.SIZE_BASED,
+            bundle_identifier=None,
+            bundle_number=1,
+            total_bundles=1,
             clients=records,
         )
 
-        config = batch_pdfs.BatchConfig(
+        config = bundle_pdfs.BundleConfig(
             output_dir=tmp_path,
             language="en",
-            batch_size=2,
-            batch_strategy=BatchStrategy.SIZE,
+            bundle_size=2,
+            bundle_strategy=BundleStrategy.SIZE,
             run_id="test",
         )
 
         artifact_path = tmp_path / "artifacts" / "preprocessed_clients_test.json"
-        result = batch_pdfs.write_batch(
+        result = bundle_pdfs.write_bundle(
             config,
             plan,
             combined_dir=combined_dir,
@@ -804,11 +804,11 @@ class TestWriteBatch:
         assert result.pdf_path.exists()
         assert result.manifest_path.exists()
 
-    def test_write_batch_manifest_contains_metadata(self, tmp_path: Path) -> None:
-        """Verify manifest JSON contains required batch metadata.
+    def test_write_bundle_manifest_contains_metadata(self, tmp_path: Path) -> None:
+        """Verify manifest JSON contains required bundle metadata.
 
         Real-world significance:
-        - Manifest records batch composition for audit/tracking
+        - Manifest records bundle composition for audit/tracking
         """
         artifact = sample_input.create_test_artifact_payload(
             num_clients=1, run_id="test_run"
@@ -823,32 +823,32 @@ class TestWriteBatch:
         pdf_path = pdf_dir / f"en_notice_{seq}_{cid}.pdf"
         create_test_pdf(pdf_path, num_pages=1)
 
-        clients = batch_pdfs.build_client_lookup(artifact_dict)
-        records = batch_pdfs.build_pdf_records(tmp_path, "en", clients)
+        clients = bundle_pdfs.build_client_lookup(artifact_dict)
+        records = bundle_pdfs.build_pdf_records(tmp_path, "en", clients)
 
         combined_dir = tmp_path / "pdf_combined"
         metadata_dir = tmp_path / "metadata"
         combined_dir.mkdir()
         metadata_dir.mkdir()
 
-        plan = batch_pdfs.BatchPlan(
-            batch_type=BatchType.SIZE_BASED,
-            batch_identifier=None,
-            batch_number=1,
-            total_batches=1,
+        plan = bundle_pdfs.BundlePlan(
+            bundle_type=BundleType.SIZE_BASED,
+            bundle_identifier=None,
+            bundle_number=1,
+            total_bundles=1,
             clients=records,
         )
 
-        config = batch_pdfs.BatchConfig(
+        config = bundle_pdfs.BundleConfig(
             output_dir=tmp_path,
             language="en",
-            batch_size=1,
-            batch_strategy=BatchStrategy.SIZE,
+            bundle_size=1,
+            bundle_strategy=BundleStrategy.SIZE,
             run_id="test_run",
         )
 
         artifact_path = tmp_path / "artifacts" / "preprocessed_clients_test_run.json"
-        result = batch_pdfs.write_batch(
+        result = bundle_pdfs.write_bundle(
             config,
             plan,
             combined_dir=combined_dir,
@@ -861,21 +861,21 @@ class TestWriteBatch:
 
         assert manifest["run_id"] == "test_run"
         assert manifest["language"] == "en"
-        assert manifest["batch_type"] == "size_based"
+        assert manifest["bundle_type"] == "size_based"
         assert manifest["total_clients"] == 1
         assert "sha256" in manifest
         assert "clients" in manifest
 
 
 @pytest.mark.unit
-class TestBatchPdfs:
-    """Unit tests for main batch_pdfs orchestration function."""
+class TestBundlePdfs:
+    """Unit tests for main bundle_pdfs orchestration function."""
 
-    def test_batch_pdfs_returns_empty_when_disabled(self, tmp_path: Path) -> None:
-        """Verify batch_pdfs returns empty list when batch_size <= 0.
+    def test_bundle_pdfs_returns_empty_when_disabled(self, tmp_path: Path) -> None:
+        """Verify bundle_pdfs returns empty list when bundle_size <= 0.
 
         Real-world significance:
-        - Batching is optional feature (skip if disabled in config)
+        - Bundleing is optional feature (skip if disabled in config)
         """
         artifact = sample_input.create_test_artifact_payload(
             num_clients=2, run_id="test"
@@ -887,40 +887,40 @@ class TestBatchPdfs:
         with open(artifact_path, "w") as f:
             json.dump(artifact_to_dict(artifact), f)
 
-        config = batch_pdfs.BatchConfig(
+        config = bundle_pdfs.BundleConfig(
             output_dir=tmp_path,
             language="en",
-            batch_size=0,
-            batch_strategy=BatchStrategy.SIZE,
+            bundle_size=0,
+            bundle_strategy=BundleStrategy.SIZE,
             run_id="test",
         )
 
-        results = batch_pdfs.batch_pdfs(config)
+        results = bundle_pdfs.bundle_pdfs(config)
 
         assert results == []
 
-    def test_batch_pdfs_raises_for_missing_artifact(self, tmp_path: Path) -> None:
-        """Verify batch_pdfs raises error if artifact missing.
+    def test_bundle_pdfs_raises_for_missing_artifact(self, tmp_path: Path) -> None:
+        """Verify bundle_pdfs raises error if artifact missing.
 
         Real-world significance:
-        - Batching cannot proceed without preprocessing step
+        - Bundleing cannot proceed without preprocessing step
         """
-        config = batch_pdfs.BatchConfig(
+        config = bundle_pdfs.BundleConfig(
             output_dir=tmp_path,
             language="en",
-            batch_size=5,
-            batch_strategy=BatchStrategy.SIZE,
+            bundle_size=5,
+            bundle_strategy=BundleStrategy.SIZE,
             run_id="nonexistent",
         )
 
         with pytest.raises(FileNotFoundError, match="Expected artifact"):
-            batch_pdfs.batch_pdfs(config)
+            bundle_pdfs.bundle_pdfs(config)
 
-    def test_batch_pdfs_raises_for_language_mismatch(self, tmp_path: Path) -> None:
-        """Verify batch_pdfs raises error if artifact language doesn't match.
+    def test_bundle_pdfs_raises_for_language_mismatch(self, tmp_path: Path) -> None:
+        """Verify bundle_pdfs raises error if artifact language doesn't match.
 
         Real-world significance:
-        - Batching must process same language as artifact
+        - Bundleing must process same language as artifact
         """
         artifact = sample_input.create_test_artifact_payload(
             num_clients=1, language="en", run_id="test"
@@ -932,22 +932,22 @@ class TestBatchPdfs:
         with open(artifact_path, "w") as f:
             json.dump(artifact_to_dict(artifact), f)
 
-        config = batch_pdfs.BatchConfig(
+        config = bundle_pdfs.BundleConfig(
             output_dir=tmp_path,
             language="fr",  # Mismatch!
-            batch_size=5,
-            batch_strategy=BatchStrategy.SIZE,
+            bundle_size=5,
+            bundle_strategy=BundleStrategy.SIZE,
             run_id="test",
         )
 
         with pytest.raises(ValueError, match="language"):
-            batch_pdfs.batch_pdfs(config)
+            bundle_pdfs.bundle_pdfs(config)
 
-    def test_batch_pdfs_returns_empty_when_no_pdfs(self, tmp_path: Path) -> None:
-        """Verify batch_pdfs returns empty if no PDFs found.
+    def test_bundle_pdfs_returns_empty_when_no_pdfs(self, tmp_path: Path) -> None:
+        """Verify bundle_pdfs returns empty if no PDFs found.
 
         Real-world significance:
-        - No PDFs generated means nothing to batch
+        - No PDFs generated means nothing to bundle
         """
         artifact = sample_input.create_test_artifact_payload(
             num_clients=1, run_id="test"
@@ -959,14 +959,14 @@ class TestBatchPdfs:
         with open(artifact_path, "w") as f:
             json.dump(artifact_to_dict(artifact), f)
 
-        config = batch_pdfs.BatchConfig(
+        config = bundle_pdfs.BundleConfig(
             output_dir=tmp_path,
             language="en",
-            batch_size=5,
-            batch_strategy=BatchStrategy.SIZE,
+            bundle_size=5,
+            bundle_strategy=BundleStrategy.SIZE,
             run_id="test",
         )
 
-        results = batch_pdfs.batch_pdfs(config)
+        results = bundle_pdfs.bundle_pdfs(config)
 
         assert results == []

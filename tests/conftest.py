@@ -130,8 +130,8 @@ def default_config(tmp_output_structure: Dict[str, Path]) -> Dict[str, Any]:
                 "template": "Password123",
             },
         },
-        "batching": {
-            "batch_size": 100,
+        "bundling": {
+            "bundle_size": 100,
             "enabled": False,
         },
         "chart_diseases_header": [

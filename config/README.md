@@ -71,9 +71,10 @@ These are the most commonly adjusted options in `parameters.yaml`:
 - `pipeline.auto_remove_output`: Automatically remove existing output before processing (true/false)
 - `pipeline.keep_intermediate_files`: Preserve intermediate .typ, .json, and per-client .pdf files (true/false)
 - `qr.enabled`: Enable or disable QR code generation (true/false)
-- `encryption.enabled`: Enable or disable PDF encryption (true/false; disables batching if true)
-- `batching.batch_size`: Enable batching with at most N clients per batch (0 disables batching)
-- `batching.group_by`: Batch grouping strategy (null for sequential, `school`, or `board`)
+- `encryption.enabled`: Enable or disable PDF encryption (true/false)
+- `bundling.bundle_size`: Enable bundling with at most N clients per bundle (0 disables bundling)
+- `bundling.group_by`: Bundle grouping strategy (null for sequential, `school`, or `board`)
+- `cleanup.delete_unencrypted_pdfs`: Delete unencrypted PDFs after encryption/bundling (true/false; default: false)
 
 #### Date controls
 - `date_data_cutoff` (ISO 8601 string) records when the source data was extracted. It renders in notices using the client's language via Babel so that readers see a localized calendar date. Change this only when regenerating notices from a fresher extract.

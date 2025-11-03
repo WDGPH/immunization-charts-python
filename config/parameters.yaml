@@ -1,5 +1,5 @@
-batching:
-  batch_size: 100
+bundling:
+  bundle_size: 100
   group_by: null
 chart_diseases_header:
 - Diphtheria
@@ -16,6 +16,7 @@ chart_diseases_header:
 - Varicella
 - Other
 cleanup:
+  delete_unencrypted_pdfs: false
   remove_directories:
   - artifacts
   - pdf_individual
