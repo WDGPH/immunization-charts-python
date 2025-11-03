@@ -328,6 +328,9 @@ def build_client_lookup(
 def discover_pdfs(output_dir: Path, language: str) -> List[Path]:
     """Discover all individual PDF files for a given language.
 
+    Discovers non-encrypted PDF files only. Encrypted PDFs (with _encrypted suffix)
+    are excluded from bundling since bundling operates on the original unencrypted PDFs.
+
     Parameters
     ----------
     output_dir : Path
@@ -338,13 +341,15 @@ def discover_pdfs(output_dir: Path, language: str) -> List[Path]:
     Returns
     -------
     List[Path]
-        Sorted list of PDF file paths matching the language, or empty list
+        Sorted list of non-encrypted PDF file paths matching the language, or empty list
         if pdf_individual directory doesn't exist.
     """
     pdf_dir = output_dir / "pdf_individual"
     if not pdf_dir.exists():
         return []
-    return sorted(pdf_dir.glob(f"{language}_notice_*.pdf"))
+    # Exclude encrypted PDFs (those with _encrypted suffix)
+    all_pdfs = pdf_dir.glob(f"{language}_notice_*.pdf")
+    return sorted([p for p in all_pdfs if not p.stem.endswith("_encrypted")])
 
 
 def build_pdf_records(
