@@ -10,6 +10,7 @@ This directory contains all configuration files for the immunization pipeline. E
 - [Required Configuration Files](#required-configuration-files)
   - [`parameters.yaml`](#parametersyaml)
     - [Feature flags overview](#feature-flags-overview)
+    - [Pipeline Lifecycle](#pipeline-lifecycle)
     - [Date controls](#date-controls)
     - [Chart diseases header](#chart_diseases_header-configuration)
   - [`vaccine_reference.json`](#vaccine_referencejson)
@@ -68,13 +69,21 @@ Typst Files (with localized, filtered disease names)
 
 These are the most commonly adjusted options in `parameters.yaml`:
 
-- `pipeline.auto_remove_output`: Automatically remove existing output before processing (true/false)
-- `pipeline.keep_intermediate_files`: Preserve intermediate .typ, .json, and per-client .pdf files (true/false)
 - `qr.enabled`: Enable or disable QR code generation (true/false)
 - `encryption.enabled`: Enable or disable PDF encryption (true/false)
 - `bundling.bundle_size`: Enable bundling with at most N clients per bundle (0 disables bundling)
 - `bundling.group_by`: Bundle grouping strategy (null for sequential, `school`, or `board`)
-- `cleanup.delete_unencrypted_pdfs`: Delete unencrypted PDFs after encryption/bundling (true/false; default: false)
+
+#### Pipeline Lifecycle
+
+The pipeline has two lifecycle phases controlled under `pipeline.*`:
+
+**Before Run (`pipeline.before_run`)**:
+- `clear_output_directory`: When true, removes all output except logs before starting a new run. Preserves the logs directory for audit trail. Set to true for clean re-runs; false to prompt before deleting.
+
+**After Run (`pipeline.after_run`)**:
+- `remove_artifacts`: When true, removes the `output/artifacts` directory (QR codes, Typst files). Use this to reclaim disk space after successful compilation and validation.
+- `remove_unencrypted_pdfs`: When true and encryption is enabled, removes non-encrypted PDFs from `output/pdf_individual/` after encryption completes. Use this if you only need encrypted versions. Has no effect if encryption is disabled.
 
 #### Date controls
 - `date_data_cutoff` (ISO 8601 string) records when the source data was extracted. It renders in notices using the client's language via Babel so that readers see a localized calendar date. Change this only when regenerating notices from a fresher extract.

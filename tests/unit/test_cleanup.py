@@ -2,18 +2,18 @@
 
 Tests cover:
 - Safe file and directory deletion
-- Selective cleanup (preserve PDFs, remove .typ files)
-- Configuration-driven cleanup behavior
+- Selective cleanup (preserve PDFs, remove artifacts)
+- Configuration-driven cleanup behavior (pipeline.after_run.*)
 - Error handling for permission issues and missing paths
-- File extension filtering
-- Nested directory removal
+- Conditional PDF removal based on encryption status
+- Idempotent cleanup (safe to call multiple times)
 
 Real-world significance:
-- Step 9 of pipeline (optional): removes intermediate artifacts (.typ files, etc.)
+- Step 9 of pipeline (optional): removes intermediate artifacts after successful run
 - Keeps output directory clean and storage minimal
 - Must preserve final PDFs while removing working files
-- Configuration controls what gets deleted (cleanup.remove_directories)
-- Runs only if pipeline.keep_intermediate_files: false
+- Configuration controlled via pipeline.after_run.remove_artifacts and remove_unencrypted_pdfs
+- Removes non-encrypted PDFs only when encryption is enabled and configured
 """
 
 from __future__ import annotations
@@ -92,19 +92,18 @@ class TestSafeDelete:
 
 
 @pytest.mark.unit
-@pytest.mark.unit
 class TestCleanupWithConfig:
     """Unit tests for cleanup_with_config function."""
 
-    def test_cleanup_removes_configured_directories(
-        self, tmp_output_structure: dict
+    def test_cleanup_removes_artifacts_when_configured(
+        self, tmp_output_structure: dict, config_file: Path
     ) -> None:
-        """Verify configured directories are removed.
+        """Verify artifacts directory is removed when configured.
 
         Real-world significance:
-        - Config specifies which directories to remove (cleanup.remove_directories)
-        - Common setup: remove artifacts/ and pdf_individual/
-        - Preserves pdf_combined/ with final batched PDFs
+        - Config specifies pipeline.after_run.remove_artifacts: true
+        - Removes output/artifacts directory to save storage
+        - Preserves pdf_individual/ with final PDFs
         """
         output_dir = tmp_output_structure["root"]
 
@@ -113,77 +112,114 @@ class TestCleanupWithConfig:
         (tmp_output_structure["artifacts"] / "typst" / "notice_00001.typ").write_text(
             "typ"
         )
-        (tmp_output_structure["metadata"] / "page_counts.json").write_text("data")
 
-        config_path = output_dir / "parameters.yaml"
-        config_path.write_text(
-            "qr:\n  enabled: false\ncleanup:\n  remove_directories:\n    - artifacts\n    - metadata\n"
-        )
+        # Modify config to enable artifact removal
+        import yaml
 
-        cleanup.cleanup_with_config(output_dir, config_path)
+        with open(config_file) as f:
+            config = yaml.safe_load(f)
+        config["pipeline"]["after_run"]["remove_artifacts"] = True
+        with open(config_file, "w") as f:
+            yaml.dump(config, f)
+
+        cleanup.cleanup_with_config(output_dir, config_file)
 
         assert not tmp_output_structure["artifacts"].exists()
-        assert not tmp_output_structure["metadata"].exists()
         assert tmp_output_structure["pdf_individual"].exists()
 
-    def test_cleanup_with_missing_config_uses_defaults(
-        self, tmp_output_structure: dict
+    def test_cleanup_preserves_artifacts_by_default(
+        self, tmp_output_structure: dict, config_file: Path
     ) -> None:
-        """Verify cleanup works with missing config (uses defaults).
+        """Verify artifacts preserved when remove_artifacts: false.
 
         Real-world significance:
-        - Config might use defaults if cleanup section missing
-        - Pipeline should still complete
-        """
-        output_dir = tmp_output_structure["root"]
-
-        # Config without cleanup section
-        config_path = output_dir / "parameters.yaml"
-        config_path.write_text(
-            "qr:\n  enabled: false\npipeline:\n  keep_intermediate_files: false\n"
-        )
-
-        # Should not raise
-        cleanup.cleanup_with_config(output_dir, config_path)
-
-    def test_cleanup_with_empty_remove_list(self, tmp_output_structure: dict) -> None:
-        """Verify empty remove_directories list doesn't delete anything.
-
-        Real-world significance:
-        - Config might disable cleanup by providing empty list
-        - Useful for testing or keeping all artifacts
+        - Default config preserves artifacts for debugging
+        - Users can inspect intermediate files if pipeline behavior is unexpected
         """
         output_dir = tmp_output_structure["root"]
 
         (tmp_output_structure["artifacts"] / "test.json").write_text("data")
 
-        config_path = output_dir / "parameters.yaml"
-        config_path.write_text(
-            "qr:\n  enabled: false\ncleanup:\n  remove_directories: []\n"
-        )
-
-        cleanup.cleanup_with_config(output_dir, config_path)
+        # Config already has remove_artifacts: false by default
+        cleanup.cleanup_with_config(output_dir, config_file)
 
         assert (tmp_output_structure["artifacts"] / "test.json").exists()
 
-    def test_cleanup_with_nonexistent_directory_in_config(
-        self, tmp_output_structure: dict
+    def test_cleanup_removes_unencrypted_pdfs_when_encryption_enabled(
+        self, tmp_output_structure: dict, config_file: Path
     ) -> None:
-        """Verify cleanup doesn't error on nonexistent directories.
+        """Verify unencrypted PDFs removed only when encryption enabled.
 
         Real-world significance:
-        - Config might list directories that don't exist
-        - Should handle gracefully (idempotent)
+        - When encryption is on and remove_unencrypted_pdfs: true
+        - Original (non-encrypted) PDFs are deleted
+        - Only _encrypted versions remain for distribution
         """
         output_dir = tmp_output_structure["root"]
 
-        config_path = output_dir / "parameters.yaml"
-        config_path.write_text(
-            "qr:\n  enabled: false\ncleanup:\n  remove_directories:\n    - nonexistent_dir\n    - artifacts\n"
-        )
+        # Create test PDFs
+        (
+            tmp_output_structure["pdf_individual"] / "en_notice_00001_0000000001.pdf"
+        ).write_text("original")
+        (
+            tmp_output_structure["pdf_individual"]
+            / "en_notice_00001_0000000001_encrypted.pdf"
+        ).write_text("encrypted")
 
-        # Should not raise
-        cleanup.cleanup_with_config(output_dir, config_path)
+        # Modify config to enable encryption and unencrypted PDF removal
+        import yaml
+
+        with open(config_file) as f:
+            config = yaml.safe_load(f)
+        config["encryption"]["enabled"] = True
+        config["pipeline"]["after_run"]["remove_unencrypted_pdfs"] = True
+        with open(config_file, "w") as f:
+            yaml.dump(config, f)
+
+        cleanup.cleanup_with_config(output_dir, config_file)
+
+        # Non-encrypted removed, encrypted preserved
+        assert not (
+            tmp_output_structure["pdf_individual"] / "en_notice_00001_0000000001.pdf"
+        ).exists()
+        assert (
+            tmp_output_structure["pdf_individual"]
+            / "en_notice_00001_0000000001_encrypted.pdf"
+        ).exists()
+
+    def test_cleanup_ignores_unencrypted_removal_when_encryption_disabled(
+        self, tmp_output_structure: dict, config_file: Path
+    ) -> None:
+        """Verify unencrypted PDFs preserved when encryption disabled.
+
+        Real-world significance:
+        - If encryption is disabled, remove_unencrypted_pdfs has no effect
+        - PDFs are not encrypted, so removing "unencrypted" ones makes no sense
+        - Config should have no effect in this scenario
+        """
+        output_dir = tmp_output_structure["root"]
+
+        # Create test PDF
+        (
+            tmp_output_structure["pdf_individual"] / "en_notice_00001_0000000001.pdf"
+        ).write_text("pdf content")
+
+        # Modify config to have encryption disabled but removal requested
+        import yaml
+
+        with open(config_file) as f:
+            config = yaml.safe_load(f)
+        config["encryption"]["enabled"] = False
+        config["pipeline"]["after_run"]["remove_unencrypted_pdfs"] = True
+        with open(config_file, "w") as f:
+            yaml.dump(config, f)
+
+        cleanup.cleanup_with_config(output_dir, config_file)
+
+        # PDF preserved because encryption is disabled
+        assert (
+            tmp_output_structure["pdf_individual"] / "en_notice_00001_0000000001.pdf"
+        ).exists()
 
 
 @pytest.mark.unit
@@ -203,23 +239,29 @@ class TestMain:
         with pytest.raises(ValueError, match="not a valid directory"):
             cleanup.main(invalid_path)
 
-    def test_main_calls_cleanup_with_config(self, tmp_output_structure: dict) -> None:
-        """Verify main entry point calls cleanup_with_config.
+    def test_main_applies_cleanup_configuration(
+        self, tmp_output_structure: dict, config_file: Path
+    ) -> None:
+        """Verify main entry point applies cleanup configuration.
 
         Real-world significance:
-        - Main is entry point from run_pipeline.py
-        - Should load and apply cleanup configuration
+        - Main is entry point from orchestrator Step 9
+        - Should load and apply pipeline.after_run configuration
         """
         output_dir = tmp_output_structure["root"]
 
         (tmp_output_structure["artifacts"] / "test.json").write_text("data")
 
-        config_path = output_dir / "parameters.yaml"
-        config_path.write_text(
-            "qr:\n  enabled: false\ncleanup:\n  remove_directories:\n    - artifacts\n"
-        )
+        # Modify config to enable artifact removal
+        import yaml
 
-        cleanup.main(output_dir, config_path)
+        with open(config_file) as f:
+            config = yaml.safe_load(f)
+        config["pipeline"]["after_run"]["remove_artifacts"] = True
+        with open(config_file, "w") as f:
+            yaml.dump(config, f)
+
+        cleanup.main(output_dir, config_file)
 
         assert not tmp_output_structure["artifacts"].exists()
 
@@ -229,7 +271,7 @@ class TestMain:
         """Verify main works with config_path=None (uses default location).
 
         Real-world significance:
-        - run_pipeline.py might not pass config_path
+        - orchestrator may not pass config_path
         - Should use default location (config/parameters.yaml)
         """
         output_dir = tmp_output_structure["root"]
@@ -242,15 +284,15 @@ class TestMain:
 class TestCleanupIntegration:
     """Unit tests for cleanup workflow integration."""
 
-    def test_cleanup_preserves_pdfs_removes_typ(
-        self, tmp_output_structure: dict
+    def test_cleanup_preserves_pdfs_removes_artifacts(
+        self, tmp_output_structure: dict, config_file: Path
     ) -> None:
-        """Verify complete cleanup workflow: remove .typ, keep PDFs.
+        """Verify complete cleanup workflow: remove artifacts, keep PDFs.
 
         Real-world significance:
-        - Most common cleanup scenario:
-          - Remove .typ templates (intermediate)
-          - Keep .pdf files (final output)
+        - Common cleanup scenario:
+          - Remove .typ templates and intermediate files in artifacts/
+          - Keep .pdf files in pdf_individual/
         - Reduces storage footprint significantly
         """
         output_dir = tmp_output_structure["root"]
@@ -261,18 +303,22 @@ class TestCleanupIntegration:
             "pdf content"
         )
 
-        config_path = output_dir / "parameters.yaml"
-        config_path.write_text(
-            "qr:\n  enabled: false\ncleanup:\n  remove_directories:\n    - artifacts\n"
-        )
+        # Modify config to enable artifact removal
+        import yaml
 
-        cleanup.cleanup_with_config(output_dir, config_path)
+        with open(config_file) as f:
+            config = yaml.safe_load(f)
+        config["pipeline"]["after_run"]["remove_artifacts"] = True
+        with open(config_file, "w") as f:
+            yaml.dump(config, f)
+
+        cleanup.cleanup_with_config(output_dir, config_file)
 
         assert not (tmp_output_structure["artifacts"] / "notice_00001.typ").exists()
         assert (tmp_output_structure["pdf_individual"] / "notice_00001.pdf").exists()
 
     def test_cleanup_multiple_calls_idempotent(
-        self, tmp_output_structure: dict
+        self, tmp_output_structure: dict, config_file: Path
     ) -> None:
         """Verify cleanup can be called multiple times safely.
 
@@ -282,15 +328,19 @@ class TestCleanupIntegration:
         """
         output_dir = tmp_output_structure["root"]
 
-        config_path = output_dir / "parameters.yaml"
-        config_path.write_text(
-            "qr:\n  enabled: false\ncleanup:\n  remove_directories:\n    - artifacts\n"
-        )
+        # Modify config to enable artifact removal
+        import yaml
+
+        with open(config_file) as f:
+            config = yaml.safe_load(f)
+        config["pipeline"]["after_run"]["remove_artifacts"] = True
+        with open(config_file, "w") as f:
+            yaml.dump(config, f)
 
         # First call
-        cleanup.cleanup_with_config(output_dir, config_path)
+        cleanup.cleanup_with_config(output_dir, config_file)
 
         # Second call should not raise
-        cleanup.cleanup_with_config(output_dir, config_path)
+        cleanup.cleanup_with_config(output_dir, config_file)
 
         assert not tmp_output_structure["artifacts"].exists()

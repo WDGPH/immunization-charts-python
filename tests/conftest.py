@@ -117,8 +117,13 @@ def default_config(tmp_output_structure: Dict[str, Path]) -> Dict[str, Any]:
     """
     return {
         "pipeline": {
-            "auto_remove_output": False,
-            "keep_intermediate_files": False,
+            "before_run": {
+                "clear_output_directory": False,
+            },
+            "after_run": {
+                "remove_artifacts": False,
+                "remove_unencrypted_pdfs": False,
+            },
         },
         "qr": {
             "enabled": True,
@@ -132,7 +137,7 @@ def default_config(tmp_output_structure: Dict[str, Path]) -> Dict[str, Any]:
         },
         "bundling": {
             "bundle_size": 100,
-            "enabled": False,
+            "group_by": None,
         },
         "chart_diseases_header": [
             "Diphtheria",
@@ -144,6 +149,14 @@ def default_config(tmp_output_structure: Dict[str, Path]) -> Dict[str, Any]:
             "Rubella",
         ],
         "ignore_agents": [],
+        "typst": {
+            "bin": "typst",
+        },
+        "pdf_validation": {
+            "rules": {
+                "client_id_presence": "error",
+            },
+        },
     }
 
 

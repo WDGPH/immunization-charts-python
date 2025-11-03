@@ -55,28 +55,31 @@ class TestConfigDrivenBehavior:
     def test_bundling_enabled_flag_exists_in_config(
         self, default_config: Dict[str, Any]
     ) -> None:
-        """Verify bundling enabled flag is present in default config.
+        """Verify bundling configuration exists.
 
         Real-world significance:
         - Batching groups PDFs for efficient distribution
-        - Config must allow enabling/disabling
+        - bundle_size controls whether bundling is active (0 = disabled)
         """
         assert "bundling" in default_config
-        assert "enabled" in default_config["bundling"]
-        assert isinstance(default_config["bundling"]["enabled"], bool)
+        assert "bundle_size" in default_config["bundling"]
+        assert isinstance(default_config["bundling"]["bundle_size"], int)
 
     def test_pipeline_config_section_exists(
         self, default_config: Dict[str, Any]
     ) -> None:
-        """Verify pipeline section with behavior flags exists.
+        """Verify pipeline section with lifecycle settings exists.
 
         Real-world significance:
-        - Pipeline-wide settings like auto_remove_output are configurable
-        - Allows fine-grained control over cleanup behavior
+        - Pipeline lifecycle settings control cleanup at startup and shutdown
+        - before_run controls cleanup of old output before starting new run
+        - after_run controls cleanup of intermediate files after successful run
         """
         assert "pipeline" in default_config
-        assert "auto_remove_output" in default_config["pipeline"]
-        assert "keep_intermediate_files" in default_config["pipeline"]
+        assert "before_run" in default_config["pipeline"]
+        assert "after_run" in default_config["pipeline"]
+        assert "clear_output_directory" in default_config["pipeline"]["before_run"]
+        assert "remove_artifacts" in default_config["pipeline"]["after_run"]
 
     def test_bundle_size_configuration(self, default_config: Dict[str, Any]) -> None:
         """Verify batch size is configurable.

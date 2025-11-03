@@ -136,10 +136,14 @@ def print_step_complete(step_num: int, description: str, duration: float) -> Non
 def run_step_1_prepare_output(
     output_dir: Path,
     log_dir: Path,
-    auto_remove: bool,
+    config_dir: Path,
 ) -> bool:
     """Step 1: Prepare output directory."""
     print_step(1, "Preparing output directory")
+
+    config = load_config(config_dir / "parameters.yaml")
+    before_run_config = config.get("pipeline", {}).get("before_run", {})
+    auto_remove = before_run_config.get("clear_output_directory", False)
 
     success = prepare_output.prepare_output_directory(
         output_dir=output_dir,
@@ -403,25 +407,20 @@ def run_step_8_bundle_pdfs(
 
 def run_step_9_cleanup(
     output_dir: Path,
-    skip_cleanup: bool,
     config_dir: Path,
 ) -> None:
     """Step 9: Cleanup intermediate files."""
     print_step(9, "Cleanup")
 
-    if skip_cleanup:
-        print("Cleanup skipped (keep_intermediate_files enabled).")
-    else:
-        parameters_path = config_dir / "parameters.yaml"
-        cleanup.main(output_dir, parameters_path)
-        print("✅ Cleanup completed successfully.")
+    parameters_path = config_dir / "parameters.yaml"
+    cleanup.main(output_dir, parameters_path)
+    print("✅ Cleanup completed successfully.")
 
 
 def print_summary(
     step_times: list[tuple[str, float]],
     total_duration: float,
     total_clients: int,
-    skip_cleanup: bool,
 ) -> None:
     """Print the pipeline summary."""
     print()
@@ -436,8 +435,6 @@ def print_summary(
     print(f"  - {'Total Time':<25} {total_duration:.1f}s")
     print()
     print(f"👥 Clients processed:      {total_clients}")
-    if skip_cleanup:
-        print("🧹 Cleanup:                Skipped")
 
 
 def main() -> int:
@@ -465,10 +462,7 @@ def main() -> int:
         return 1
 
     # Extract config settings
-    pipeline_config = config.get("pipeline", {})
     encryption_enabled = config.get("encryption", {}).get("enabled", False)
-    auto_remove_output = pipeline_config.get("auto_remove_output", False)
-    keep_intermediate = pipeline_config.get("keep_intermediate_files", False)
 
     print_header(args.input_file)
 
@@ -479,7 +473,7 @@ def main() -> int:
     try:
         # Step 1: Prepare output directory
         step_start = time.time()
-        if not run_step_1_prepare_output(output_dir, log_dir, auto_remove_output):
+        if not run_step_1_prepare_output(output_dir, log_dir, config_dir):
             return 2  # User cancelled
         step_duration = time.time() - step_start
         step_times.append(("Output Preparation", step_duration))
@@ -566,7 +560,7 @@ def main() -> int:
             print("Bundling skipped (bundle_size set to 0).")
 
         # Step 9: Cleanup
-        run_step_9_cleanup(output_dir, keep_intermediate, config_dir)
+        run_step_9_cleanup(output_dir, config_dir)
 
         # Print summary
         total_duration = time.time() - total_start
@@ -575,7 +569,6 @@ def main() -> int:
             step_times,
             total_duration,
             total_clients,
-            keep_intermediate,
         )
 
         return 0

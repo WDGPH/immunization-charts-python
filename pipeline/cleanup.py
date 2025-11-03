@@ -1,18 +1,28 @@
-"""Cleanup module for removing intermediate pipeline artifacts.
+"""Cleanup module for Step 9: removing intermediate pipeline artifacts.
 
-Removes specified directories and file types from the output directory to reduce
-storage footprint after the pipeline completes successfully. Optionally deletes
-unencrypted individual PDFs after bundling or encryption operations.
+This step removes intermediate files generated during the pipeline run to reduce
+storage footprint. Configuration is read from parameters.yaml under pipeline.after_run.
+
+This is distinct from Step 1 (prepare_output), which uses pipeline.before_run.clear_output_directory
+to clean up old pipeline runs at startup while preserving logs.
+
+**Step 1 Configuration (pipeline.before_run in parameters.yaml):**
+- clear_output_directory: when true, removes all output except logs before starting a new run
+
+**Step 9 Configuration (pipeline.after_run in parameters.yaml):**
+- remove_artifacts: when true, removes output/artifacts directory
+- remove_unencrypted_pdfs: when true and encryption is enabled, removes non-encrypted PDFs
+  from pdf_individual/ after encryption completes (has no effect if encryption is disabled)
 
 **Input Contract:**
-- Reads configuration from parameters.yaml (cleanup section)
+- Reads configuration from parameters.yaml (pipeline.after_run section)
 - Assumes output directory structure exists (may be partially populated)
-- Assumes cleanup configuration keys exist (remove_directories, delete_unencrypted_pdfs)
+- Assumes encryption.enabled from parameters.yaml to determine if remove_unencrypted_pdfs applies
 
 **Output Contract:**
-- Removes specified directories and file types from output_dir
-- Optionally removes unencrypted individual PDFs from pdf_individual/
-- Does not modify final PDF outputs (bundles, encrypted PDFs)
+- Removes specified directories from output_dir
+- Removes unencrypted PDFs if conditions are met (encryption enabled + remove_unencrypted_pdfs=true)
+- Does not modify final PDF outputs (unless configured to do so)
 - Does not halt pipeline if cleanup fails
 
 **Error Handling:**
@@ -25,14 +35,13 @@ unencrypted individual PDFs after bundling or encryption operations.
 What this module validates:
 - Output directory exists and is writable
 - Directory/file paths can be safely deleted (exist check before delete)
-- delete_unencrypted_pdfs configuration is boolean
+- Configuration values are sensible boolean types
 
 What this module assumes (validated upstream):
-- Configuration keys are valid (cleanup.remove_directories, cleanup.delete_unencrypted_pdfs)
+- Configuration keys are valid and well-formed
 - Output directory structure is correct (created by prior steps)
 
-Note: This is a utility/cleanup step. Failures don't halt pipeline. Can be skipped
-entirely via pipeline.keep_intermediate_files config setting.
+Note: This is a utility/cleanup step. Failures don't halt pipeline.
 """
 
 import shutil
@@ -59,6 +68,10 @@ def safe_delete(path: Path):
 def cleanup_with_config(output_dir: Path, config_path: Path | None = None) -> None:
     """Perform cleanup using configuration from parameters.yaml.
 
+    Reads Step 9 (after_run) cleanup configuration from parameters.yaml.
+    This is separate from Step 1's before_run.clear_output_directory setting, which cleans
+    old runs at pipeline start (preserving logs).
+
     Parameters
     ----------
     output_dir : Path
@@ -67,21 +80,23 @@ def cleanup_with_config(output_dir: Path, config_path: Path | None = None) -> No
         Path to parameters.yaml. If not provided, uses default location.
     """
     config = load_config(config_path)
-    cleanup_config = config.get("cleanup", {})
+    pipeline_config = config.get("pipeline", {})
+    after_run_config = pipeline_config.get("after_run", {})
+    encryption_enabled = config.get("encryption", {}).get("enabled", False)
 
-    remove_dirs = cleanup_config.get("remove_directories", [])
-    delete_unencrypted = cleanup_config.get("delete_unencrypted_pdfs", False)
+    remove_artifacts = after_run_config.get("remove_artifacts", False)
+    remove_unencrypted = after_run_config.get("remove_unencrypted_pdfs", False)
 
-    # Remove configured directories
-    for folder_name in remove_dirs:
-        safe_delete(output_dir / folder_name)
+    # Remove artifacts directory if configured
+    if remove_artifacts:
+        safe_delete(output_dir / "artifacts")
 
-    # Delete unencrypted PDFs if configured
-    if delete_unencrypted:
+    # Delete unencrypted PDFs only if encryption is enabled and setting is true
+    if encryption_enabled and remove_unencrypted:
         pdf_dir = output_dir / "pdf_individual"
         if pdf_dir.exists():
             for pdf_file in pdf_dir.glob("*.pdf"):
-                # Only delete unencrypted PDFs (skip _encrypted versions)
+                # Only delete non-encrypted PDFs (skip _encrypted versions)
                 if not pdf_file.stem.endswith("_encrypted"):
                     safe_delete(pdf_file)
 
