@@ -11,17 +11,19 @@ to clean up old pipeline runs at startup while preserving logs.
 
 **Step 9 Configuration (pipeline.after_run in parameters.yaml):**
 - remove_artifacts: when true, removes output/artifacts directory
-- remove_unencrypted_pdfs: when true and encryption is enabled, removes non-encrypted PDFs
-  from pdf_individual/ after encryption completes (has no effect if encryption is disabled)
+- remove_unencrypted_pdfs: when true and (encryption OR batching) is enabled, removes non-encrypted PDFs
+  from pdf_individual/ after encryption completes. If both encryption and batching are disabled,
+  individual non-encrypted PDFs are assumed to be final output and are preserved.
 
 **Input Contract:**
 - Reads configuration from parameters.yaml (pipeline.after_run section)
 - Assumes output directory structure exists (may be partially populated)
-- Assumes encryption.enabled from parameters.yaml to determine if remove_unencrypted_pdfs applies
+- Assumes encryption.enabled and bundling.bundle_size from parameters.yaml
 
 **Output Contract:**
 - Removes specified directories from output_dir
-- Removes unencrypted PDFs if conditions are met (encryption enabled + remove_unencrypted_pdfs=true)
+- Removes unencrypted PDFs if conditions are met:
+  - remove_unencrypted_pdfs=true AND (encryption enabled OR batching enabled)
 - Does not modify final PDF outputs (unless configured to do so)
 - Does not halt pipeline if cleanup fails
 
@@ -35,7 +37,7 @@ to clean up old pipeline runs at startup while preserving logs.
 What this module validates:
 - Output directory exists and is writable
 - Directory/file paths can be safely deleted (exist check before delete)
-- Configuration values are sensible boolean types
+- Configuration values are sensible boolean types and integers
 
 What this module assumes (validated upstream):
 - Configuration keys are valid and well-formed
@@ -83,6 +85,9 @@ def cleanup_with_config(output_dir: Path, config_path: Path | None = None) -> No
     pipeline_config = config.get("pipeline", {})
     after_run_config = pipeline_config.get("after_run", {})
     encryption_enabled = config.get("encryption", {}).get("enabled", False)
+    bundling_config = config.get("bundling", {})
+    bundle_size = bundling_config.get("bundle_size", 0)
+    batching_enabled = bundle_size > 0
 
     remove_artifacts = after_run_config.get("remove_artifacts", False)
     remove_unencrypted = after_run_config.get("remove_unencrypted_pdfs", False)
@@ -91,8 +96,11 @@ def cleanup_with_config(output_dir: Path, config_path: Path | None = None) -> No
     if remove_artifacts:
         safe_delete(output_dir / "artifacts")
 
-    # Delete unencrypted PDFs only if encryption is enabled and setting is true
-    if encryption_enabled and remove_unencrypted:
+    # Delete unencrypted PDFs if:
+    # - remove_unencrypted_pdfs is True AND
+    # - (encryption is enabled OR batching is enabled)
+    # If both encryption and batching are disabled, assume we want the individual non-encrypted PDFs
+    if remove_unencrypted and (encryption_enabled or batching_enabled):
         pdf_dir = output_dir / "pdf_individual"
         if pdf_dir.exists():
             for pdf_file in pdf_dir.glob("*.pdf"):
