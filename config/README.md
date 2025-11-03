@@ -300,6 +300,7 @@ Supported severity levels per rule:
 - `error`: fail the pipeline if any PDFs violate the rule
 
 Current rules:
+- `envelope_window_1_125`: Ensure contact area does not exceed 1.125" inches
 - `exactly_two_pages`: Ensure each notice has exactly 2 pages (notice + immunization record)
 - `signature_overflow`: Detect if the signature block spills onto page 2 (uses invisible Typst marker)
 
@@ -308,8 +309,9 @@ Example configuration:
 ```yaml
 pdf_validation:
   rules:
-    exactly_two_pages: warn         # Enforce 2 pages; warn on mismatch
-    signature_overflow: warn        # Warn if signature block appears on page 2
+    envelope_window_1_125: error
+    exactly_two_pages: warn
+    signature_overflow: disabled
 ```
 
 Behavior:

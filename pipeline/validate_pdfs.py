@@ -57,18 +57,40 @@ class ValidationResult:
     ----------
     filename : str
         Name of the PDF file
-    page_count : int
-        Total number of pages in the PDF
     warnings : List[str]
         List of validation warnings (layout issues, unexpected page counts, etc.)
     passed : bool
         True if no warnings, False otherwise
+    measurements : dict[str, float]
+        Actual measurements extracted from PDF (e.g., page_count, contact_height_inches, signature_page)
     """
 
     filename: str
-    page_count: int
     warnings: List[str]
     passed: bool
+    measurements: dict[str, float]
+
+
+@dataclass
+class RuleResult:
+    """Result of a single validation rule across all PDFs.
+
+    Attributes
+    ----------
+    rule_name : str
+        Name of the validation rule
+    severity : str
+        Rule severity: "disabled", "warn", or "error"
+    passed_count : int
+        Number of PDFs that passed this rule
+    failed_count : int
+        Number of PDFs that failed this rule
+    """
+
+    rule_name: str
+    severity: str
+    passed_count: int
+    failed_count: int
 
 
 @dataclass
@@ -89,6 +111,8 @@ class ValidationSummary:
         Distribution of page counts (pages -> count)
     warning_types : dict[str, int]
         Count of warnings by type/category
+    rule_results : List[RuleResult]
+        Per-rule validation statistics
     results : List[ValidationResult]
         Per-file validation results
     """
@@ -99,6 +123,7 @@ class ValidationSummary:
     warning_count: int
     page_count_distribution: dict[int, int]
     warning_types: dict[str, int]
+    rule_results: List[RuleResult]
     results: List[ValidationResult]
 
 
@@ -148,10 +173,42 @@ def filter_by_language(files: List[Path], language: str | None) -> List[Path]:
     return [path for path in files if path.name.startswith(prefix)]
 
 
+def extract_measurements_from_markers(page_text: str) -> dict[str, float]:
+    """Extract dimension measurements from invisible text markers.
+
+    Typst templates embed invisible markers with measurements like:
+    MEASURE_CONTACT_HEIGHT:123.45
+
+    Parameters
+    ----------
+    page_text : str
+        Extracted text from a PDF page.
+
+    Returns
+    -------
+    dict[str, float]
+        Dictionary mapping dimension names to values in points.
+        Example: {"measure_contact_height": 123.45}
+    """
+    import re
+
+    measurements = {}
+
+    # Pattern to match our invisible marker format: MEASURE_NAME:123.45
+    pattern = r"MEASURE_(\w+):([\d.]+)"
+
+    for match in re.finditer(pattern, page_text):
+        key = "measure_" + match.group(1).lower()  # normalize to lowercase
+        value = float(match.group(2))
+        measurements[key] = value
+
+    return measurements
+
+
 def validate_pdf_layout(
     pdf_path: Path, reader: PdfReader, enabled_rules: dict[str, str]
-) -> List[str]:
-    """Check PDF for layout issues using invisible markers.
+) -> tuple[List[str], dict[str, float]]:
+    """Check PDF for layout issues using invisible markers and metadata.
 
     Parameters
     ----------
@@ -164,39 +221,58 @@ def validate_pdf_layout(
 
     Returns
     -------
-    List[str]
-        List of layout warning messages (empty if no issues).
+    tuple[List[str], dict[str, float]]
+        Tuple of (warning messages, actual measurements).
+        Measurements include signature_page, contact_height_inches, etc.
     """
     warnings = []
+    measurements = {}
 
-    # Skip if rule is disabled
+    # Check signature block marker placement
     rule_setting = enabled_rules.get("signature_overflow", "warn")
-    if rule_setting == "disabled":
-        return warnings
+    if rule_setting != "disabled":
+        for page_num, page in enumerate(reader.pages, start=1):
+            try:
+                page_text = page.extract_text()
+                if "MARK_END_SIGNATURE_BLOCK" in page_text:
+                    measurements["signature_page"] = float(page_num)
+                    if page_num != 1:
+                        warnings.append(
+                            f"signature_overflow: Signature block ends on page {page_num} "
+                            f"(expected page 1)"
+                        )
+                    break
+            except Exception:
+                # If text extraction fails, skip this check
+                pass
 
-    # Check for signature block marker placement
-    marker_found = False
-    for page_num, page in enumerate(reader.pages, start=1):
+    # Check contact table dimensions (envelope window validation)
+    envelope_rule = enabled_rules.get("envelope_window_1_125", "disabled")
+    if envelope_rule != "disabled":
+        # Envelope window constraint: 1.125 inches max height
+        max_height_inches = 1.125
+
+        # Look for contact table measurements in page 1
         try:
-            page_text = page.extract_text()
-            if "MARK_END_SIGNATURE_BLOCK" in page_text:
-                marker_found = True
-                if page_num != 1:
+            page_text = reader.pages[0].extract_text()
+            extracted_measurements = extract_measurements_from_markers(page_text)
+
+            contact_height_pt = extracted_measurements.get("measure_contact_height")
+            if contact_height_pt:
+                # Convert from points to inches (72 points = 1 inch)
+                height_inches = contact_height_pt / 72.0
+                measurements["contact_height_inches"] = height_inches
+
+                if height_inches > max_height_inches:
                     warnings.append(
-                        f"signature_overflow: Signature block found on page {page_num} "
-                        f"(expected page 1)"
+                        f"envelope_window_1_125: Contact table height {height_inches:.2f}in "
+                        f"exceeds envelope window (max {max_height_inches}in)"
                     )
-                break
         except Exception:
-            # If text extraction fails, skip this check
+            # If measurement extraction fails, skip this check
             pass
 
-    if not marker_found:
-        # Marker not found - may not be critical but worth noting
-        # (older templates may not have markers)
-        pass
-
-    return warnings
+    return warnings, measurements
 
 
 def validate_pdf_structure(
@@ -215,7 +291,7 @@ def validate_pdf_structure(
     Returns
     -------
     ValidationResult
-        Validation result with page count, warnings, and pass/fail status.
+        Validation result with measurements, warnings, and pass/fail status.
 
     Raises
     ------
@@ -223,28 +299,76 @@ def validate_pdf_structure(
         If PDF cannot be read (structural corruption).
     """
     warnings = []
+    measurements = {}
     if enabled_rules is None:
         enabled_rules = {}
 
     # Read PDF and count pages
     reader = PdfReader(str(pdf_path))
     page_count = len(reader.pages)
+    measurements["page_count"] = float(page_count)
 
     # Check for exactly 2 pages (standard notice format)
     rule_setting = enabled_rules.get("exactly_two_pages", "warn")
-    if page_count != 2 and rule_setting != "disabled":
-        warnings.append(f"exactly_two_pages: {page_count} pages (expected 2)")
+    if rule_setting != "disabled":
+        if page_count != 2:
+            warnings.append(f"exactly_two_pages: has {page_count} pages (expected 2)")
 
     # Validate layout using markers
-    layout_warnings = validate_pdf_layout(pdf_path, reader, enabled_rules)
+    layout_warnings, layout_measurements = validate_pdf_layout(
+        pdf_path, reader, enabled_rules
+    )
     warnings.extend(layout_warnings)
+    measurements.update(layout_measurements)
 
     return ValidationResult(
         filename=pdf_path.name,
-        page_count=page_count,
         warnings=warnings,
         passed=len(warnings) == 0,
+        measurements=measurements,
     )
+
+
+def compute_rule_results(
+    results: List[ValidationResult], enabled_rules: dict[str, str]
+) -> List[RuleResult]:
+    """Compute per-rule pass/fail statistics.
+
+    Parameters
+    ----------
+    results : List[ValidationResult]
+        Validation results for all PDFs.
+    enabled_rules : dict[str, str]
+        Validation rules configuration (rule_name -> "disabled"/"warn"/"error").
+
+    Returns
+    -------
+    List[RuleResult]
+        Per-rule statistics with pass/fail counts.
+    """
+    # Count failures per rule
+    rule_failures: Counter = Counter()
+    for result in results:
+        for warning in result.warnings:
+            rule_name = warning.split(":")[0] if ":" in warning else "other"
+            rule_failures[rule_name] += 1
+
+    # Build rule results for all configured rules
+    rule_results = []
+    for rule_name, severity in enabled_rules.items():
+        failed_count = rule_failures.get(rule_name, 0)
+        passed_count = len(results) - failed_count
+
+        rule_results.append(
+            RuleResult(
+                rule_name=rule_name,
+                severity=severity,
+                passed_count=passed_count,
+                failed_count=failed_count,
+            )
+        )
+
+    return rule_results
 
 
 def validate_pdfs(
@@ -265,6 +389,9 @@ def validate_pdfs(
     ValidationSummary
         Aggregate validation results with statistics and per-file details.
     """
+    if enabled_rules is None:
+        enabled_rules = {}
+
     results: List[ValidationResult] = []
     page_buckets: Counter = Counter()
     warning_type_counts: Counter = Counter()
@@ -272,7 +399,8 @@ def validate_pdfs(
     for pdf_path in files:
         result = validate_pdf_structure(pdf_path, enabled_rules=enabled_rules)
         results.append(result)
-        page_buckets[result.page_count] += 1
+        page_count = int(result.measurements.get("page_count", 0))
+        page_buckets[page_count] += 1
 
         # Count warning types
         for warning in result.warnings:
@@ -282,6 +410,9 @@ def validate_pdfs(
     passed_count = sum(1 for r in results if r.passed)
     warning_count = len(results) - passed_count
 
+    # Compute per-rule statistics
+    rule_results = compute_rule_results(results, enabled_rules)
+
     return ValidationSummary(
         language=None,  # Set by caller
         total_pdfs=len(results),
@@ -289,6 +420,7 @@ def validate_pdfs(
         warning_count=warning_count,
         page_count_distribution=dict(sorted(page_buckets.items())),
         warning_types=dict(warning_type_counts),
+        rule_results=rule_results,
         results=results,
     )
 
@@ -307,28 +439,27 @@ def print_validation_summary(
     validation_json_path : Path, optional
         Path to validation JSON for reference in output.
     """
-    # High-level pass/fail summary
-    scope = f"'{summary.language}' " if summary.language else ""
-    passed_label = "PDF" if summary.passed_count == 1 else "PDFs"
-    failed_label = "PDF" if summary.warning_count == 1 else "PDFs"
+    # Per-rule summary (all rules, including disabled)
+    print("Validation rules:")
+    for rule in summary.rule_results:
 
-    print(f"Validated {summary.total_pdfs} {scope}PDF(s):")
-    print(f"  ✅ {summary.passed_count} {passed_label} passed")
+        status_str = f"- {rule.rule_name} [{rule.severity}]"
+        count_str = f"✓ {rule.passed_count} passed"
 
-    if summary.warning_count > 0:
-        print(f"  ⚠️  {summary.warning_count} {failed_label} with warnings")
+        if rule.failed_count > 0:
+            fail_label = "PDF" if rule.failed_count == 1 else "PDFs"
+            count_str += f", ✗ {rule.failed_count} {fail_label} failed"
 
-        # Per-rule summary
-        print("\nValidation warnings by rule:")
-        for warning_type, count in sorted(summary.warning_types.items()):
-            rule_label = "PDF" if count == 1 else "PDFs"
-            print(f"  - {warning_type}: {count} {rule_label}")
+        print(f"  {status_str}: {count_str}")
 
-        # Reference to detailed log
-        if validation_json_path:
-            print(
-                f"\nDetailed validation results: {validation_json_path.relative_to(Path.cwd())}"
-            )
+    # Reference to detailed log
+    if validation_json_path:
+        try:
+            relative_path = validation_json_path.relative_to(Path.cwd())
+            print(f"\nDetailed validation results: {relative_path}")
+        except ValueError:
+            # If path is not relative to cwd (e.g., in temp dir), use absolute
+            print(f"\nDetailed validation results: {validation_json_path}")
 
 
 def write_validation_json(summary: ValidationSummary, output_path: Path) -> None:

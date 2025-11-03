@@ -234,8 +234,8 @@ class TestValidatePdfStructure:
 
         result = validate_pdfs.validate_pdf_structure(pdf_path, enabled_rules={})
         assert result.filename == "test.pdf"
-        assert result.page_count == 2
-        assert result.passed
+        assert result.measurements["page_count"] == 2.0
+        assert result.passed is True
         assert len(result.warnings) == 0
 
     def test_validate_pdf_structure_unexpected_pages(self, tmp_path: Path) -> None:
@@ -269,8 +269,8 @@ class TestValidatePdfStructure:
             pdf_path,
             enabled_rules={"exactly_two_pages": "warn"},
         )
-        assert result.page_count == 3
-        assert not result.passed
+        assert result.measurements["page_count"] == 3.0
+        assert result.passed is False
         assert len(result.warnings) == 1
         assert "exactly_two_pages" in result.warnings[0]
 
@@ -305,7 +305,7 @@ class TestValidatePdfStructure:
             pdf_path,
             enabled_rules={"exactly_two_pages": "disabled"},
         )
-        assert result.page_count == 3
+        assert result.measurements["page_count"] == 3.0
         assert result.passed  # No warning because rule is disabled
         assert not result.warnings
 
@@ -387,15 +387,26 @@ class TestWriteValidationJson:
             warning_count=1,
             page_count_distribution={2: 1, 3: 1},
             warning_types={"exactly_two_pages": 1},
+            rule_results=[
+                validate_pdfs.RuleResult(
+                    rule_name="exactly_two_pages",
+                    severity="warn",
+                    passed_count=1,
+                    failed_count=1,
+                )
+            ],
             results=[
                 validate_pdfs.ValidationResult(
-                    filename="test1.pdf", page_count=2, warnings=[], passed=True
+                    filename="test1.pdf",
+                    warnings=[],
+                    passed=True,
+                    measurements={"page_count": 2.0},
                 ),
                 validate_pdfs.ValidationResult(
                     filename="test2.pdf",
-                    page_count=3,
-                    warnings=["exactly_two_pages: 3 pages (expected 2)"],
+                    warnings=["exactly_two_pages: has 3 pages (expected 2)"],
                     passed=False,
+                    measurements={"page_count": 3.0},
                 ),
             ],
         )
@@ -497,3 +508,173 @@ class TestMainFunction:
                 enabled_rules={"exactly_two_pages": "error"},
                 json_output=None,
             )
+
+
+@pytest.mark.unit
+class TestExtractMeasurements:
+    """Tests for measurement extraction from invisible markers."""
+
+    def test_extract_measurements_from_markers(self) -> None:
+        """Verify measurement extraction from Typst marker patterns.
+
+        Real-world significance:
+        - Typst templates embed layout measurements as invisible text
+        - Validator parses these to check envelope window constraints
+        - Must handle various numeric formats (integers, floats)
+
+        Assertion: Measurements are correctly extracted and normalized
+        """
+        # Simulate text extracted from PDF with our marker
+        page_text = """
+        Some regular text here
+        MEASURE_CONTACT_HEIGHT:214.62692913385834
+        More content below
+        """
+
+        measurements = validate_pdfs.extract_measurements_from_markers(page_text)
+
+        assert "measure_contact_height" in measurements
+        assert measurements["measure_contact_height"] == 214.62692913385834
+
+    def test_extract_measurements_no_markers(self) -> None:
+        """Verify graceful handling when no markers present.
+
+        Real-world significance:
+        - Older PDFs may not have measurement markers
+        - Validator should not fail on legacy documents
+
+        Assertion: Returns empty dict when no markers found
+        """
+        page_text = "Just regular PDF content without any markers"
+        measurements = validate_pdfs.extract_measurements_from_markers(page_text)
+        assert measurements == {}
+
+    def test_extract_measurements_partial_markers(self) -> None:
+        """Verify extraction works with mixed marker presence.
+
+        Real-world significance:
+        - Template evolution may add new markers over time
+        - Validator should extract what's available
+
+        Assertion: Extracts available measurements, ignores missing ones
+        """
+        page_text = """
+        MEASURE_CONTACT_HEIGHT:123.45
+        SOME_OTHER_MARKER:ignored
+        MEASURE_ANOTHER_DIMENSION:678.90
+        """
+
+        measurements = validate_pdfs.extract_measurements_from_markers(page_text)
+
+        assert measurements["measure_contact_height"] == 123.45
+        assert measurements["measure_another_dimension"] == 678.90
+        assert len(measurements) == 2
+
+
+@pytest.mark.unit
+class TestRuleResultsAndMeasurements:
+    """Tests for enhanced validation output with per-rule results and measurements."""
+
+    def test_validation_includes_measurements(self, tmp_path: Path) -> None:
+        """Verify ValidationResult includes actual measurements from PDFs.
+
+        Real-world significance:
+        - Actual measurements allow confirming validation rules work correctly
+        - Helps debug why a PDF passed or failed a specific rule
+        - Enables detailed analysis of layout variations
+
+        Assertion: ValidationResult contains measurements dict with actual values
+        """
+        pdf_path = tmp_path / "test.pdf"
+        writer = PdfWriter()
+        writer.add_blank_page(width=612, height=792)
+        writer.add_blank_page(width=612, height=792)
+
+        with open(pdf_path, "wb") as f:
+            writer.write(f)
+
+        result = validate_pdfs.validate_pdf_structure(
+            pdf_path, enabled_rules={"exactly_two_pages": "warn"}
+        )
+
+        # Should have measurements including page_count
+        assert result.measurements is not None
+        assert "page_count" in result.measurements
+        assert result.measurements["page_count"] == 2.0
+
+    def test_rule_results_include_all_rules(self, tmp_path: Path) -> None:
+        """Verify ValidationSummary includes results for all configured rules.
+
+        Real-world significance:
+        - User wants to see all rules, including disabled ones
+        - Helps understand which rules are active and their pass/fail rates
+        - Enables auditing of validation configuration
+
+        Assertion: rule_results includes all rules from enabled_rules config
+        """
+        pdf_dir = tmp_path / "pdfs"
+        pdf_dir.mkdir()
+
+        # Create 3 PDFs: 2 pass, 1 fails (3 pages)
+        for i, page_count in enumerate([2, 2, 3]):
+            pdf_path = pdf_dir / f"test_{i}.pdf"
+            writer = PdfWriter()
+            for _ in range(page_count):
+                writer.add_blank_page(width=612, height=792)
+            with open(pdf_path, "wb") as f:
+                writer.write(f)
+
+        enabled_rules = {
+            "exactly_two_pages": "warn",
+            "signature_overflow": "disabled",
+            "envelope_window_1_125": "error",
+        }
+
+        files = validate_pdfs.discover_pdfs(pdf_dir)
+        summary = validate_pdfs.validate_pdfs(files, enabled_rules=enabled_rules)
+
+        # Should have rule_results for all configured rules
+        assert len(summary.rule_results) == 3
+
+        rule_dict = {r.rule_name: r for r in summary.rule_results}
+
+        # Check exactly_two_pages rule
+        assert "exactly_two_pages" in rule_dict
+        assert rule_dict["exactly_two_pages"].severity == "warn"
+        assert rule_dict["exactly_two_pages"].passed_count == 2
+        assert rule_dict["exactly_two_pages"].failed_count == 1
+
+        # Check disabled rule still appears
+        assert "signature_overflow" in rule_dict
+        assert rule_dict["signature_overflow"].severity == "disabled"
+
+        # Check error rule appears
+        assert "envelope_window_1_125" in rule_dict
+        assert rule_dict["envelope_window_1_125"].severity == "error"
+
+    def test_warnings_include_actual_values(self, tmp_path: Path) -> None:
+        """Verify warning messages include actual measured values.
+
+        Real-world significance:
+        - User wants to see actual page count, not just "failed"
+        - Helps understand severity (3 pages vs 10 pages)
+        - Enables data-driven decision making
+
+        Assertion: Warning messages contain actual values like "has 3 pages"
+        """
+        pdf_path = tmp_path / "test.pdf"
+        writer = PdfWriter()
+        for _ in range(5):  # Create 5-page PDF
+            writer.add_blank_page(width=612, height=792)
+        with open(pdf_path, "wb") as f:
+            writer.write(f)
+
+        result = validate_pdfs.validate_pdf_structure(
+            pdf_path, enabled_rules={"exactly_two_pages": "warn"}
+        )
+
+        assert not result.passed
+        assert len(result.warnings) == 1
+        # Should include actual page count
+        assert "has 5 pages" in result.warnings[0]
+        assert "expected 2" in result.warnings[0]
