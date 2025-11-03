@@ -136,6 +136,35 @@ This markerless approach is also suitable for checks like:
 - Language detection heuristics (e.g., a small set of expected words in FR/EN output).
 - Date format sanity checks.
 
+## Validator contracts: validate against artifacts, not filenames
+
+**Core principle: Validate against the preprocessed artifact (source of truth), never against filenames (derived output).**
+
+### Why
+- Filenames are output from prior steps and can drift or be manually renamed.
+- The preprocessed `clients.json` is the single source of truth: it represents the actual clients validated and processed through the pipeline.
+- If validation uses a filename, a silent rename or data mismatch may go undetected.
+- If validation uses the artifact, data consistency is guaranteed.
+
+### How it works in practice
+
+In step 6 (validation), the orchestrator:
+1. Loads `preprocessed_clients_{run_id}.json` from `output/artifacts/`.
+2. Builds a mapping: `filename -> expected_value` (e.g., client ID, sequence number).
+3. Passes this mapping to `validate_pdfs.main(..., client_id_map=client_id_map)`.
+
+Rules then validate against the mapping using artifact data as the source of truth.
+
+### Example: client_id_presence rule
+
+Current rule: Searches for any 10-digit number in the PDF text and compares to the expected client ID.
+
+- Expected ID source: `client_id_map["en_notice_00001_1009876543.pdf"]` → `"1009876543"` (from artifact).
+- Actual ID found: regex `\b(\d{10})\b` in extracted text.
+- Validation: If found ≠ expected, emit warning.
+
+This ensures every generated PDF contains the correct client ID, catching generation errors or data drift early.
+
 ## Why we prefer template‑emitted measurements over PDF distance math
 
 We strongly prefer emitting precise measurements from the Typst template (via `measure()` and `MEASURE_...` markers) instead of inferring sizes by computing distances between two markers in extracted PDF text. Reasons:
