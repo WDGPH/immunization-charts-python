@@ -52,16 +52,30 @@
     Childcare Centre: #smallcaps[*#client_data.school*]
   ]
 
-  // Central alignment for the entire table
-  align(center)[
+  // Build the table content
+  let table_content = align(center)[
     #table(
       columns: columns,
+      rows: (81pt),
       inset: font_size,
       col1_content,
       table.vline(stroke: vline_stroke),
       col2_content,
     )
   ]
+
+  // Render table with embedded height measurement for envelope validation
+  // Invisible marker will be searchable in PDF but not visible to readers
+  context {
+    let size = measure(table_content)
+    let h_pt = size.height.pt()
+    
+    // Render the table with embedded measurement marker
+    [
+      #table_content
+      #text(size: 0.1pt, fill: white)[MEASURE_CONTACT_HEIGHT:#str(h_pt)]
+    ]
+  }
 }
 
 #let client_info_tbl_fr(
@@ -95,16 +109,30 @@
     École: #smallcaps[*#client_data.school*]
   ]
 
-  // Central alignment for the entire table
-  align(center)[
+  // Build the table content
+  let table_content = align(center)[
     #table(
       columns: columns,
+      rows: (81pt),
       inset: font_size,
       col1_content,
       table.vline(stroke: vline_stroke),
       col2_content,
     )
   ]
+
+  // Render table with embedded height measurement for envelope validation
+  // Invisible marker will be searchable in PDF but not visible to readers
+  context {
+    let size = measure(table_content)
+    let h_pt = size.height.pt()
+    
+    // Render the table with embedded measurement marker
+    [
+      #table_content
+      #text(size: 0.1pt, fill: white)[MEASURE_CONTACT_HEIGHT:#str(h_pt)]
+    ]
+  }
 }
 
 #let client_immunization_list(

@@ -16,6 +16,7 @@ This directory contains all configuration files for the immunization pipeline. E
   - [`disease_normalization.json`](#disease_normalizationjson)
   - [`translations/` Directory](#translations-directory)
 - [QR Code Configuration](#qr-code-configuration)
+- [PDF Validation Configuration](#pdf-validation-configuration)
 - [PDF Encryption Configuration](#pdf-encryption-configuration)
 - [🏷️ Template Field Reference](#template-field-reference)
 - [Adding New Configurations](#adding-new-configurations)
@@ -43,6 +44,9 @@ Typst Files (with localized, filtered disease names)
     ↓
 [compile_notices.py]
     └─ Generate PDFs
+  ↓
+[validate_pdfs.py]
+  └─ Validate PDFs (page counts, layout markers) and emit validation JSON
 ```
 ---
 
@@ -283,6 +287,39 @@ Tip:
 - The delivery date available to templates is `date_notice_delivery`
 
 After updating the configuration, rerun the pipeline and regenerated notices will reflect the new QR payload.
+
+---
+
+## PDF Validation Configuration
+
+The PDF validation step runs after compilation to enforce basic quality rules and surface layout issues. Configuration lives under `pdf_validation` in `config/parameters.yaml`.
+
+Supported severity levels per rule:
+- `disabled`: skip the check
+- `warn`: include in summary but do not halt pipeline
+- `error`: fail the pipeline if any PDFs violate the rule
+
+Current rules:
+- `envelope_window_1_125`: Ensure contact area does not exceed 1.125" inches
+- `exactly_two_pages`: Ensure each notice has exactly 2 pages (notice + immunization record)
+- `signature_overflow`: Detect if the signature block spills onto page 2 (uses invisible Typst marker)
+
+Example configuration:
+
+```yaml
+pdf_validation:
+  rules:
+    envelope_window_1_125: error
+    exactly_two_pages: warn
+    signature_overflow: disabled
+```
+
+Behavior:
+- The validation summary is always printed to the console.
+- A JSON report is written to `output/metadata/<lang>_validation_<run_id>.json` with per-PDF results and aggregates.
+- If any rule is set to `error` and fails, the pipeline stops with a clear error message listing failing rules and counts.
+- The validation logic is implemented in `pipeline/validate_pdfs.py` and invoked by the orchestrator.
+- The validation uses invisible markers embedded by the Typst templates to detect signature placement without affecting appearance.
 
 ---
 

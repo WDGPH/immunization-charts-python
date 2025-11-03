@@ -88,6 +88,11 @@ Si vous avez des questions sur les vaccins de votre enfant, veuillez appeler le 
   Sincères salutations, 
 
 #conf.signature("__SIGNATURE_PATH__", "Dr. Jane Smith, MPH", "Médecin hygiéniste adjoint")
+
+// Invisible marker for layout validation
+#box(width: 0pt, height: 0pt)[
+  #text(size: 0.1pt, fill: white)[MARK_END_SIGNATURE_BLOCK]
+]
   
 ]
 
