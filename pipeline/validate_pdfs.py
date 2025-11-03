@@ -333,9 +333,7 @@ def validate_pdf_layout(
                     )
                 else:
                     # Store the found ID for debugging
-                    measurements["client_id_found_value"] = float(
-                        int(found_client_id)
-                    )
+                    measurements["client_id_found_value"] = float(int(found_client_id))
         except Exception:
             # If client ID check fails, skip silently (parsing error)
             pass
@@ -520,7 +518,6 @@ def print_validation_summary(
     # Per-rule summary (all rules, including disabled)
     print("Validation rules:")
     for rule in summary.rule_results:
-
         status_str = f"- {rule.rule_name} [{rule.severity}]"
         count_str = f"✓ {rule.passed_count} passed"
 
@@ -633,7 +630,9 @@ def main(
 
     files = discover_pdfs(target)
     filtered = filter_by_language(files, language)
-    summary = validate_pdfs(filtered, enabled_rules=enabled_rules, client_id_map=client_id_map)
+    summary = validate_pdfs(
+        filtered, enabled_rules=enabled_rules, client_id_map=client_id_map
+    )
     summary.language = language
 
     if json_output:
