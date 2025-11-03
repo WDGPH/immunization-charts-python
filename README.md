@@ -61,7 +61,7 @@ The `pipeline/` package is organized by pipeline function, not by layer. Each st
 | 5 | `compile_notices.py` | Typst → PDF compilation |
 | 6 | `validate_pdfs.py` | PDF validation (rules, summary, JSON report) |
 | 7 | `encrypt_notice.py` | PDF encryption (optional) |
-| 8 | `batch_pdfs.py` | PDF batching & grouping (optional) |
+| 8 | `bundle_pdfs.py` | PDF bundling & grouping (optional) |
 | 9 | `cleanup.py` | Intermediate file cleanup |
 
 **Supporting modules:** `orchestrator.py` (orchestrator), `config_loader.py`, `data_models.py`, `enums.py`, `utils.py`. 
@@ -88,7 +88,7 @@ This design ensures:
 The pipeline produces a single **normalized JSON artifact** (`preprocessed_clients_<run_id>.json`) during preprocessing. This artifact serves as the canonical source of truth:
 
 - **Created by:** `preprocess.py` (Step 2) - contains sorted clients with normalized metadata
-- **Consumed by:** `generate_qr_codes.py` (Step 3), `generate_notices.py` (Step 4), and `batch_pdfs.py` (Step 8)
+- **Consumed by:** `generate_qr_codes.py` (Step 3), `generate_notices.py` (Step 4), and `bundle_pdfs.py` (Step 8)
 - **Format:** Single JSON file with run metadata, total client count, warnings, and per-client details
 
 Client data flows through specialized handlers during generation:
@@ -99,7 +99,7 @@ Client data flows through specialized handlers during generation:
 | **QR Generation** | Preprocessed JSON | Payload formatting → PNG generation | PNG images in `artifacts/qr_codes/` |
 | **Typst Template** | Preprocessed JSON | Template rendering with QR reference | `.typ` files in `artifacts/typst/` |
 | **PDF Compilation** | Filesystem glob of `.typ` files | Typst subprocess | PDF files in `pdf_individual/` |
-| **PDF Batching** | In-memory `ClientArtifact` objects | Grouping and manifest generation | Batch PDFs in `pdf_combined/` |
+| **PDF Bundling** | In-memory `ClientArtifact` objects | Grouping and manifest generation | Bundle PDFs in `pdf_combined/` |
 
 Each step reads the JSON fresh when needed—there is no shared in-memory state passed between steps through the orchestrator.
 
@@ -135,11 +135,11 @@ The main pipeline orchestrator (`orchestrator.py`) automates the end-to-end work
 7. **Encrypting PDFs** (`encrypt_notice.py`, optional)  
    When `encryption.enabled: true`, encrypts individual PDFs using client metadata as password.
 
-8. **Batching PDFs** (`batch_pdfs.py`, optional)  
-   When `batching.batch_size > 0`, combines individual PDFs into batches with optional grouping by school or board. Skipped if encryption is enabled.
+8. **Bundling PDFs** (`bundle_pdfs.py`, optional)  
+   When `bundling.bundle_size > 0`, combines individual PDFs into bundles with optional grouping by school or board. Runs independently of encryption.
 
 9. **Cleanup** (`cleanup.py`)  
-   Removes intermediate files (.typ, .json, per-client PDFs) if `pipeline.keep_intermediate_files: false`.
+   Removes intermediate files (.typ, .json, per-client PDFs) if `pipeline.keep_intermediate_files: false`. Optionally deletes unencrypted PDFs if `cleanup.delete_unencrypted_pdfs: true`.
 
 **Usage Example:**
 ```bash

@@ -1,16 +1,18 @@
 """Cleanup module for removing intermediate pipeline artifacts.
 
 Removes specified directories and file types from the output directory to reduce
-storage footprint after the pipeline completes successfully.
+storage footprint after the pipeline completes successfully. Optionally deletes
+unencrypted individual PDFs after bundling or encryption operations.
 
 **Input Contract:**
 - Reads configuration from parameters.yaml (cleanup section)
 - Assumes output directory structure exists (may be partially populated)
-- Assumes cleanup.remove_directories and cleanup.remove_extensions config keys exist
+- Assumes cleanup configuration keys exist (remove_directories, delete_unencrypted_pdfs)
 
 **Output Contract:**
 - Removes specified directories and file types from output_dir
-- Does not modify final PDF outputs (pdf_individual, pdf_combined)
+- Optionally removes unencrypted individual PDFs from pdf_individual/
+- Does not modify final PDF outputs (bundles, encrypted PDFs)
 - Does not halt pipeline if cleanup fails
 
 **Error Handling:**
@@ -23,9 +25,10 @@ storage footprint after the pipeline completes successfully.
 What this module validates:
 - Output directory exists and is writable
 - Directory/file paths can be safely deleted (exist check before delete)
+- delete_unencrypted_pdfs configuration is boolean
 
 What this module assumes (validated upstream):
-- Configuration keys are valid (cleanup.remove_directories, cleanup.remove_extensions)
+- Configuration keys are valid (cleanup.remove_directories, cleanup.delete_unencrypted_pdfs)
 - Output directory structure is correct (created by prior steps)
 
 Note: This is a utility/cleanup step. Failures don't halt pipeline. Can be skipped
@@ -67,10 +70,20 @@ def cleanup_with_config(output_dir: Path, config_path: Path | None = None) -> No
     cleanup_config = config.get("cleanup", {})
 
     remove_dirs = cleanup_config.get("remove_directories", [])
+    delete_unencrypted = cleanup_config.get("delete_unencrypted_pdfs", False)
 
     # Remove configured directories
     for folder_name in remove_dirs:
         safe_delete(output_dir / folder_name)
+
+    # Delete unencrypted PDFs if configured
+    if delete_unencrypted:
+        pdf_dir = output_dir / "pdf_individual"
+        if pdf_dir.exists():
+            for pdf_file in pdf_dir.glob("*.pdf"):
+                # Only delete unencrypted PDFs (skip _encrypted versions)
+                if not pdf_file.stem.endswith("_encrypted"):
+                    safe_delete(pdf_file)
 
 
 def main(output_dir: Path, config_path: Path | None = None) -> None:

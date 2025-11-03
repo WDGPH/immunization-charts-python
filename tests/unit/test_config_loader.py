@@ -174,6 +174,6 @@ class TestActualConfig:
 
         # At least some of these should exist
         has_sections = any(
-            key in config for key in ["pipeline", "qr", "encryption", "batching"]
+            key in config for key in ["pipeline", "qr", "encryption", "bundling"]
         )
         assert has_sections, "Config missing core sections"
