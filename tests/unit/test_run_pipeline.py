@@ -171,38 +171,39 @@ class TestPipelineSteps:
     """Unit tests for individual pipeline step functions."""
 
     def test_run_step_1_prepare_output_success(
-        self, tmp_output_structure: dict
+        self, tmp_output_structure: dict, config_file: Path
     ) -> None:
         """Verify Step 1: prepare output runs successfully.
 
         Real-world significance:
-        - First step: creates directory structure
+        - First step: creates directory structure and reads config
         - Must succeed or entire pipeline fails
+        - Reads pipeline.before_run.clear_output_directory from config
         """
         with patch("pipeline.orchestrator.prepare_output") as mock_prep:
             mock_prep.prepare_output_directory.return_value = True
             result = orchestrator.run_step_1_prepare_output(
                 output_dir=tmp_output_structure["root"],
                 log_dir=tmp_output_structure["logs"],
-                auto_remove=True,
+                config_dir=config_file.parent,
             )
             assert result is True
 
     def test_run_step_1_prepare_output_user_cancels(
-        self, tmp_output_structure: dict
+        self, tmp_output_structure: dict, config_file: Path
     ) -> None:
         """Verify Step 1 aborts if user declines cleanup.
 
         Real-world significance:
-        - User should be able to cancel pipeline
-        - Should not proceed if user says No
+        - User should be able to cancel pipeline via prepare_output_directory
+        - Should not proceed if prepare_output returns False
         """
         with patch("pipeline.orchestrator.prepare_output") as mock_prep:
             mock_prep.prepare_output_directory.return_value = False
             result = orchestrator.run_step_1_prepare_output(
                 output_dir=tmp_output_structure["root"],
                 log_dir=tmp_output_structure["logs"],
-                auto_remove=False,
+                config_dir=config_file.parent,
             )
             assert result is False
 

@@ -570,14 +570,15 @@ class TestEncryptPdfsInDirectory:
         with pytest.raises(FileNotFoundError):
             encrypt_notice.encrypt_pdfs_in_directory(pdf_dir, json_path, "en")
 
-    def test_encrypt_pdfs_deletes_unencrypted_after_success(
+    def test_encrypt_pdfs_preserves_unencrypted_after_success(
         self, tmp_test_dir: Path
     ) -> None:
-        """Verify unencrypted PDF is deleted after successful encryption.
+        """Verify unencrypted PDF is preserved after successful encryption.
 
         Real-world significance:
-        - Encrypted version replaces original (with _encrypted suffix)
-        - Original unencrypted version should be removed
+        - Encrypted version created with _encrypted suffix
+        - Original unencrypted version is preserved (deletion handled in cleanup step)
+        - Allows bundling to work independently
         """
         pdf_dir = tmp_test_dir / "pdfs"
         pdf_dir.mkdir()
@@ -615,8 +616,8 @@ class TestEncryptPdfsInDirectory:
         ):
             encrypt_notice.encrypt_pdfs_in_directory(pdf_dir, json_path, "en")
 
-        # Original should be deleted
-        assert not pdf_path.exists()
+        # Original should be preserved
+        assert pdf_path.exists()
         # Encrypted version should exist
         encrypted = pdf_dir / "en_client_00001_101_encrypted.pdf"
         assert encrypted.exists()

@@ -11,7 +11,7 @@ Real-world significance:
 
 Note: Since validate_config() validates the entire config, test configs must have
 valid QR settings (enabled=false or with payload_template) to focus testing on
-other sections like batching or typst.
+other sections like bundling or typst.
 """
 
 from __future__ import annotations
@@ -166,120 +166,120 @@ class TestTypstConfigValidation:
 
 
 @pytest.mark.unit
-class TestBatchingConfigValidation:
-    """Test configuration validation for PDF Batching."""
+class TestBundlingConfigValidation:
+    """Test configuration validation for PDF Bundling."""
 
-    def test_batching_validation_passes_when_disabled(self) -> None:
-        """Batching validation should pass when batch_size=0 (disabled)."""
+    def test_bundling_validation_passes_when_disabled(self) -> None:
+        """Bundling validation should pass when bundle_size=0 (disabled)."""
         config: Dict[str, Any] = {
             "qr": {"enabled": False},  # QR must be valid for overall validation
-            "batching": {
-                "batch_size": 0,  # Disabled
+            "bundling": {
+                "bundle_size": 0,  # Disabled
             },
         }
         # Should not raise
         validate_config(config)
 
-    def test_batching_validation_passes_with_valid_size_and_strategy(self) -> None:
-        """Batching validation should pass with valid batch_size and group_by."""
+    def test_bundling_validation_passes_with_valid_size_and_strategy(self) -> None:
+        """Bundling validation should pass with valid bundle_size and group_by."""
         config: Dict[str, Any] = {
             **MINIMAL_VALID_CONFIG,
-            "batching": {
-                "batch_size": 100,
+            "bundling": {
+                "bundle_size": 100,
                 "group_by": "school",
             },
         }
         # Should not raise
         validate_config(config)
 
-    def test_batching_validation_passes_with_null_group_by(self) -> None:
-        """Batching validation should pass with null group_by (sequential batching)."""
+    def test_bundling_validation_passes_with_null_group_by(self) -> None:
+        """Bundling validation should pass with null group_by (sequential bundling)."""
         config: Dict[str, Any] = {
             **MINIMAL_VALID_CONFIG,
-            "batching": {
-                "batch_size": 50,
+            "bundling": {
+                "bundle_size": 50,
                 "group_by": None,
             },
         }
         # Should not raise
         validate_config(config)
 
-    def test_batching_validation_fails_when_size_not_integer(self) -> None:
-        """Batching validation should fail when batch_size is not an integer."""
+    def test_bundling_validation_fails_when_size_not_integer(self) -> None:
+        """Bundling validation should fail when bundle_size is not an integer."""
         config: Dict[str, Any] = {
             **MINIMAL_VALID_CONFIG,
-            "batching": {
-                "batch_size": "100",  # Invalid: string instead of int
+            "bundling": {
+                "bundle_size": "100",  # Invalid: string instead of int
             },
         }
-        with pytest.raises(ValueError, match="batch_size must be an integer"):
+        with pytest.raises(ValueError, match="bundle_size must be an integer"):
             validate_config(config)
 
-    def test_batching_validation_fails_when_size_negative(self) -> None:
-        """Batching validation should fail when batch_size is negative."""
+    def test_bundling_validation_fails_when_size_negative(self) -> None:
+        """Bundling validation should fail when bundle_size is negative."""
         config: Dict[str, Any] = {
             **MINIMAL_VALID_CONFIG,
-            "batching": {
-                "batch_size": -100,  # Invalid: negative
+            "bundling": {
+                "bundle_size": -100,  # Invalid: negative
             },
         }
-        with pytest.raises(ValueError, match="batch_size must be positive"):
+        with pytest.raises(ValueError, match="bundle_size must be positive"):
             validate_config(config)
 
-    def test_batching_validation_fails_with_invalid_group_by(self) -> None:
-        """Batching validation should fail when group_by is invalid strategy."""
+    def test_bundling_validation_fails_with_invalid_group_by(self) -> None:
+        """Bundling validation should fail when group_by is invalid strategy."""
         config: Dict[str, Any] = {
             **MINIMAL_VALID_CONFIG,
-            "batching": {
-                "batch_size": 100,
-                "group_by": "invalid_strategy",  # Invalid: not in BatchStrategy enum
+            "bundling": {
+                "bundle_size": 100,
+                "group_by": "invalid_strategy",  # Invalid: not in BundleStrategy enum
             },
         }
         with pytest.raises(ValueError, match="group_by"):
             validate_config(config)
 
-    def test_batching_validation_fails_when_size_positive_but_not_integer(self) -> None:
-        """Batching validation should fail when batch_size is float."""
+    def test_bundling_validation_fails_when_size_positive_but_not_integer(self) -> None:
+        """Bundling validation should fail when bundle_size is float."""
         config: Dict[str, Any] = {
             **MINIMAL_VALID_CONFIG,
-            "batching": {
-                "batch_size": 100.5,  # Invalid: float, not int
+            "bundling": {
+                "bundle_size": 100.5,  # Invalid: float, not int
             },
         }
-        with pytest.raises(ValueError, match="batch_size must be an integer"):
+        with pytest.raises(ValueError, match="bundle_size must be an integer"):
             validate_config(config)
 
-    def test_batching_validation_passes_with_board_group_by(self) -> None:
-        """Batching validation should pass with valid group_by='board'."""
+    def test_bundling_validation_passes_with_board_group_by(self) -> None:
+        """Bundling validation should pass with valid group_by='board'."""
         config: Dict[str, Any] = {
             **MINIMAL_VALID_CONFIG,
-            "batching": {
-                "batch_size": 100,
+            "bundling": {
+                "bundle_size": 100,
                 "group_by": "board",
             },
         }
         # Should not raise
         validate_config(config)
 
-    def test_batching_validation_passes_with_size_group_by(self) -> None:
-        """Batching validation should pass with valid group_by='size'."""
+    def test_bundling_validation_passes_with_size_group_by(self) -> None:
+        """Bundling validation should pass with valid group_by='size'."""
         config: Dict[str, Any] = {
             **MINIMAL_VALID_CONFIG,
-            "batching": {
-                "batch_size": 100,
+            "bundling": {
+                "bundle_size": 100,
                 "group_by": "size",
             },
         }
         # Should not raise
         validate_config(config)
 
-    def test_batching_validation_handles_missing_batching_section(self) -> None:
-        """Batching validation should handle missing batching section (defaults batch_size=0)."""
+    def test_bundling_validation_handles_missing_bundling_section(self) -> None:
+        """Bundling validation should handle missing bundling section (defaults bundle_size=0)."""
         config: Dict[str, Any] = {
             **MINIMAL_VALID_CONFIG,
-            # No batching section; will use defaults
+            # No bundling section; will use defaults
         }
-        # Should not raise (batch_size defaults to 0, which is disabled)
+        # Should not raise (bundle_size defaults to 0, which is disabled)
         validate_config(config)
 
 
@@ -303,19 +303,19 @@ class TestConditionalValidationLogic:
         with pytest.raises(ValueError, match="payload_template"):
             validate_config(config3)  # Should fail
 
-    def test_group_by_validated_only_when_batching_enabled(self) -> None:
-        """group_by is only validated when batch_size > 0."""
-        # Case 1: batch_size=0, group_by not validated even if invalid
+    def test_group_by_validated_only_when_bundling_enabled(self) -> None:
+        """group_by is only validated when bundle_size > 0."""
+        # Case 1: bundle_size=0, group_by not validated even if invalid
         config1: Dict[str, Any] = {
             **MINIMAL_VALID_CONFIG,
-            "batching": {"batch_size": 0, "group_by": "invalid"},
+            "bundling": {"bundle_size": 0, "group_by": "invalid"},
         }
-        validate_config(config1)  # Should pass (batch_size=0 disables batching)
+        validate_config(config1)  # Should pass (bundle_size=0 disables bundling)
 
-        # Case 2: batch_size > 0, group_by is validated
+        # Case 2: bundle_size > 0, group_by is validated
         config2: Dict[str, Any] = {
             **MINIMAL_VALID_CONFIG,
-            "batching": {"batch_size": 100, "group_by": "invalid"},
+            "bundling": {"bundle_size": 100, "group_by": "invalid"},
         }
         with pytest.raises(ValueError, match="group_by"):
             validate_config(config2)  # Should fail (invalid strategy)
@@ -338,11 +338,11 @@ class TestErrorMessages:
         # Check message includes action
         assert "define" in error_msg.lower() or "set" in error_msg.lower()
 
-    def test_batching_error_message_includes_strategy_options(self) -> None:
+    def test_bundling_error_message_includes_strategy_options(self) -> None:
         """Error message should include information about valid strategies."""
         config: Dict[str, Any] = {
             **MINIMAL_VALID_CONFIG,
-            "batching": {"batch_size": 100, "group_by": "invalid"},
+            "bundling": {"bundle_size": 100, "group_by": "invalid"},
         }
         with pytest.raises(ValueError) as exc_info:
             validate_config(config)

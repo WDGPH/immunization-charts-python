@@ -1,8 +1,8 @@
-"""Unit tests for enums module - batch strategy, language, and template field enumerations.
+"""Unit tests for enums module - bundle strategy, language, and template field enumerations.
 
 Tests cover:
-- BatchStrategy enum values and string conversion
-- BatchType enum values and strategy mapping
+- BundleStrategy enum values and string conversion
+- BundleType enum values and strategy mapping
 - Language enum values and string conversion
 - TemplateField enum values and field availability
 - Error handling for invalid values
@@ -10,7 +10,7 @@ Tests cover:
 - Default behavior for None values
 
 Real-world significance:
-- Batch strategy determines how PDFs are grouped (by size, school, board)
+- Bundle strategy determines how PDFs are grouped (by size, school, board)
 - Language code determines template renderer and localization
 - Template fields define available placeholders for QR codes and PDF passwords
 - Invalid values would cause pipeline crashes or incorrect behavior
@@ -20,22 +20,22 @@ from __future__ import annotations
 
 import pytest
 
-from pipeline.enums import BatchStrategy, BatchType, Language, TemplateField
+from pipeline.enums import BundleStrategy, BundleType, Language, TemplateField
 
 
 @pytest.mark.unit
-class TestBatchStrategy:
-    """Unit tests for BatchStrategy enumeration."""
+class TestBundleStrategy:
+    """Unit tests for BundleStrategy enumeration."""
 
     def test_enum_values_correct(self) -> None:
-        """Verify BatchStrategy has expected enum values.
+        """Verify BundleStrategy has expected enum values.
 
         Real-world significance:
-        - Defines valid batching strategies for pipeline
+        - Defines valid bundling strategies for pipeline
         """
-        assert BatchStrategy.SIZE.value == "size"
-        assert BatchStrategy.SCHOOL.value == "school"
-        assert BatchStrategy.BOARD.value == "board"
+        assert BundleStrategy.SIZE.value == "size"
+        assert BundleStrategy.SCHOOL.value == "school"
+        assert BundleStrategy.BOARD.value == "board"
 
     def test_from_string_valid_lowercase(self) -> None:
         """Verify from_string works with lowercase input.
@@ -43,9 +43,9 @@ class TestBatchStrategy:
         Real-world significance:
         - Config values are often lowercase in YAML
         """
-        assert BatchStrategy.from_string("size") == BatchStrategy.SIZE
-        assert BatchStrategy.from_string("school") == BatchStrategy.SCHOOL
-        assert BatchStrategy.from_string("board") == BatchStrategy.BOARD
+        assert BundleStrategy.from_string("size") == BundleStrategy.SIZE
+        assert BundleStrategy.from_string("school") == BundleStrategy.SCHOOL
+        assert BundleStrategy.from_string("board") == BundleStrategy.BOARD
 
     def test_from_string_valid_uppercase(self) -> None:
         """Verify from_string is case-insensitive for uppercase.
@@ -53,9 +53,9 @@ class TestBatchStrategy:
         Real-world significance:
         - Users might input "SIZE" or "BOARD" in config
         """
-        assert BatchStrategy.from_string("SIZE") == BatchStrategy.SIZE
-        assert BatchStrategy.from_string("SCHOOL") == BatchStrategy.SCHOOL
-        assert BatchStrategy.from_string("BOARD") == BatchStrategy.BOARD
+        assert BundleStrategy.from_string("SIZE") == BundleStrategy.SIZE
+        assert BundleStrategy.from_string("SCHOOL") == BundleStrategy.SCHOOL
+        assert BundleStrategy.from_string("BOARD") == BundleStrategy.BOARD
 
     def test_from_string_valid_mixed_case(self) -> None:
         """Verify from_string is case-insensitive for mixed case.
@@ -63,17 +63,17 @@ class TestBatchStrategy:
         Real-world significance:
         - Should accept any case variation
         """
-        assert BatchStrategy.from_string("Size") == BatchStrategy.SIZE
-        assert BatchStrategy.from_string("School") == BatchStrategy.SCHOOL
-        assert BatchStrategy.from_string("BoArD") == BatchStrategy.BOARD
+        assert BundleStrategy.from_string("Size") == BundleStrategy.SIZE
+        assert BundleStrategy.from_string("School") == BundleStrategy.SCHOOL
+        assert BundleStrategy.from_string("BoArD") == BundleStrategy.BOARD
 
     def test_from_string_none_defaults_to_size(self) -> None:
         """Verify None defaults to SIZE strategy.
 
         Real-world significance:
-        - Missing batching config should use safe default (SIZE)
+        - Missing bundling config should use safe default (SIZE)
         """
-        assert BatchStrategy.from_string(None) == BatchStrategy.SIZE
+        assert BundleStrategy.from_string(None) == BundleStrategy.SIZE
 
     def test_from_string_invalid_value_raises_error(self) -> None:
         """Verify ValueError for invalid strategy string.
@@ -81,8 +81,8 @@ class TestBatchStrategy:
         Real-world significance:
         - User error (typo in config) must be caught and reported clearly
         """
-        with pytest.raises(ValueError, match="Unknown batch strategy: invalid"):
-            BatchStrategy.from_string("invalid")
+        with pytest.raises(ValueError, match="Unknown bundle strategy: invalid"):
+            BundleStrategy.from_string("invalid")
 
     def test_from_string_invalid_error_includes_valid_options(self) -> None:
         """Verify error message includes list of valid options.
@@ -91,7 +91,7 @@ class TestBatchStrategy:
         - Users need to know what values are valid when they make a mistake
         """
         with pytest.raises(ValueError) as exc_info:
-            BatchStrategy.from_string("bad")
+            BundleStrategy.from_string("bad")
 
         error_msg = str(exc_info.value)
         assert "size" in error_msg
@@ -100,23 +100,23 @@ class TestBatchStrategy:
 
 
 @pytest.mark.unit
-class TestBatchType:
-    """Unit tests for BatchType enumeration."""
+class TestBundleType:
+    """Unit tests for BundleType enumeration."""
 
     def test_enum_values_correct(self) -> None:
-        """Verify BatchType has expected enum values.
+        """Verify BundleType has expected enum values.
 
         Real-world significance:
-        - Type descriptors used for batch metadata and reporting
+        - Type descriptors used for bundle metadata and reporting
         """
-        assert BatchType.SIZE_BASED.value == "size_based"
-        assert BatchType.SCHOOL_GROUPED.value == "school_grouped"
-        assert BatchType.BOARD_GROUPED.value == "board_grouped"
+        assert BundleType.SIZE_BASED.value == "size_based"
+        assert BundleType.SCHOOL_GROUPED.value == "school_grouped"
+        assert BundleType.BOARD_GROUPED.value == "board_grouped"
 
 
 @pytest.mark.unit
 class TestStrategyTypeIntegration:
-    """Integration tests between BatchStrategy and BatchType."""
+    """Integration tests between BundleStrategy and BundleType."""
 
     def test_all_strategies_round_trip(self) -> None:
         """Verify strategies convert to/from string consistently.
@@ -124,9 +124,9 @@ class TestStrategyTypeIntegration:
         Real-world significance:
         - Required for config persistence and reproducibility
         """
-        for strategy in BatchStrategy:
+        for strategy in BundleStrategy:
             string_value = strategy.value
-            reconstructed = BatchStrategy.from_string(string_value)
+            reconstructed = BundleStrategy.from_string(string_value)
             assert reconstructed == strategy
 
 

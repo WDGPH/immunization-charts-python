@@ -6,7 +6,7 @@ Tests cover end-to-end interactions between adjacent steps:
 - Notice generation → Typst compilation (template syntax)
 - Compilation → PDF validation/counting (PDF integrity)
 - PDF validation → Encryption (PDF metadata preservation)
-- Encryption → Batching (batch manifest generation)
+- Encryption → Bundling (bundle manifest generation)
 
 Real-world significance:
 - Multi-step workflows depend on contracts between adjacent steps
@@ -365,18 +365,18 @@ class TestCompilationToPdfValidation:
 
 
 @pytest.mark.integration
-class TestEncryptionToBatchingWorkflow:
-    """Integration tests for encryption and batching workflows."""
+class TestEncryptionToBundlingWorkflow:
+    """Integration tests for encryption and bundling workflows."""
 
     def test_encryption_preserves_pdf_reference_data(
         self, tmp_test_dir: Path, default_config: Dict[str, Any]
     ) -> None:
-        """Verify encrypted PDFs preserve references needed by batching.
+        """Verify encrypted PDFs preserve references needed by bundling.
 
         Real-world significance:
         - Encryption step (Step 7) reads individual PDFs and encrypts
-        - Must preserve filename, client metadata for batching
-        - Batch step needs: sequence, client_id, school/board for grouping
+        - Must preserve filename, client metadata for bundling
+        - Bundle step needs: sequence, client_id, school/board for grouping
         """
         # Create mock encrypted PDF record
         pdf_data = {
@@ -393,28 +393,28 @@ class TestEncryptionToBatchingWorkflow:
             "password": "20150615",  # DOB in YYYYMMDD format
         }
 
-        # Verify batching can use this data
+        # Verify bundling can use this data
         assert pdf_data["sequence"]
         assert isinstance(pdf_data["client"], dict)
         assert pdf_data["client"]["school"]  # For group_by="school"
         assert pdf_data["client"]["board"]  # For group_by="board"
 
-    def test_batching_manifest_generation_from_pdfs(self, tmp_test_dir: Path) -> None:
-        """Verify batching creates manifest of grouped PDFs.
+    def test_bundling_manifest_generation_from_pdfs(self, tmp_test_dir: Path) -> None:
+        """Verify bundling creates manifest of grouped PDFs.
 
         Real-world significance:
-        - Batch step creates manifest mapping: batch file → contained client PDFs
-        - Manifest allows recipients to know which students in each batch
-        - Enables validation that no students lost in batching
+        - Bundle step creates manifest mapping: bundle file → contained client PDFs
+        - Manifest allows recipients to know which students in each bundle
+        - Enables validation that no students lost in bundling
         """
-        batch_manifest = {
-            "run_id": "test_batch_001",
+        bundle_manifest = {
+            "run_id": "test_bundle_001",
             "language": "en",
             "created_at": "2025-01-01T12:00:00Z",
-            "batches": [
+            "bundles": [
                 {
-                    "batch_id": "batch_001",
-                    "batch_file": "batch_001.pdf",
+                    "bundle_id": "bundle_001",
+                    "bundle_file": "bundle_001.pdf",
                     "group_key": "Test_Academy",  # school name
                     "client_count": 5,
                     "clients": [
@@ -426,17 +426,17 @@ class TestEncryptionToBatchingWorkflow:
                     ],
                 },
             ],
-            "total_batches": 1,
+            "total_bundles": 1,
             "total_clients": 5,
         }
 
         # Write manifest
         metadata_dir = tmp_test_dir / "metadata"
         metadata_dir.mkdir()
-        manifest_path = metadata_dir / "en_batch_manifest_test_batch_001.json"
+        manifest_path = metadata_dir / "en_bundle_manifest_test_bundle_001.json"
 
         with open(manifest_path, "w") as f:
-            json.dump(batch_manifest, f, indent=2)
+            json.dump(bundle_manifest, f, indent=2)
 
         # Verify manifest structure
         assert manifest_path.exists()
@@ -444,8 +444,8 @@ class TestEncryptionToBatchingWorkflow:
             loaded = json.load(f)
 
         assert loaded["total_clients"] == 5
-        assert len(loaded["batches"]) == 1
-        assert loaded["batches"][0]["client_count"] == 5
+        assert len(loaded["bundles"]) == 1
+        assert loaded["bundles"][0]["client_count"] == 5
 
 
 @pytest.mark.integration
@@ -472,29 +472,29 @@ class TestConfigPropagationAcrossSteps:
 
         assert config_no_qr["qr"]["enabled"] is False
 
-    def test_encryption_disabled_enables_batching(
+    def test_encryption_disabled_enables_bundling(
         self, tmp_test_dir: Path, default_config: Dict[str, Any]
     ) -> None:
-        """Verify batching is enabled only when encryption is disabled.
+        """Verify bundling is enabled only when encryption is disabled.
 
         Real-world significance:
-        - If encryption.enabled=true, batching is skipped (Step 8 not run)
-        - If encryption.enabled=false, batching can run
-        - Configuration enforces: encrypt OR batch, not both
+        - If encryption.enabled=true, bundling is skipped (Step 8 not run)
+        - If encryption.enabled=false, bundling can run
+        - Configuration enforces: encrypt OR bundle, not both
         """
         config_encrypted = copy.deepcopy(default_config)
         config_encrypted["encryption"]["enabled"] = True
 
-        config_batched = copy.deepcopy(default_config)
-        config_batched["encryption"]["enabled"] = False
-        config_batched["batching"]["batch_size"] = 50
+        config_bundled = copy.deepcopy(default_config)
+        config_bundled["encryption"]["enabled"] = False
+        config_bundled["bundling"]["bundle_size"] = 50
 
-        # When encryption enabled, batching should be skipped
+        # When encryption enabled, bundling should be skipped
         assert config_encrypted["encryption"]["enabled"] is True
 
-        # When encryption disabled, batching can proceed
-        assert config_batched["encryption"]["enabled"] is False
-        assert config_batched["batching"]["batch_size"] > 0
+        # When encryption disabled, bundling can proceed
+        assert config_bundled["encryption"]["enabled"] is False
+        assert config_bundled["bundling"]["bundle_size"] > 0
 
     def test_cleanup_configuration_affects_artifact_retention(
         self, tmp_test_dir: Path, default_config: Dict[str, Any]

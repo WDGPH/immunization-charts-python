@@ -15,7 +15,7 @@ placeholders like {client_id}, {date_of_birth_iso}, {date_of_birth_iso_compact},
 
 **Output Contract:**
 - Writes encrypted PDFs to disk with "_encrypted" suffix
-- Unencrypted originals are deleted after successful encryption
+- Unencrypted originals are preserved (deleted during cleanup step if configured)
 - Per-PDF failures are logged and skipped (optional feature; some PDFs may not be encrypted)
 - Pipeline completes even if some PDFs fail to encrypt
 
@@ -335,11 +335,7 @@ def encrypt_pdfs_in_directory(
                     pass
 
             encrypt_pdf(str(pdf_path), context)
-            # Delete the unencrypted version after successful encryption
-            try:
-                pdf_path.unlink()
-            except OSError as e:
-                print(f"Warning: Could not delete unencrypted PDF {pdf_name}: {e}")
+            # Unencrypted PDF is preserved; deletion is handled in cleanup step
             successes += 1
         except Exception as exc:
             failures.append((pdf_name, str(exc)))
