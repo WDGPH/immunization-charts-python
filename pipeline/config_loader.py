@@ -86,6 +86,33 @@ def validate_config(config: Dict[str, Any]) -> None:
     - All error messages are clear and actionable
     - Config is validated once at load time, not per-step
     """
+    # Validate phu_data config
+    phu_data = config.get("phu_data", {})
+
+    if not phu_data:
+        raise ValueError(
+            "Default values for PHU info not provided. "
+            "Please define phu_data.[phu_addres, phu_phone, phu_email, phu_website] in config/parameters.yaml"
+        )
+    else:
+        required_keys = {"phu_address", "phu_phone", "phu_email", "phu_website"}
+
+        missing = [key for key in required_keys if key not in phu_data]
+        if missing:
+            missing_keys = ", ".join(missing)
+            raise KeyError(f"Missing phu_data keys in config: {missing_keys}")
+
+    # Validate school map config
+    map_enabled = config.get("pipeline", {})["map_school"]
+
+    if map_enabled:
+        map_filepath = DEFAULT_CONFIG_PATH.parent / "map_school.json"
+        if not map_filepath.exists():
+            raise FileNotFoundError(
+                "Mapping to school-specific info enabled, but expected mapping file not present."
+                "Please provide mapping file at config/map_school.json."
+            )
+
     # Validate QR config
     qr_config = config.get("qr", {})
     qr_enabled = qr_config.get("enabled", True)

@@ -63,6 +63,11 @@ class TestRenderNotice:
             "received": '(("RRO", "2020-05-15"), ("DPT", "2019-03-15"))',
             "num_rows": "2",
             "chart_diseases_translated": '("Diphtérie", "Tétanos", "Coqueluche")',
+            "phu_data": {
+                "phu_address": "Tunnel Health, 123 Placeholder Street, Sample City, ON A1A 1A1",
+                "phu_email": "mainpublichealth#rodenthealth.ca",
+                "phu_phone": "555-555-5555 ext. 1234",
+            },
         }
 
         result = render_notice(
@@ -91,6 +96,11 @@ class TestRenderNotice:
             "received": "()",
             "num_rows": "0",
             "chart_diseases_translated": '("Diphtérie", "Tétanos", "Coqueluche")',
+            "phu_data": {
+                "phu_address": "Tunnel Health, 123 Placeholder Street, Sample City, ON A1A 1A1",
+                "phu_email": "mainpublichealth#rodenthealth.ca",
+                "phu_phone": "555-555-5555 ext. 1234",
+            },
         }
 
         with pytest.raises(KeyError, match="Missing context keys"):
@@ -134,6 +144,11 @@ class TestRenderNotice:
             "received": "()",
             "num_rows": "0",
             "chart_diseases_translated": '("Diphtérie", "Tétanos", "Coqueluche")',
+            "phu_data": {
+                "phu_address": "Tunnel Health, 123 Placeholder Street, Sample City, ON A1A 1A1",
+                "phu_email": "mainpublichealth#rodenthealth.ca",
+                "phu_phone": "555-555-5555 ext. 1234",
+            },
         }
 
         logo_path = "/custom/logo/path.png"
@@ -160,6 +175,11 @@ class TestRenderNotice:
             "received": "()",
             "num_rows": "0",
             "chart_diseases_translated": '("Diphtérie", "Tétanos", "Coqueluche")',
+            "phu_data": {
+                "phu_address": "Tunnel Health, 123 Placeholder Street, Sample City, ON A1A 1A1",
+                "phu_email": "mainpublichealth#rodenthealth.ca",
+                "phu_phone": "555-555-5555 ext. 1234",
+            },
         }
 
         signature_path = "/custom/signature.png"
@@ -186,6 +206,11 @@ class TestRenderNotice:
             "received": "()",
             "num_rows": "0",
             "chart_diseases_translated": '("Diphtérie", "Tétanos", "Coqueluche")',
+            "phu_data": {
+                "phu_address": "Tunnel Health, 123 Placeholder Street, Sample City, ON A1A 1A1",
+                "phu_email": "mainpublichealth#rodenthealth.ca",
+                "phu_phone": "555-555-5555 ext. 1234",
+            },
         }
 
         result = render_notice(
@@ -212,6 +237,11 @@ class TestRenderNotice:
             "received": "()",
             "num_rows": "1",
             "chart_diseases_translated": '("Diphtérie", "Tétanos", "Coqueluche")',
+            "phu_data": {
+                "phu_address": "Tunnel Health, 123 Placeholder Street, Sample City, ON A1A 1A1",
+                "phu_email": "mainpublichealth#rodenthealth.ca",
+                "phu_phone": "555-555-5555 ext. 1234",
+            },
         }
 
         result = render_notice(
@@ -240,6 +270,11 @@ class TestRenderNotice:
             "received": '(("Rougeole", "2020-05-01"), ("Oreillons", "2020-05-01"))',
             "num_rows": "5",
             "chart_diseases_translated": '("Diphtérie", "Tétanos", "Coqueluche")',
+            "phu_data": {
+                "phu_address": "Tunnel Health, 123 Placeholder Street, Sample City, ON A1A 1A1",
+                "phu_email": "mainpublichealth#rodenthealth.ca",
+                "phu_phone": "555-555-5555 ext. 1234",
+            },
         }
 
         result = render_notice(
@@ -268,6 +303,11 @@ class TestRenderNotice:
             "received": "()",
             "num_rows": "0",
             "chart_diseases_translated": '("Diphtérie", "Tétanos", "Coqueluche")',
+            "phu_data": {
+                "phu_address": "Tunnel Health, 123 Placeholder Street, Sample City, ON A1A 1A1",
+                "phu_email": "mainpublichealth#rodenthealth.ca",
+                "phu_phone": "555-555-5555 ext. 1234",
+            },
         }
 
         result = render_notice(
@@ -295,6 +335,11 @@ class TestRenderNotice:
             "received": "()",
             "num_rows": "0",
             "chart_diseases_translated": '("Diphtérie", "Tétanos", "Coqueluche")',
+            "phu_data": {
+                "phu_address": "Tunnel Health, 123 Placeholder Street, Sample City, ON A1A 1A1",
+                "phu_email": "mainpublichealth#rodenthealth.ca",
+                "phu_phone": "555-555-5555 ext. 1234",
+            },
         }
 
         result = render_notice(

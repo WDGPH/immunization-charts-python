@@ -46,7 +46,7 @@ TEMPLATE_PREFIX = """// --- CCEYA NOTICE TEMPLATE (TEST VERSION) --- //
 )
 
 // Immunization Notice Section
-#let immunization_notice(client, client_id, immunizations_due, date, font_size) = block[
+#let immunization_notice(client, client_id, immunizations_due, date, font_size, phu_address, phu_phone, phu_email, phu_website) = block[
 
 #v(0.2cm)
 
@@ -65,10 +65,10 @@ En date du *#date*, nos dossiers indiquent que votre enfant n'a pas reçu les im
 
 Veuillez examiner le dossier d'immunisation à la page 2 et mettre à jour le dossier de votre enfant en utilisant l'une des options suivantes :
 
-1. En visitant #text(fill:conf.linkcolor)[#link("https://www.test-immunization.ca")]
-2. En envoyant un courriel à #text(fill:conf.linkcolor)[#link("records@test-immunization.ca")]
-3. En envoyant par la poste une photocopie du dossier d'immunisation de votre enfant à Test Health, 123 Placeholder Street, Sample City, ON A1A 1A1
-4. Par téléphone : 555-555-5555 poste 1234
+1. En visitant #text(fill:conf.linkcolor)[#link(phu_website)]
+2. En envoyant un courriel à #text(fill:conf.linkcolor)[#link(phu_email)]
+3. En envoyant par la poste une photocopie du dossier d'immunisation de votre enfant à #phu_address
+4. Par téléphone : #phu_phone
 
 Veuillez informer la Santé publique et votre centre de garde d'enfants chaque fois que votre enfant reçoit un vaccin. En gardant les vaccinations de votre enfant à jour, vous protégez non seulement sa santé, mais aussi la santé des autres enfants et du personnel du centre de garde d'enfants.  
 
@@ -125,13 +125,17 @@ DYNAMIC_BLOCK = """
 #let num_rows = __NUM_ROWS__
 #let diseases = __CHART_DISEASES_TRANSLATED__
 #let date = data.date_data_cutoff
+#let phu_address = "__PHU_ADDRESS__"
+#let phu_phone = "__PHU_PHONE__"
+#let phu_email = "__PHU_EMAIL__"
+#let phu_website = "__PHU_WEBSITE__"
 
 #set page(
   margin: (top: 1cm, bottom: 2cm, left: 1.75cm, right: 2cm),
   footer: align(center, context numbering("1 / " + str(counter(page).final().first()), counter(page).get().first()))
 )
 
-#immunization_notice(data, client_row, vaccines_due_array, date, 11pt)
+#immunization_notice(data, client_row, vaccines_due_array, date, 11pt, phu_address, phu_phone, phu_email, phu_website)
 #pagebreak()
 #vaccine_table_page(client_row.at(0))
 #conf.immunization-table(5, num_rows, received, diseases, 11pt)
@@ -182,6 +186,7 @@ def render_notice(
         "received",
         "num_rows",
         "chart_diseases_translated",
+        "phu_data",
     )
     missing = [key for key in required_keys if key not in context]
     if missing:
@@ -200,5 +205,9 @@ def render_notice(
         .replace("__RECEIVED__", context["received"])
         .replace("__NUM_ROWS__", context["num_rows"])
         .replace("__CHART_DISEASES_TRANSLATED__", context["chart_diseases_translated"])
+        .replace("__PHU_ADDRESS__", context["phu_data"]["phu_address"])
+        .replace("__PHU_EMAIL__", context["phu_data"]["phu_email"])
+        .replace("__PHU_PHONE__", context["phu_data"]["phu_phone"])
+        .replace("__PHU_WEBSITE__", context["phu_data"]["phu_website"])
     )
     return prefix + dynamic

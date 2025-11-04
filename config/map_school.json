@@ -1,0 +1,33 @@
+{
+  "BURROW_PUBLIC_SCHOOL": {
+    "phu_address": "Burrow Health, 123 Placeholder Street, Sample City, ON A1A 1A1",
+    "phu_email": "mainpublichealth@rodenthealth.ca",
+    "phu_phone": "555-555-5555 ext. 1234",
+    "phu_website": "https://www.test-immunization.ca"
+  },
+  "CHEESE_WHEEL_ACADEMY": {
+    "phu_address": "Cheese Wheel Health, 123 Placeholder Street, Sample City, ON A1A 1A1",
+    "phu_email": "mainpublichealth@rodenthealth.ca",
+    "phu_phone": "555-555-5555 ext. 1234"
+  },
+  "DEFAULT": {
+    "phu_address": "Tunnel Health, 123 Placeholder Street, Sample City, ON A1A 1A1",
+    "phu_email": "mainpublichealth@rodenthealth.ca",
+    "phu_phone": "555-555-5555 ext. 1234"
+  },
+  "DOWNTOWN_COLLEGIATE": {
+    "phu_address": "Tunnel Health, 123 Placeholder Street, Sample City, ON A1A 1A1",
+    "phu_email": "mainpublichealth@rodenthealth.ca",
+    "phu_phone": "555-555-5555 ext. 1234"
+  },
+  "MOUNTAIN_HEIGHTS_PUBLIC_SCHOOL": {
+    "phu_address": "Mountain Heights Health, 123 Placeholder Street, Sample City, ON A1A 1A1",
+    "phu_email": "mainpublichealth@rodenthealth.ca",
+    "phu_phone": "555-555-5555 ext. 1234"
+  },
+  "RIVER_VALLEY_ELEMENTARY": {
+    "phu_address": "Tunnel Health, 123 Placeholder Street, Sample City, ON A1A 1A1",
+    "phu_email": "mainpublichealth@rodenthealth.ca",
+    "phu_phone": "555-555-5555 ext. 1234"
+  }
+}

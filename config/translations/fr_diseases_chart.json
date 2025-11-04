@@ -1,17 +1,17 @@
 {
-  "Diphtheria": "Diphtérie",
+  "Diphtheria": "Dipht\u00e9rie",
   "HPV": "VPH",
-  "Hepatitis B": "Hépatite B",
+  "Hepatitis B": "H\u00e9patite B",
   "Hib": "Hib",
   "Measles": "Rougeole",
-  "Meningococcal": "Méningocoque",
+  "Meningococcal": "M\u00e9ningocoque",
   "Mumps": "Oreillons",
+  "Other": "Autre",
   "Pertussis": "Coqueluche",
   "Pneumococcal": "Pneumocoque",
-  "Polio": "Poliomyélite",
+  "Polio": "Poliomy\u00e9lite",
   "Rotavirus": "Rotavirus",
-  "Rubella": "Rubéole",
-  "Tetanus": "Tétanos",
-  "Varicella": "Varicelle",
-  "Other": "Autre"
+  "Rubella": "Rub\u00e9ole",
+  "Tetanus": "T\u00e9tanos",
+  "Varicella": "Varicelle"
 }

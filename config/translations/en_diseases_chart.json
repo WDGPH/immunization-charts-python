@@ -6,12 +6,12 @@
   "Measles": "Measles",
   "Meningococcal": "Meningococcal",
   "Mumps": "Mumps",
+  "Other": "Other",
   "Pertussis": "Pertussis",
   "Pneumococcal": "Pneumococcal",
   "Polio": "Polio",
   "Rotavirus": "Rotavirus",
   "Rubella": "Rubella",
   "Tetanus": "Tetanus",
-  "Varicella": "Varicella",
-  "Other": "Other"
+  "Varicella": "Varicella"
 }

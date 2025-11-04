@@ -37,9 +37,15 @@ ignore_agents:
 - HBIg
 - RabIg
 - Ig
+phu_data:
+  phu_address: Tunnel Health, 123 Placeholder Street, Sample City, ON A1A 1A1
+  phu_email: mainpublichealth@rodenthealth.ca
+  phu_phone: 555-555-5555 ext. 1234
+  phu_website: https://www.test-immunization.ca
 pipeline:
   auto_remove_output: true
   keep_intermediate_files: true
+  map_school: true
 qr:
   enabled: true
   payload_template: https://www.test-immunization.ca/update?client_id={client_id}&dob={date_of_birth_iso}&lang={language_code}
