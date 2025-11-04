@@ -87,6 +87,11 @@ If you have any questions, please call 555-555-5555 ext. 1234.
   Sincerely, 
 
 #conf.signature("__SIGNATURE_PATH__", "Dr. Jane Smith, MPH", "Associate Medical Officer of Health")
+
+// Invisible marker for layout validation
+#box(width: 0pt, height: 0pt)[
+  #text(size: 0.1pt, fill: white)[MARK_END_SIGNATURE_BLOCK]
+]
   
 ]
 

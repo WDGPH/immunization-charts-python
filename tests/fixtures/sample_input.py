@@ -56,7 +56,7 @@ def create_test_input_dataframe(
             "River Valley Elementary",
             "Downtown Collegiate",
         ][:num_clients],
-        "CLIENT ID": [f"C{i:05d}" for i in range(1, num_clients + 1)],
+        "CLIENT ID": [f"{i:010d}" for i in range(1, num_clients + 1)],
         "FIRST NAME": ["Alice", "Benoit", "Chloe", "Diana", "Ethan"][:num_clients],
         "LAST NAME": ["Zephyr", "Arnaud", "Brown", "Davis", "Evans"][:num_clients],
         "DATE OF BIRTH": [
@@ -113,7 +113,7 @@ def create_test_input_dataframe(
 
 def create_test_client_record(
     sequence: str = "00001",
-    client_id: str = "C00001",
+    client_id: str = "0000000001",
     language: str = "en",
     first_name: str = "Alice",
     last_name: str = "Zephyr",
@@ -135,8 +135,8 @@ def create_test_client_record(
     ----------
     sequence : str, default "00001"
         Sequence number (00001, 00002, ...)
-    client_id : str, default "C00001"
-        Unique client identifier
+    client_id : str, default "0000000001"
+        Unique client identifier (10-digit numeric format)
     language : str, default "en"
         Language for notice ("en" or "fr")
     first_name : str, default "Alice"
@@ -256,7 +256,7 @@ def create_test_preprocess_result(
     clients = [
         create_test_client_record(
             sequence=f"{i + 1:05d}",
-            client_id=f"C{i:05d}",
+            client_id=f"{i + 1:010d}",
             language=language,
             first_name=["Alice", "Benoit", "Chloe"][i % 3],
             last_name=["Zephyr", "Arnaud", "Brown"][i % 3],
@@ -267,8 +267,8 @@ def create_test_preprocess_result(
     warnings = []
     if include_warnings:
         warnings = [
-            "Missing board name for client C00002",
-            "Invalid postal code for C00003",
+            "Missing board name for client 0000000002",
+            "Invalid postal code for 0000000003",
         ]
 
     return data_models.PreprocessResult(clients=clients, warnings=warnings)

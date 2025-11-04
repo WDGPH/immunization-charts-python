@@ -41,7 +41,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 # Import pipeline steps
-from . import batch_pdfs, cleanup, compile_notices, count_pdfs
+from . import batch_pdfs, cleanup, compile_notices, validate_pdfs
 from . import (
     encrypt_notice,
     generate_notices,
@@ -291,20 +291,41 @@ def run_step_6_validate_pdfs(
     output_dir: Path,
     language: str,
     run_id: str,
+    config_dir: Path,
 ) -> None:
-    """Step 6: Validating compiled PDF lengths."""
-    print_step(6, "Validating compiled PDF lengths")
+    """Step 6: Validating compiled PDFs."""
+    print_step(6, "Validating compiled PDFs")
 
     pdf_dir = output_dir / "pdf_individual"
     metadata_dir = output_dir / "metadata"
-    count_json = metadata_dir / f"{language}_page_counts_{run_id}.json"
+    validation_json = metadata_dir / f"{language}_validation_{run_id}.json"
+    artifacts_dir = output_dir / "artifacts"
+    preprocessed_json = artifacts_dir / f"preprocessed_clients_{run_id}.json"
 
-    # Count and validate PDFs
-    count_pdfs.main(
+    # Load preprocessed clients to build client ID mapping
+    client_id_map = {}
+    import json
+
+    with open(preprocessed_json, "r", encoding="utf-8") as f:
+        preprocessed = json.load(f)
+        clients = preprocessed.get("clients", [])
+        # Build map: filename -> client_id
+        # Filename format: {language}_notice_{sequence:05d}_{client_id}.pdf
+        for idx, client in enumerate(clients, start=1):
+            client_id = str(client.get("client_id", ""))
+            # Try to match any expected filename format
+            for ext in [".pdf"]:
+                for lang_prefix in ["en", "fr"]:
+                    filename = f"{lang_prefix}_notice_{idx:05d}_{client_id}{ext}"
+                    client_id_map[filename] = client_id
+
+    # Validate PDFs (module loads validation rules from config_dir)
+    validate_pdfs.main(
         pdf_dir,
         language=language,
-        verbose=False,
-        json_output=count_json,
+        json_output=validation_json,
+        client_id_map=client_id_map,
+        config_dir=config_dir,
     )
 
 
@@ -505,10 +526,10 @@ def main() -> int:
 
         # Step 6: Validating PDFs
         step_start = time.time()
-        run_step_6_validate_pdfs(output_dir, args.language, run_id)
+        run_step_6_validate_pdfs(output_dir, args.language, run_id, config_dir)
         step_duration = time.time() - step_start
         step_times.append(("PDF Validation", step_duration))
-        print_step_complete(6, "Length validation", step_duration)
+        print_step_complete(6, "PDF validation", step_duration)
 
         # Step 7: Encrypting PDFs (optional)
         if encryption_enabled:

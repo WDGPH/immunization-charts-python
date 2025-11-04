@@ -305,7 +305,7 @@ def read_input(file_path: Path) -> pd.DataFrame:
 
     try:
         if ext in [".xlsx", ".xls"]:
-            df = pd.read_excel(file_path, engine="openpyxl")
+            df = pd.read_excel(file_path, engine="openpyxl", dtype={"CLIENT ID": str})
         elif ext == ".csv":
             # Try common encodings
             for enc in ["utf-8-sig", "latin-1", "cp1252"]:

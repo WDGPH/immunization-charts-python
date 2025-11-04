@@ -18,9 +18,8 @@ chart_diseases_header:
 cleanup:
   remove_directories:
   - artifacts
-  - by_school
-  - batches
-  - qr_codes
+  - pdf_individual
+  - pdf_combined
   remove_extensions:
   - typ
   - json
@@ -42,6 +41,12 @@ phu_data:
   phu_email: mainpublichealth@rodenthealth.ca
   phu_phone: 555-555-5555 ext. 1234
   phu_website: https://www.test-immunization.ca
+pdf_validation:
+  rules:
+    client_id_presence: error
+    envelope_window_1_125: warn
+    exactly_two_pages: warn
+    signature_overflow: warn
 pipeline:
   auto_remove_output: true
   keep_intermediate_files: true
