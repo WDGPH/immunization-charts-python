@@ -3,26 +3,26 @@
 from enum import Enum
 
 
-class BatchStrategy(Enum):
-    """Batch grouping strategy."""
+class BundleStrategy(Enum):
+    """Bundle grouping strategy."""
 
     SIZE = "size"
     SCHOOL = "school"
     BOARD = "board"
 
     @classmethod
-    def from_string(cls, value: str | None) -> "BatchStrategy":
-        """Convert string to BatchStrategy.
+    def from_string(cls, value: str | None) -> "BundleStrategy":
+        """Convert string to BundleStrategy.
 
         Parameters
         ----------
         value : str | None
-            Batch strategy name ('size', 'school', 'board'), or None for default.
+            Bundle strategy name ('size', 'school', 'board'), or None for default.
 
         Returns
         -------
-        BatchStrategy
-            Corresponding BatchStrategy enum, defaults to SIZE if value is None.
+        BundleStrategy
+            Corresponding BundleStrategy enum, defaults to SIZE if value is None.
 
         Raises
         ------
@@ -38,13 +38,13 @@ class BatchStrategy(Enum):
                 return strategy
 
         raise ValueError(
-            f"Unknown batch strategy: {value}. "
+            f"Unknown bundle strategy: {value}. "
             f"Valid options: {', '.join(s.value for s in cls)}"
         )
 
 
-class BatchType(Enum):
-    """Type descriptor for batch operation."""
+class BundleType(Enum):
+    """Type descriptor for bundle operation."""
 
     SIZE_BASED = "size_based"
     SCHOOL_GROUPED = "school_grouped"

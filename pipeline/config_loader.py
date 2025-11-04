@@ -78,8 +78,9 @@ def validate_config(config: Dict[str, Any]) -> None:
 
     - **QR Generation:** If qr.enabled=true, requires qr.payload_template (non-empty string)
     - **Typst Compilation:** If typst.bin is set, must be a string
-    - **PDF Batching:** If batch_size > 0, must be positive integer; group_by must be valid enum
+    - **PDF Bundling:** If bundle_size > 0, must be positive integer; group_by must be valid enum
     - **Encryption:** If encryption.enabled=true, requires password.template
+    - **Cleanup:** If delete_unencrypted_pdfs is set, must be boolean
 
     **Validation philosophy:**
     - Infrastructure errors (missing config) raise immediately (fail-fast)
@@ -110,28 +111,30 @@ def validate_config(config: Dict[str, Any]) -> None:
     if not isinstance(typst_bin, str):
         raise ValueError(f"typst.bin must be a string, got {type(typst_bin).__name__}")
 
-    # Validate Batching config
-    batching_config = config.get("batching", {})
-    batch_size = batching_config.get("batch_size", 0)
+    # Validate Bundling config
+    bundling_config = config.get("bundling", {})
+    bundle_size = bundling_config.get("bundle_size", 0)
 
     # First validate type before comparing values
-    if batch_size != 0:  # Only validate if batch_size is explicitly set
-        if not isinstance(batch_size, int):
+    if bundle_size != 0:  # Only validate if bundle_size is explicitly set
+        if not isinstance(bundle_size, int):
             raise ValueError(
-                f"batching.batch_size must be an integer, got {type(batch_size).__name__}"
+                f"bundling.bundle_size must be an integer, got {type(bundle_size).__name__}"
             )
-        if batch_size <= 0:
-            raise ValueError(f"batching.batch_size must be positive, got {batch_size}")
+        if bundle_size <= 0:
+            raise ValueError(
+                f"bundling.bundle_size must be positive, got {bundle_size}"
+            )
 
         # Validate group_by strategy
-        group_by = batching_config.get("group_by")
-        from .enums import BatchStrategy
+        group_by = bundling_config.get("group_by")
+        from .enums import BundleStrategy
 
         try:
             if group_by is not None:
-                BatchStrategy.from_string(group_by)
+                BundleStrategy.from_string(group_by)
         except ValueError as exc:
-            raise ValueError(f"Invalid batching.group_by strategy: {exc}") from exc
+            raise ValueError(f"Invalid bundling.group_by strategy: {exc}") from exc
 
     # Validate Encryption config
     encryption_config = config.get("encryption", {})
@@ -152,3 +155,12 @@ def validate_config(config: Dict[str, Any]) -> None:
                 f"encryption.password.template must be a string, "
                 f"got {type(password_template).__name__}"
             )
+
+    # Validate Cleanup config
+    cleanup_config = config.get("cleanup", {})
+    delete_unencrypted = cleanup_config.get("delete_unencrypted_pdfs", False)
+    if not isinstance(delete_unencrypted, bool):
+        raise ValueError(
+            f"cleanup.delete_unencrypted_pdfs must be a boolean, "
+            f"got {type(delete_unencrypted).__name__}"
+        )

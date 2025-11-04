@@ -1,7 +1,7 @@
 """Integration tests for configuration-driven pipeline behavior.
 
 Tests cover:
-- Feature flags affect actual behavior (qr.enabled, encryption.enabled, batching.enabled)
+- Feature flags affect actual behavior (qr.enabled, encryption.enabled, bundling.enabled)
 - Configuration options propagate through pipeline steps
 - Invalid config values are caught and reported
 - Default configuration allows pipeline to run
@@ -52,43 +52,46 @@ class TestConfigDrivenBehavior:
         assert "enabled" in default_config["encryption"]
         assert isinstance(default_config["encryption"]["enabled"], bool)
 
-    def test_batching_enabled_flag_exists_in_config(
+    def test_bundling_enabled_flag_exists_in_config(
         self, default_config: Dict[str, Any]
     ) -> None:
-        """Verify batching enabled flag is present in default config.
+        """Verify bundling configuration exists.
 
         Real-world significance:
         - Batching groups PDFs for efficient distribution
-        - Config must allow enabling/disabling
+        - bundle_size controls whether bundling is active (0 = disabled)
         """
-        assert "batching" in default_config
-        assert "enabled" in default_config["batching"]
-        assert isinstance(default_config["batching"]["enabled"], bool)
+        assert "bundling" in default_config
+        assert "bundle_size" in default_config["bundling"]
+        assert isinstance(default_config["bundling"]["bundle_size"], int)
 
     def test_pipeline_config_section_exists(
         self, default_config: Dict[str, Any]
     ) -> None:
-        """Verify pipeline section with behavior flags exists.
+        """Verify pipeline section with lifecycle settings exists.
 
         Real-world significance:
-        - Pipeline-wide settings like auto_remove_output are configurable
-        - Allows fine-grained control over cleanup behavior
+        - Pipeline lifecycle settings control cleanup at startup and shutdown
+        - before_run controls cleanup of old output before starting new run
+        - after_run controls cleanup of intermediate files after successful run
         """
         assert "pipeline" in default_config
-        assert "auto_remove_output" in default_config["pipeline"]
-        assert "keep_intermediate_files" in default_config["pipeline"]
+        assert "before_run" in default_config["pipeline"]
+        assert "after_run" in default_config["pipeline"]
+        assert "clear_output_directory" in default_config["pipeline"]["before_run"]
+        assert "remove_artifacts" in default_config["pipeline"]["after_run"]
 
-    def test_batch_size_configuration(self, default_config: Dict[str, Any]) -> None:
+    def test_bundle_size_configuration(self, default_config: Dict[str, Any]) -> None:
         """Verify batch size is configurable.
 
         Real-world significance:
         - Users can control how many PDFs are grouped per batch
         - Allows optimization for printing hardware
         """
-        assert "batching" in default_config
-        assert "batch_size" in default_config["batching"]
-        assert isinstance(default_config["batching"]["batch_size"], int)
-        assert default_config["batching"]["batch_size"] >= 0
+        assert "bundling" in default_config
+        assert "bundle_size" in default_config["bundling"]
+        assert isinstance(default_config["bundling"]["bundle_size"], int)
+        assert default_config["bundling"]["bundle_size"] >= 0
 
     def test_chart_diseases_header_configuration(
         self, default_config: Dict[str, Any]
@@ -204,72 +207,72 @@ class TestEncryptionBehavior:
 
 @pytest.mark.integration
 class TestBatchingBehavior:
-    """Integration tests for PDF batching configuration."""
+    """Integration tests for PDF bundling configuration."""
 
-    def test_batching_batch_size_zero_disables_batching(
+    def test_bundling_bundle_size_zero_disables_bundling(
         self, default_config: Dict[str, Any]
     ) -> None:
-        """Verify batch_size=0 disables batching.
+        """Verify bundle_size=0 disables bundling.
 
         Real-world significance:
-        - When batch_size=0, each student PDF remains individual
+        - When bundle_size=0, each student PDF remains individual
         - No PDF combining step is executed
         """
         config = default_config.copy()
-        config["batching"]["batch_size"] = 0
+        config["bundling"]["bundle_size"] = 0
 
-        assert config["batching"]["batch_size"] == 0
+        assert config["bundling"]["bundle_size"] == 0
 
-    def test_batching_batch_size_positive_enables_batching(
+    def test_bundling_bundle_size_positive_enables_bundling(
         self, default_config: Dict[str, Any]
     ) -> None:
-        """Verify positive batch_size enables batching.
+        """Verify positive bundle_size enables bundling.
 
         Real-world significance:
-        - batch_size=50 means 50 PDFs per combined batch
+        - bundle_size=50 means 50 PDFs per combined batch
         - Reduces distribution workload (fewer files to send)
         """
         config = default_config.copy()
-        config["batching"]["batch_size"] = 50
+        config["bundling"]["bundle_size"] = 50
 
-        assert config["batching"]["batch_size"] == 50
-        assert config["batching"]["batch_size"] > 0
+        assert config["bundling"]["bundle_size"] == 50
+        assert config["bundling"]["bundle_size"] > 0
 
-    def test_batching_group_by_sequential(self, default_config: Dict[str, Any]) -> None:
-        """Verify batching can use sequential grouping.
+    def test_bundling_group_by_sequential(self, default_config: Dict[str, Any]) -> None:
+        """Verify bundling can use sequential grouping.
 
         Real-world significance:
-        - Sequential batching: PDFs combined in processing order
-        - Simplest batching strategy
+        - Sequential bundling: PDFs combined in processing order
+        - Simplest bundling strategy
         """
         config = default_config.copy()
-        config["batching"]["group_by"] = None
+        config["bundling"]["group_by"] = None
 
-        assert config["batching"]["group_by"] is None
+        assert config["bundling"]["group_by"] is None
 
-    def test_batching_group_by_school(self, default_config: Dict[str, Any]) -> None:
-        """Verify batching can group by school.
+    def test_bundling_group_by_school(self, default_config: Dict[str, Any]) -> None:
+        """Verify bundling can group by school.
 
         Real-world significance:
         - Group by school: Each batch contains only one school's students
         - Allows per-school distribution to school boards
         """
         config = default_config.copy()
-        config["batching"]["group_by"] = "school"
+        config["bundling"]["group_by"] = "school"
 
-        assert config["batching"]["group_by"] == "school"
+        assert config["bundling"]["group_by"] == "school"
 
-    def test_batching_group_by_board(self, default_config: Dict[str, Any]) -> None:
-        """Verify batching can group by school board.
+    def test_bundling_group_by_board(self, default_config: Dict[str, Any]) -> None:
+        """Verify bundling can group by school board.
 
         Real-world significance:
         - Group by board: Each batch contains only one board's students
         - Allows per-board distribution to parent organizations
         """
         config = default_config.copy()
-        config["batching"]["group_by"] = "board"
+        config["bundling"]["group_by"] = "board"
 
-        assert config["batching"]["group_by"] == "board"
+        assert config["bundling"]["group_by"] == "board"
 
 
 @pytest.mark.integration
@@ -294,7 +297,7 @@ class TestPipelineCleanupBehavior:
         """Verify intermediate files can be removed.
 
         Real-world significance:
-        - Removes .typ, JSON, and per-client PDFs after batching
+        - Removes .typ, JSON, and per-client PDFs after bundling
         - Cleans up disk space for large runs (1000+ students)
         """
         config = default_config.copy()

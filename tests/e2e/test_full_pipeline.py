@@ -124,7 +124,11 @@ class TestFullPipelineExecution:
         - Verifies all 9 steps execute successfully
         - Checks that per-client PDFs are created
         """
-        result = self.run_pipeline(pipeline_input_file, "en", project_root)
+        # Disable encryption for core E2E test (tests basic functionality)
+        config_overrides = {"encryption": {"enabled": False}}
+        result = self.run_pipeline(
+            pipeline_input_file, "en", project_root, config_overrides
+        )
 
         assert result.returncode == 0, f"Pipeline failed: {result.stderr}"
         assert "Pipeline completed successfully" in result.stdout
@@ -148,7 +152,11 @@ class TestFullPipelineExecution:
         - Templates, notices, and metadata must be in French
         - Verifies language parameter is respected throughout pipeline
         """
-        result = self.run_pipeline(pipeline_input_file, "fr", project_root)
+        # Disable encryption for core E2E test (tests basic functionality)
+        config_overrides = {"encryption": {"enabled": False}}
+        result = self.run_pipeline(
+            pipeline_input_file, "fr", project_root, config_overrides
+        )
 
         assert result.returncode == 0, f"Pipeline failed: {result.stderr}"
         assert "Pipeline completed successfully" in result.stdout
@@ -172,35 +180,23 @@ class TestFullPipelineExecution:
         - Pipeline must skip QR generation when disabled
         - Should complete faster without QR generation
         """
-        # Temporarily disable QR in config
-        config_path = project_root / "config" / "parameters.yaml"
-        with open(config_path) as f:
-            config = yaml.safe_load(f)
-        original_qr_enabled = config.get("qr", {}).get("enabled")
+        # Disable both QR and encryption for this test
+        config_overrides = {
+            "qr": {"enabled": False},
+            "encryption": {"enabled": False},
+        }
+        result = self.run_pipeline(
+            pipeline_input_file, "en", project_root, config_overrides
+        )
 
-        try:
-            config["qr"]["enabled"] = False
-            with open(config_path, "w") as f:
-                yaml.dump(config, f)
+        assert result.returncode == 0, f"Pipeline failed: {result.stderr}"
+        assert "Step 3: Generating QR codes" in result.stdout
+        assert "disabled" in result.stdout.lower() or "skipped" in result.stdout.lower()
 
-            result = self.run_pipeline(pipeline_input_file, "en", project_root)
-
-            assert result.returncode == 0, f"Pipeline failed: {result.stderr}"
-            assert "Step 3: Generating QR codes" in result.stdout
-            assert (
-                "disabled" in result.stdout.lower()
-                or "skipped" in result.stdout.lower()
-            )
-
-            # Verify PDFs still exist
-            output_dir = project_root / "output"
-            pdfs = list((output_dir / "pdf_individual").glob("en_notice_*.pdf"))
-            assert len(pdfs) == 3
-        finally:
-            # Restore original config
-            config["qr"]["enabled"] = original_qr_enabled
-            with open(config_path, "w") as f:
-                yaml.dump(config, f)
+        # Verify PDFs still exist
+        output_dir = project_root / "output"
+        pdfs = list((output_dir / "pdf_individual").glob("en_notice_*.pdf"))
+        assert len(pdfs) == 3
 
     def test_pipeline_with_encryption(
         self, tmp_path: Path, pipeline_input_file: Path, project_root: Path
@@ -208,84 +204,80 @@ class TestFullPipelineExecution:
         """Test pipeline with PDF encryption enabled.
 
         Real-world significance:
-        - Encryption is optional for protecting PDF notices
-        - When enabled, PDFs should be password-protected
-        - Encryption uses client data (DOB) for password generation
+        - Encryption protects sensitive student data in PDFs
+        - Each PDF is encrypted with a unique password based on client data
+        - Encrypted versions are created alongside original PDFs
         """
-        # Temporarily enable encryption in config
-        config_path = project_root / "config" / "parameters.yaml"
-        with open(config_path) as f:
-            config = yaml.safe_load(f)
-        original_encryption = config.get("encryption", {}).get("enabled")
+        # Enable encryption for this specific test
+        config_overrides = {"encryption": {"enabled": True}}
+        result = self.run_pipeline(
+            pipeline_input_file, "en", project_root, config_overrides
+        )
 
-        try:
-            config["encryption"]["enabled"] = True
-            with open(config_path, "w") as f:
-                yaml.dump(config, f)
+        assert result.returncode == 0, f"Pipeline failed: {result.stderr}"
+        assert "Encryption" in result.stdout
+        assert "success: 3" in result.stdout
 
-            result = self.run_pipeline(pipeline_input_file, "en", project_root)
+        # Verify both encrypted and non-encrypted PDFs exist
+        output_dir = project_root / "output"
+        encrypted_pdfs = list(
+            (output_dir / "pdf_individual").glob("en_notice_*_encrypted.pdf")
+        )
+        assert len(encrypted_pdfs) == 3, (
+            f"Expected 3 encrypted PDFs but found {len(encrypted_pdfs)}"
+        )
 
-            assert result.returncode == 0, f"Pipeline failed: {result.stderr}"
-            assert "Encryption" in result.stdout
-            assert "success: 3" in result.stdout
-
-            # Verify PDFs exist (encrypted)
-            output_dir = project_root / "output"
-            pdfs = list(
-                (output_dir / "pdf_individual").glob("en_notice_*_encrypted.pdf")
-            )
-            assert len(pdfs) == 3, f"Expected 3 encrypted PDFs but found {len(pdfs)}"
-        finally:
-            # Restore original config
-            config["encryption"]["enabled"] = original_encryption
-            with open(config_path, "w") as f:
-                yaml.dump(config, f)
+        # Non-encrypted versions should also exist (not removed by default)
+        all_pdfs = list((output_dir / "pdf_individual").glob("en_notice_*.pdf"))
+        assert len(all_pdfs) == 6, (
+            f"Expected 6 total PDFs (3 encrypted + 3 non-encrypted) but found {len(all_pdfs)}"
+        )
 
     def test_pipeline_with_batching(
         self, tmp_path: Path, pipeline_input_file: Path, project_root: Path
     ) -> None:
-        """Test pipeline with PDF batching enabled.
+        """Test pipeline with PDF bundling enabled.
 
         Real-world significance:
-        - Batching groups individual PDFs into combined files
+        - Bundling groups individual PDFs into combined files
         - Useful for organizing output by school or size
         - Creates manifests for audit trails
         """
-        # Temporarily enable batching in config
+        # Temporarily enable bundling in config
         config_path = project_root / "config" / "parameters.yaml"
         with open(config_path) as f:
             config = yaml.safe_load(f)
-        original_batch_size = config.get("batching", {}).get("batch_size")
+        original_bundle_size = config.get("bundling", {}).get("bundle_size")
         original_encryption = config.get("encryption", {}).get("enabled")
 
         try:
-            # Disable encryption to enable batching
+            # Disable encryption and enable bundling
             config["encryption"]["enabled"] = False
-            config["batching"]["batch_size"] = 2
+            config["bundling"]["bundle_size"] = 2
             with open(config_path, "w") as f:
                 yaml.dump(config, f)
 
             result = self.run_pipeline(pipeline_input_file, "en", project_root)
 
             assert result.returncode == 0, f"Pipeline failed: {result.stderr}"
-            assert "Batching" in result.stdout
+            assert "Bundling" in result.stdout
             assert (
-                "created" in result.stdout.lower() or "batch" in result.stdout.lower()
+                "created" in result.stdout.lower() or "bundle" in result.stdout.lower()
             )
 
-            # Verify batched PDFs exist
+            # Verify bundled PDFs exist
             output_dir = project_root / "output"
             assert (output_dir / "pdf_combined").exists()
-            batches = list((output_dir / "pdf_combined").glob("en_batch_*.pdf"))
-            assert len(batches) > 0, "Expected batched PDFs to be created"
+            bundles = list((output_dir / "pdf_combined").glob("en_bundle_*.pdf"))
+            assert len(bundles) > 0, "Expected bundled PDFs to be created"
 
             # Verify manifests exist
             assert (output_dir / "metadata").exists()
             manifests = list((output_dir / "metadata").glob("*_manifest.json"))
-            assert len(manifests) == len(batches)
+            assert len(manifests) == len(bundles)
         finally:
             # Restore original config
-            config["batching"]["batch_size"] = original_batch_size
+            config["bundling"]["bundle_size"] = original_bundle_size
             config["encryption"]["enabled"] = original_encryption
             with open(config_path, "w") as f:
                 yaml.dump(config, f)
@@ -304,7 +296,9 @@ class TestFullPipelineExecution:
         df.to_excel(input_file, index=False, engine="openpyxl")
 
         try:
-            result = self.run_pipeline(input_file, "en", project_root)
+            # Disable encryption for this test
+            config_overrides = {"encryption": {"enabled": False}}
+            result = self.run_pipeline(input_file, "en", project_root, config_overrides)
 
             assert result.returncode == 0, f"Pipeline failed: {result.stderr}"
             assert "Pipeline completed successfully" in result.stdout
@@ -328,7 +322,11 @@ class TestFullPipelineExecution:
         - Artifacts must have correct schema (format, required fields)
         - JSON corruption would cause silent failures in downstream steps
         """
-        result = self.run_pipeline(pipeline_input_file, "en", project_root)
+        # Disable encryption for this test
+        config_overrides = {"encryption": {"enabled": False}}
+        result = self.run_pipeline(
+            pipeline_input_file, "en", project_root, config_overrides
+        )
 
         assert result.returncode == 0
 
