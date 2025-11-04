@@ -6,7 +6,7 @@ Tests cover end-to-end interactions between adjacent steps:
 - Notice generation → Typst compilation (template syntax)
 - Compilation → PDF validation/counting (PDF integrity)
 - PDF validation → Encryption (PDF metadata preservation)
-- Encryption → Bundleing (bundle manifest generation)
+- Encryption → Bundling (bundle manifest generation)
 
 Real-world significance:
 - Multi-step workflows depend on contracts between adjacent steps
@@ -411,7 +411,7 @@ class TestEncryptionToBundlingWorkflow:
             "run_id": "test_bundle_001",
             "language": "en",
             "created_at": "2025-01-01T12:00:00Z",
-            "bundlees": [
+            "bundles": [
                 {
                     "bundle_id": "bundle_001",
                     "bundle_file": "bundle_001.pdf",
@@ -426,7 +426,7 @@ class TestEncryptionToBundlingWorkflow:
                     ],
                 },
             ],
-            "total_bundlees": 1,
+            "total_bundles": 1,
             "total_clients": 5,
         }
 
@@ -444,8 +444,8 @@ class TestEncryptionToBundlingWorkflow:
             loaded = json.load(f)
 
         assert loaded["total_clients"] == 5
-        assert len(loaded["bundlees"]) == 1
-        assert loaded["bundlees"][0]["client_count"] == 5
+        assert len(loaded["bundles"]) == 1
+        assert loaded["bundles"][0]["client_count"] == 5
 
 
 @pytest.mark.integration
@@ -485,16 +485,16 @@ class TestConfigPropagationAcrossSteps:
         config_encrypted = copy.deepcopy(default_config)
         config_encrypted["encryption"]["enabled"] = True
 
-        config_bundleed = copy.deepcopy(default_config)
-        config_bundleed["encryption"]["enabled"] = False
-        config_bundleed["bundling"]["bundle_size"] = 50
+        config_bundled = copy.deepcopy(default_config)
+        config_bundled["encryption"]["enabled"] = False
+        config_bundled["bundling"]["bundle_size"] = 50
 
         # When encryption enabled, bundling should be skipped
         assert config_encrypted["encryption"]["enabled"] is True
 
         # When encryption disabled, bundling can proceed
-        assert config_bundleed["encryption"]["enabled"] is False
-        assert config_bundleed["bundling"]["bundle_size"] > 0
+        assert config_bundled["encryption"]["enabled"] is False
+        assert config_bundled["bundling"]["bundle_size"] > 0
 
     def test_cleanup_configuration_affects_artifact_retention(
         self, tmp_test_dir: Path, default_config: Dict[str, Any]

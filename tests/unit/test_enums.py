@@ -31,7 +31,7 @@ class TestBundleStrategy:
         """Verify BundleStrategy has expected enum values.
 
         Real-world significance:
-        - Defines valid bundleing strategies for pipeline
+        - Defines valid bundling strategies for pipeline
         """
         assert BundleStrategy.SIZE.value == "size"
         assert BundleStrategy.SCHOOL.value == "school"
@@ -71,7 +71,7 @@ class TestBundleStrategy:
         """Verify None defaults to SIZE strategy.
 
         Real-world significance:
-        - Missing bundleing config should use safe default (SIZE)
+        - Missing bundling config should use safe default (SIZE)
         """
         assert BundleStrategy.from_string(None) == BundleStrategy.SIZE
 

@@ -3,13 +3,13 @@
 Tests cover:
 - Bundle grouping strategies (size, school, board)
 - Bundle manifest generation
-- Error handling for empty bundlees
+- Error handling for empty bundles
 - Bundle metadata tracking
 
 Real-world significance:
-- Step 7 of pipeline (optional): groups PDFs into bundlees by school/size
+- Step 7 of pipeline (optional): groups PDFs into bundles by school/size
 - Enables efficient shipping of notices to schools and districts
-- Bundleing strategy affects how notices are organized for distribution
+- Bundling strategy affects how notices are organized for distribution
 """
 
 from __future__ import annotations
@@ -77,7 +77,7 @@ class TestChunked:
         """Verify chunked splits sequence into equal-sized chunks.
 
         Real-world significance:
-        - Chunking ensures bundlees don't exceed max_size limit
+        - Chunking ensures bundles don't exceed max_size limit
         """
         items = [1, 2, 3, 4, 5, 6]
         chunks = list(bundle_pdfs.chunked(items, 2))
@@ -103,7 +103,7 @@ class TestChunked:
         """Verify chunked with size >= len(items) produces single chunk.
 
         Real-world significance:
-        - Small bundlees fit in one chunk
+        - Small bundles fit in one chunk
         """
         items = [1, 2, 3]
         chunks = list(bundle_pdfs.chunked(items, 10))
@@ -186,7 +186,7 @@ class TestLoadArtifact:
         """Verify load_artifact reads preprocessed artifact JSON.
 
         Real-world significance:
-        - Bundleing step depends on artifact created by preprocess step
+        - Bundling step depends on artifact created by preprocess step
         """
         run_id = "test_001"
         artifact = sample_input.create_test_artifact_payload(
@@ -209,7 +209,7 @@ class TestLoadArtifact:
         """Verify load_artifact raises error for missing artifact.
 
         Real-world significance:
-        - Bundleing cannot proceed without preprocessing artifact
+        - Bundling cannot proceed without preprocessing artifact
         """
         with pytest.raises(FileNotFoundError, match="not found"):
             bundle_pdfs.load_artifact(tmp_path, "nonexistent_run")
@@ -265,7 +265,7 @@ class TestDiscoverPdfs:
         """Verify discover_pdfs finds PDFs with correct language prefix.
 
         Real-world significance:
-        - Bundleing only processes PDFs in requested language
+        - Bundling only processes PDFs in requested language
         """
         pdf_dir = tmp_path / "pdf_individual"
         pdf_dir.mkdir()
@@ -285,7 +285,7 @@ class TestDiscoverPdfs:
         """Verify discover_pdfs returns files in sorted order.
 
         Real-world significance:
-        - Consistent PDF ordering for reproducible bundlees
+        - Consistent PDF ordering for reproducible bundles
         """
         pdf_dir = tmp_path / "pdf_individual"
         pdf_dir.mkdir()
@@ -552,11 +552,11 @@ class TestGroupRecords:
 
 
 @pytest.mark.unit
-class TestPlanBundlees:
-    """Unit tests for plan_bundlees function."""
+class TestPlanBundles:
+    """Unit tests for plan_bundles function."""
 
-    def test_plan_bundlees_size_based(self, tmp_path: Path) -> None:
-        """Verify plan_bundlees creates size-based bundlees.
+    def test_plan_bundles_size_based(self, tmp_path: Path) -> None:
+        """Verify plan_bundles creates size-based bundles.
 
         Real-world significance:
         - Default bundling strategy chunks PDFs by fixed size
@@ -587,13 +587,13 @@ class TestPlanBundlees:
 
         plans = bundle_pdfs.plan_bundles(config, records, tmp_path / "preprocess.log")
 
-        assert len(plans) == 3  # 5 records / 2 per bundle = 3 bundlees
+        assert len(plans) == 3  # 5 records / 2 per bundle = 3 bundles
         assert plans[0].bundle_type == BundleType.SIZE_BASED
         assert len(plans[0].clients) == 2
         assert len(plans[2].clients) == 1
 
-    def test_plan_bundlees_school_grouped(self, tmp_path: Path) -> None:
-        """Verify plan_bundlees creates school-grouped bundlees.
+    def test_plan_bundles_school_grouped(self, tmp_path: Path) -> None:
+        """Verify plan_bundles creates school-grouped bundles.
 
         Real-world significance:
         - School-based bundling groups records by school first
@@ -631,8 +631,8 @@ class TestPlanBundlees:
         assert all(p.bundle_type == BundleType.SCHOOL_GROUPED for p in plans)
         assert all(p.bundle_identifier in ["school_a", "school_b"] for p in plans)
 
-    def test_plan_bundlees_board_grouped(self, tmp_path: Path) -> None:
-        """Verify plan_bundlees creates board-grouped bundlees.
+    def test_plan_bundles_board_grouped(self, tmp_path: Path) -> None:
+        """Verify plan_bundles creates board-grouped bundles.
 
         Real-world significance:
         - Board-based bundling groups by board identifier
@@ -668,13 +668,13 @@ class TestPlanBundlees:
 
         assert all(p.bundle_type == BundleType.BOARD_GROUPED for p in plans)
 
-    def test_plan_bundlees_returns_empty_for_zero_bundle_size(
+    def test_plan_bundles_returns_empty_for_zero_bundle_size(
         self, tmp_path: Path
     ) -> None:
-        """Verify plan_bundlees returns empty list when bundle_size is 0.
+        """Verify plan_bundles returns empty list when bundle_size is 0.
 
         Real-world significance:
-        - Bundleing disabled (bundle_size=0) skips grouping
+        - Bundling disabled (bundle_size=0) skips grouping
         """
         artifact = sample_input.create_test_artifact_payload(
             num_clients=3, run_id="test"
@@ -875,7 +875,7 @@ class TestBundlePdfs:
         """Verify bundle_pdfs returns empty list when bundle_size <= 0.
 
         Real-world significance:
-        - Bundleing is optional feature (skip if disabled in config)
+        - Bundling is optional feature (skip if disabled in config)
         """
         artifact = sample_input.create_test_artifact_payload(
             num_clients=2, run_id="test"
@@ -903,7 +903,7 @@ class TestBundlePdfs:
         """Verify bundle_pdfs raises error if artifact missing.
 
         Real-world significance:
-        - Bundleing cannot proceed without preprocessing step
+        - Bundling cannot proceed without preprocessing step
         """
         config = bundle_pdfs.BundleConfig(
             output_dir=tmp_path,
@@ -920,7 +920,7 @@ class TestBundlePdfs:
         """Verify bundle_pdfs raises error if artifact language doesn't match.
 
         Real-world significance:
-        - Bundleing must process same language as artifact
+        - Bundling must process same language as artifact
         """
         artifact = sample_input.create_test_artifact_payload(
             num_clients=1, language="en", run_id="test"

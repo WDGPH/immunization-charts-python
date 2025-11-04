@@ -21,6 +21,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+import yaml
 
 from pipeline import cleanup
 
@@ -114,8 +115,6 @@ class TestCleanupWithConfig:
         )
 
         # Modify config to enable artifact removal
-        import yaml
-
         with open(config_file) as f:
             config = yaml.safe_load(f)
         config["pipeline"]["after_run"]["remove_artifacts"] = True
@@ -167,8 +166,6 @@ class TestCleanupWithConfig:
         ).write_text("encrypted")
 
         # Modify config to enable encryption and unencrypted PDF removal
-        import yaml
-
         with open(config_file) as f:
             config = yaml.safe_load(f)
         config["encryption"]["enabled"] = True
@@ -205,8 +202,6 @@ class TestCleanupWithConfig:
         ).write_text("pdf content")
 
         # Modify config to have encryption disabled and batching disabled, but removal requested
-        import yaml
-
         with open(config_file) as f:
             config = yaml.safe_load(f)
         config["encryption"]["enabled"] = False
@@ -244,8 +239,6 @@ class TestCleanupWithConfig:
         ).write_text("original2")
 
         # Modify config to enable batching and unencrypted PDF removal
-        import yaml
-
         with open(config_file) as f:
             config = yaml.safe_load(f)
         config["encryption"]["enabled"] = False
@@ -283,8 +276,6 @@ class TestCleanupWithConfig:
         ).write_text("pdf content")
 
         # Ensure both encryption and batching are disabled
-        import yaml
-
         with open(config_file) as f:
             config = yaml.safe_load(f)
         config["encryption"]["enabled"] = False
@@ -332,8 +323,6 @@ class TestMain:
         (tmp_output_structure["artifacts"] / "test.json").write_text("data")
 
         # Modify config to enable artifact removal
-        import yaml
-
         with open(config_file) as f:
             config = yaml.safe_load(f)
         config["pipeline"]["after_run"]["remove_artifacts"] = True
@@ -383,8 +372,6 @@ class TestCleanupIntegration:
         )
 
         # Modify config to enable artifact removal
-        import yaml
-
         with open(config_file) as f:
             config = yaml.safe_load(f)
         config["pipeline"]["after_run"]["remove_artifacts"] = True
@@ -408,8 +395,6 @@ class TestCleanupIntegration:
         output_dir = tmp_output_structure["root"]
 
         # Modify config to enable artifact removal
-        import yaml
-
         with open(config_file) as f:
             config = yaml.safe_load(f)
         config["pipeline"]["after_run"]["remove_artifacts"] = True
