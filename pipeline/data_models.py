@@ -25,9 +25,9 @@ class ClientRecord:
     Fields
     ------
     sequence : str
-        Zero-padded sequence number for this client in the batch (e.g., '00001').
+        Zero-padded sequence number for the client (e.g., '00001').
     client_id : str
-        Unique client identifier (OEN or similar).
+        Unique client identifier.
     language : str
         ISO 639-1 language code ('en' or 'fr'). Must be a valid Language enum value
         (see pipeline.enums.Language). Validated using Language.from_string() at entry
