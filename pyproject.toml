@@ -1,3 +1,10 @@
+[build-system]
+requires = ["setuptools>=45", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["pipeline", "templates"]
+
 [project]
 name = "immunization-charts-python"
 version = "0.1.0"
@@ -7,12 +14,38 @@ dependencies = [
     "PyYAML",
     "openpyxl",
     "pypdf",
-    "typst>=0.13.2",
+    "qrcode>=7.4.2",
+    "pillow>=10.4.0",
+    "babel>=2.17.0",
 ]
 
 [dependency-groups]
 dev = [
     "pytest",
-    "pre-commit",
     "pytest-cov",
+    "pre-commit",
+    "ty>=0.0.1a24",
 ]
+
+[project.scripts]
+viper = "pipeline.orchestrator:main"
+
+[tool.coverage.run]
+source = ["pipeline"]
+omit = ["*/__pycache__/*", "*/site-packages/*"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+]
+
+[tool.coverage.html]
+directory = "htmlcov"
+
+[tool.coverage.json]
+output = "coverage.json"

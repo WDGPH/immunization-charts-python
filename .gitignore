@@ -6,11 +6,10 @@ __pycache__/
 *.pyo
 *.log
 *.tmp
-uv.lock
-
-# Code coverage
-htmlcov/
+*.egg-info/
+build/
+dist/
 .coverage
-.coverage.*
-.pytest_cache/
-*.cover
+htmlcov/
+coverage.xml
+coverage.json
