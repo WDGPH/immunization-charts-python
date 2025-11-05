@@ -1,60 +1,47 @@
-# Parameters
-
-date_today: "August 31, 2025"
-
-# Name of output folder which will be updated dynamically in the script
-output_folder: "demo-output-"  
-
-# Columns that are expected in the input file
-expected_columns:
-  - School
-  - Client_ID
-  - First_Name
-  - Last_Name
-  - Date_of_Birth
-  - Street_Address
-  - City
-  - Province
-  - Postal_Code
-  - Received_Agents
-
-# Vaccines or agents that should occur in the template for the chart 
+bundling:
+  bundle_size: 100
+  group_by: null
 chart_diseases_header:
-  - Diphtheria
-  - Tetanus
-  - Pertussis
-  - Polio
-  - Hib
-  - Pneumococcal
-  - Rotavirus
-  - Measles
-  - Mumps
-  - Rubella
-  - Meningococcal
-  - Varicella
-  - Other
-
-# Vaccines or agents to ignore in/drop from immunization history
+- Diphtheria
+- Tetanus
+- Pertussis
+- Polio
+- Hib
+- Pneumococcal
+- Rotavirus
+- Measles
+- Mumps
+- Rubella
+- Meningococcal
+- Varicella
+- Other
+date_data_cutoff: '2025-08-31'
+date_notice_delivery: '2025-04-08'
+encryption:
+  enabled: false
+  password:
+    template: '{date_of_birth_iso_compact}'
 ignore_agents:
-  - RSVAb
-  - VarIg
-  - HBIg
-  - RabIg
-  - Ig
-
-# Used to calculate student age at time of mail delivery
-# Students 16 and older can be addressed directly
-# Letters for students under 16 should be addressed to their parent/guardian
-delivery_date: "2025-04-08"
-
-# To include in notice text as date that immunization history is reflective of
-data_date: "2025-04-01"
-
-# Minimum number of rows to show in immunization history chart
-# Charts will be padded with rows as appropriate
-min_rows: 5
-
-# Number of clients to include in a single PDF
-# Note: 10 PDFs with 10 clients each will run slower than 1 PDF with 100 clients
-# Use a batch size of 1 if you would like a single client per PDF file.
-batch_size: 100
+- RSVAb
+- VarIg
+- HBIg
+- RabIg
+- Ig
+pdf_validation:
+  rules:
+    client_id_presence: error
+    envelope_window_1_125: warn
+    exactly_two_pages: warn
+    signature_overflow: warn
+pipeline:
+  after_run:
+    remove_artifacts: false
+    remove_unencrypted_pdfs: false
+  before_run:
+    clear_output_directory: true
+qr:
+  enabled: false
+  payload_template: https://www.test-immunization.ca/update?client_id={client_id}&dob={date_of_birth_iso}&lang={language_code}
+typst:
+  bin: typst
+  font_path: /usr/share/fonts/truetype/freefont/
