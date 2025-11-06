@@ -250,7 +250,6 @@ def run_step_4_generate_notices(
     run_id: str,
     assets_dir: Path,
     config_dir: Path,
-    map_file: Path | None = None,
 ) -> None:
     """Step 4: Generating Typst templates."""
     print_step(4, "Generating Typst templates")
@@ -262,7 +261,7 @@ def run_step_4_generate_notices(
 
     # Generate Typst files using main function
     generated = generate_notices.main(
-        artifact_path, artifacts_dir, logo_path, signature_path, map_file
+        artifact_path, artifacts_dir, logo_path, signature_path
     )
     print(f"Generated {len(generated)} Typst files in {artifacts_dir}")
 
@@ -462,14 +461,6 @@ def main() -> int:
     # Extract config settings
     encryption_enabled = config.get("encryption", {}).get("enabled", False)
 
-    map_file = config_dir / config.get("map_file")
-
-    if map_file.exists():
-        "School mapping file provided."
-    else:
-        print("Expected school mapping file at '{map_file}', but file does not exist.")
-        return 1
-
     print_header(args.input_file)
 
     total_start = time.time()
@@ -515,7 +506,7 @@ def main() -> int:
         # Step 4: Generating Notices
         step_start = time.time()
         run_step_4_generate_notices(
-            output_dir, run_id, DEFAULT_TEMPLATES_ASSETS_DIR, config_dir, map_file
+            output_dir, run_id, DEFAULT_TEMPLATES_ASSETS_DIR, config_dir
         )
         step_duration = time.time() - step_start
         step_times.append(("Template Generation", step_duration))

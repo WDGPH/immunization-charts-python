@@ -49,6 +49,7 @@ class TestRenderNotice:
                 "phu_address": "Tunnel Health, 123 Placeholder Street, Sample City, ON A1A 1A1",
                 "phu_email": "mainpublichealth#rodenthealth.ca",
                 "phu_phone": "555-555-5555 ext. 1234",
+                "phu_website": "https://www.test-immunization.ca",
             },
         }
 
@@ -82,6 +83,7 @@ class TestRenderNotice:
                 "phu_address": "Tunnel Health, 123 Placeholder Street, Sample City, ON A1A 1A1",
                 "phu_email": "mainpublichealth#rodenthealth.ca",
                 "phu_phone": "555-555-5555 ext. 1234",
+                "phu_website": "https://www.test-immunization.ca",
             },
         }
 
@@ -130,6 +132,7 @@ class TestRenderNotice:
                 "phu_address": "Tunnel Health, 123 Placeholder Street, Sample City, ON A1A 1A1",
                 "phu_email": "mainpublichealth#rodenthealth.ca",
                 "phu_phone": "555-555-5555 ext. 1234",
+                "phu_website": "https://www.test-immunization.ca",
             },
         }
 
@@ -161,6 +164,7 @@ class TestRenderNotice:
                 "phu_address": "Tunnel Health, 123 Placeholder Street, Sample City, ON A1A 1A1",
                 "phu_email": "mainpublichealth#rodenthealth.ca",
                 "phu_phone": "555-555-5555 ext. 1234",
+                "phu_website": "https://www.test-immunization.ca",
             },
         }
 
@@ -192,6 +196,7 @@ class TestRenderNotice:
                 "phu_address": "Tunnel Health, 123 Placeholder Street, Sample City, ON A1A 1A1",
                 "phu_email": "mainpublichealth#rodenthealth.ca",
                 "phu_phone": "555-555-5555 ext. 1234",
+                "phu_website": "https://www.test-immunization.ca",
             },
         }
 
@@ -223,6 +228,7 @@ class TestRenderNotice:
                 "phu_address": "Tunnel Health, 123 Placeholder Street, Sample City, ON A1A 1A1",
                 "phu_email": "mainpublichealth#rodenthealth.ca",
                 "phu_phone": "555-555-5555 ext. 1234",
+                "phu_website": "https://www.test-immunization.ca",
             },
         }
 
@@ -256,6 +262,7 @@ class TestRenderNotice:
                 "phu_address": "Tunnel Health, 123 Placeholder Street, Sample City, ON A1A 1A1",
                 "phu_email": "mainpublichealth#rodenthealth.ca",
                 "phu_phone": "555-555-5555 ext. 1234",
+                "phu_website": "https://www.test-immunization.ca",
             },
         }
 
@@ -289,6 +296,7 @@ class TestRenderNotice:
                 "phu_address": "Tunnel Health, 123 Placeholder Street, Sample City, ON A1A 1A1",
                 "phu_email": "mainpublichealth#rodenthealth.ca",
                 "phu_phone": "555-555-5555 ext. 1234",
+                "phu_website": "https://www.test-immunization.ca",
             },
         }
 

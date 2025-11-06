@@ -311,6 +311,7 @@ class TestConfigLoading:
             mock_load.return_value = {
                 "pipeline": {"auto_remove_output": False},
                 "qr": {"enabled": True},
+                "map_file": "map_school.json",
             }
 
             from pipeline.config_loader import load_config

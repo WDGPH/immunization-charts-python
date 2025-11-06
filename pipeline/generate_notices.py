@@ -258,7 +258,8 @@ def load_and_translate_chart_diseases(language: str) -> List[str]:
 def build_template_context(
     client: ClientRecord,
     qr_output_dir: Path | None = None,
-    map_file: Path | None = None,
+    map_file: Path = ROOT_DIR / "config/map_school.json",
+    required_keys: Dict = {"phu_address", "phu_phone", "phu_email", "phu_website"},
 ) -> Dict[str, str]:
     """Build template context from client data.
 
@@ -275,6 +276,10 @@ def build_template_context(
         Directory containing QR code PNG files.
     map_file: Filepath, optional
         File containing mapping of schools to specific info (e.g. satellite PHU office info) to populate template.
+        By default, will use config/map_school.json.
+    required_keys: Dict, optional
+        Dictionary containing the keys that should come from the mapping file.
+        Each of these keys should be present in the "DEFAULT" section of the mapping file.
     Returns
     -------
     Dict[str, str]
@@ -312,7 +317,11 @@ def build_template_context(
 
     # Check if mapping file provided
     if map_file:
-        required_keys = {"phu_address", "phu_phone", "phu_email", "phu_website"}
+        # Check if mapping file exists
+        if not map_file.exists():
+            raise FileNotFoundError(
+                f"Expected school mapping file at {map_file}, but file does not exist. Please provide mapping file at {map_file}."
+            )
 
         # Load mapping file data
         with open(map_file, "r") as f:
@@ -458,11 +467,10 @@ def render_notice(
     logo: Path,
     signature: Path,
     qr_output_dir: Path | None = None,
-    map_file: Path | None = None,
 ) -> str:
     language = Language.from_string(client.language)
     renderer = get_language_renderer(language)
-    context = build_template_context(client, qr_output_dir, map_file)
+    context = build_template_context(client, qr_output_dir)
     return renderer(
         context,
         logo_path=to_root_relative(logo),
@@ -471,11 +479,7 @@ def render_notice(
 
 
 def generate_typst_files(
-    payload: ArtifactPayload,
-    output_dir: Path,
-    logo_path: Path,
-    signature_path: Path,
-    map_file: Path | None = None,
+    payload: ArtifactPayload, output_dir: Path, logo_path: Path, signature_path: Path
 ) -> List[Path]:
     output_dir.mkdir(parents=True, exist_ok=True)
     qr_output_dir = output_dir / "qr_codes"
@@ -494,7 +498,6 @@ def generate_typst_files(
             logo=logo_path,
             signature=signature_path,
             qr_output_dir=qr_output_dir,
-            map_file=map_file,
         )
         filename = f"{language}_notice_{client.sequence}_{client.client_id}.typ"
         file_path = typst_output_dir / filename
@@ -505,11 +508,7 @@ def generate_typst_files(
 
 
 def main(
-    artifact_path: Path,
-    output_dir: Path,
-    logo_path: Path,
-    signature_path: Path,
-    map_file: Path | None = None,
+    artifact_path: Path, output_dir: Path, logo_path: Path, signature_path: Path
 ) -> List[Path]:
     """Main entry point for Typst notice generation.
 
@@ -523,8 +522,6 @@ def main(
         Path to the logo image.
     signature_path : Path
         Path to the signature image.
-    map_file : Path
-        (Optional) Path to file mapping schools to template details (e.g. PHU satellite offices).
 
     Returns
     -------
@@ -532,13 +529,7 @@ def main(
         List of generated Typst file paths.
     """
     payload = read_artifact(artifact_path)
-    generated = generate_typst_files(
-        payload,
-        output_dir,
-        logo_path,
-        signature_path,
-        map_file,
-    )
+    generated = generate_typst_files(payload, output_dir, logo_path, signature_path)
     print(
         f"Generated {len(generated)} Typst files in {output_dir} for language {payload.language}"
     )

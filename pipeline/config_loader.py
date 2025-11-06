@@ -81,26 +81,12 @@ def validate_config(config: Dict[str, Any]) -> None:
     - **PDF Bundling:** If bundle_size > 0, must be positive integer; group_by must be valid enum
     - **Encryption:** If encryption.enabled=true, requires password.template
     - **Cleanup:** If delete_unencrypted_pdfs is set, must be boolean
-    - **Template Arguments:** Make sure map_file is provided and exists
 
     **Validation philosophy:**
     - Infrastructure errors (missing config) raise immediately (fail-fast)
     - All error messages are clear and actionable
     - Config is validated once at load time, not per-step
     """
-    # Validate mapping of PHU data to school from config
-    try:
-        map_filepath = DEFAULT_CONFIG_PATH.parent / config.get("map_file")
-    except KeyError as err:
-        raise (
-            f'Attempting to load map_file from config, make sure "map_file" provided: {err}'
-        )
-
-    if not map_filepath.exists():
-        raise FileNotFoundError(
-            "Mapping to school-specific info enabled, but expected mapping file not present."
-            "Please provide mapping file at config/map_school.json."
-        )
 
     # Validate QR config
     qr_config = config.get("qr", {})
