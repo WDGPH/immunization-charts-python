@@ -388,6 +388,13 @@ class TestBuildTemplateContext:
             school_name="Test School",
         )
 
+        # Map file does not exist
+        with pytest.raises(Exception):
+            generate_notices.build_template_context(
+                client, map_file=tmp_test_dir / "fake_map.json"
+            )
+
+        # Map file exists, but can't read json
         with pytest.raises(Exception):  # json.JSONDecodeError or similar
             generate_notices.build_template_context(client, map_file=map_path)
 
@@ -395,21 +402,24 @@ class TestBuildTemplateContext:
         test_json = {"SCHOOL_1": {}}
         json_string = json.dumps(test_json)
         map_path.write_text(json_string)
-        with pytest.raises(Exception):  # json.JSONDecodeError or similar
+        with pytest.raises(Exception):
             generate_notices.build_template_context(client, map_file=map_path)
 
         # Missing required keys in "DEFAULT"
-        required_keys = {"phu_number"}
-        test_json = {"DEFAULT": {}}
+        required_keys = {"phu_phone", "phu_email"}
+        test_json = {
+            "DEFAULT": {
+                "phu_phone": "555-555-5555 ext. 1234",
+            }
+        }
         json_string = json.dumps(test_json)
         map_path.write_text(json_string)
-        with pytest.raises(Exception):  # json.JSONDecodeError or similar
+        with pytest.raises(Exception):
             generate_notices.build_template_context(
                 client, map_file=map_path, required_keys=required_keys
             )
 
-        # Check that finds school and substitutes provided value, and uses defaults for keys not provided for school
-        required_keys = {"phu_phone", "phu_email"}
+        # Check that finds school name and substitutes provided value and uses default values for keys not provided for school name
         test_json = {
             "DEFAULT": {
                 "phu_phone": "555-555-5555 ext. 1234",

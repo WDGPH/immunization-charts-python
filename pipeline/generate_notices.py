@@ -315,69 +315,58 @@ def build_template_context(
         if qr_path.exists():
             client_data["qr_code"] = to_root_relative(qr_path)
 
-    # Check if mapping file provided
-    if map_file:
-        # Check if mapping file exists
-        if not map_file.exists():
-            raise FileNotFoundError(
-                f"Expected school mapping file at {map_file}, but file does not exist. Please provide mapping file at {map_file}."
-            )
+    # Check if mapping file exists
+    if not map_file.exists():
+        raise FileNotFoundError(
+            f"Expected school mapping file at {map_file}, but file does not exist. Please provide mapping file at {map_file}."
+        )
 
-        # Load mapping file data
-        with open(map_file, "r") as f:
-            map_data = json.load(f)
+    # Load mapping file data
+    with open(map_file, "r") as f:
+        map_data = json.load(f)
 
-        # Attempt to load default PHU data values from mapping file; this should also contain all required keys
-        try:
-            phu_data = map_data["DEFAULT"]
-        except KeyError as err:
-            raise (
-                f"Loading default PHU info, error when attempting to access 'DEFAULT' from {map_file}: {err}"
-            )
+    # Attempt to load default PHU data values from mapping file; this should also contain all required keys
+    try:
+        phu_data = map_data["DEFAULT"]
+    except KeyError as err:
+        raise (
+            f"Loading default PHU info, error when attempting to access 'DEFAULT' from {map_file}: {err}"
+        )
 
-        if not phu_data:
-            raise ValueError(
-                "Default values for PHU info not provided. "
-                f'Please define DEFAULT values {required_keys} in under "DEFAULT" key in {map_file}.'
-            )
-        else:
-            missing = [key for key in required_keys if key not in phu_data]
-            if missing:
-                missing_keys = ", ".join(missing)
-                raise KeyError(f"Missing phu_data keys in config: {missing_keys}")
+    if not phu_data:
+        raise ValueError(
+            "Default values for PHU info not provided. "
+            f'Please define DEFAULT values {required_keys} in under "DEFAULT" key in {map_file}.'
+        )
+    else:
+        missing = [key for key in required_keys if key not in phu_data]
+        if missing:
+            missing_keys = ", ".join(missing)
+            raise KeyError(f"Missing phu_data keys in config: {missing_keys}")
 
-        # Clean school name
-        client_school_key = re.sub(r"\s+", "_", client_data["school"]).upper()
+    # Clean school name
+    client_school_key = re.sub(r"\s+", "_", client_data["school"]).upper()
 
-        # Check if school has a mapping associated with it - otherwise, use default config values
-        if client_school_key in map_data.keys():
-            if client_school_key != "DEFAULT":
-                LOG.info(
-                    f"School-specific information provided for: {client_school_key}"
-                )
+    # Check if school has a mapping associated with it - otherwise, use default config values
+    if client_school_key in map_data.keys():
+        if client_school_key != "DEFAULT":
+            LOG.info(f"School-specific information provided for: {client_school_key}")
 
-                map_client_data = map_data[client_school_key]
+            map_client_data = map_data[client_school_key]
 
-                # Replace default values with values in map file. If any are missing, keep default values.
-                for key in phu_data.keys():
-                    if key in map_client_data.keys():
-                        phu_data[key] = map_client_data[key]
-                    else:
-                        LOG.info(
-                            f"Mapping file for school {client_school_key} missing {key}. Using default value."
-                        )
-
-        else:
-            LOG.info(
-                f"School {client_school_key} not in mapping file. Using default values."
-            )
+            # Replace default values with values in map file. If any are missing, keep default values.
+            for key in phu_data.keys():
+                if key in map_client_data.keys():
+                    phu_data[key] = map_client_data[key]
+                else:
+                    LOG.info(
+                        f"Mapping file for school {client_school_key} missing {key}. Using default value."
+                    )
 
     else:
-        print(
-            "Missing mapping filename. Please provide within config/parameters.yaml."
-            "File should reside within config directory."
+        LOG.info(
+            f"School {client_school_key} not in mapping file. Using default values."
         )
-        return 1
 
     # Load and translate chart disease header
     chart_diseases_translated = load_and_translate_chart_diseases(client.language)
