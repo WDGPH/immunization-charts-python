@@ -13,8 +13,8 @@ The pipeline distinguishes between critical and optional steps:
   - No partial output; users get deterministic results
   - Pipeline exits with code 1; user must investigate and retry
 
-- **Optional Steps** (QR codes, Encryption, Batching) implement per-item recovery:
-  - Individual item failures (PDF, client, batch) are logged and skipped
+- **Optional Steps** (QR codes, Encryption, Bundling) implement per-item recovery:
+  - Individual item failures (PDF, client, bundle) are logged and skipped
   - Remaining items continue processing
   - Pipeline completes successfully even if some items failed
   - Users are shown summary of successes, skipped, and failed items
@@ -41,7 +41,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 # Import pipeline steps
-from . import batch_pdfs, cleanup, compile_notices, validate_pdfs
+from . import bundle_pdfs, cleanup, compile_notices, validate_pdfs
 from . import (
     encrypt_notice,
     generate_notices,
@@ -136,10 +136,14 @@ def print_step_complete(step_num: int, description: str, duration: float) -> Non
 def run_step_1_prepare_output(
     output_dir: Path,
     log_dir: Path,
-    auto_remove: bool,
+    config_dir: Path,
 ) -> bool:
     """Step 1: Prepare output directory."""
     print_step(1, "Preparing output directory")
+
+    config = load_config(config_dir / "parameters.yaml")
+    before_run_config = config.get("pipeline", {}).get("before_run", {})
+    auto_remove = before_run_config.get("clear_output_directory", False)
 
     success = prepare_output.prepare_output_directory(
         output_dir=output_dir,
@@ -349,78 +353,86 @@ def run_step_7_encrypt_pdfs(
     )
 
 
-def run_step_8_batch_pdfs(
+def run_step_8_bundle_pdfs(
     output_dir: Path,
     language: str,
     run_id: str,
     config_dir: Path,
-) -> None:
-    """Step 8: Batching PDFs (optional)."""
-    print_step(8, "Batching PDFs")
+) -> list:
+    """Step 8: Bundling PDFs (optional).
+
+    Returns:
+        List of BundleResult objects containing manifest paths.
+    """
+    print_step(8, "Bundling PDFs")
 
     # Load and validate configuration (fail-fast if invalid)
-    load_config(config_dir / "parameters.yaml")
+    config = load_config(config_dir / "parameters.yaml")
 
     parameters_path = config_dir / "parameters.yaml"
 
-    # Batch PDFs using config-driven function
-    results = batch_pdfs.batch_pdfs_with_config(
+    # Bundle PDFs using config-driven function
+    results = bundle_pdfs.bundle_pdfs_with_config(
         output_dir,
         language,
         run_id,
         parameters_path,
     )
     if results:
-        print(f"Created {len(results)} batches in {output_dir / 'pdf_combined'}")
+        print(f"Created {len(results)} bundles in {output_dir / 'pdf_combined'}")
+
+        # Display bundle information
+        bundling_config = config.get("bundling", {})
+        bundle_size = bundling_config.get("bundle_size", 0)
+        group_by = bundling_config.get("group_by")
+
+        print(f"📦 Bundle size:             {bundle_size}")
+        if group_by == "school":
+            print("🏫 Bundle scope:            School")
+        elif group_by == "board":
+            print("🏢 Bundle scope:            Board")
+        else:
+            print("🏷️  Bundle scope:            Sequential")
+
+        # Display manifest paths
+        if results:
+            print("📋 Bundle manifests:")
+            for result in results:
+                print(f"    - {result.manifest_path}")
+
+    return results
 
 
 def run_step_9_cleanup(
     output_dir: Path,
-    skip_cleanup: bool,
     config_dir: Path,
 ) -> None:
     """Step 9: Cleanup intermediate files."""
     print_step(9, "Cleanup")
 
-    if skip_cleanup:
-        print("Cleanup skipped (keep_intermediate_files enabled).")
-    else:
-        parameters_path = config_dir / "parameters.yaml"
-        cleanup.main(output_dir, parameters_path)
-        print("✅ Cleanup completed successfully.")
+    parameters_path = config_dir / "parameters.yaml"
+    cleanup.main(output_dir, parameters_path)
+    print("✅ Cleanup completed successfully.")
 
 
 def print_summary(
     step_times: list[tuple[str, float]],
     total_duration: float,
-    batch_size: int,
-    group_by: str | None,
     total_clients: int,
-    skip_cleanup: bool,
 ) -> None:
     """Print the pipeline summary."""
     print()
+    print(f"{'=' * 60}")
     print("🎉 Pipeline completed successfully!")
+    print(f"{'=' * 60}")
+    print()
     print("🕒 Time Summary:")
     for step_name, duration in step_times:
         print(f"  - {step_name:<25} {duration:.1f}s")
     print(f"  - {'─' * 25} {'─' * 6}")
     print(f"  - {'Total Time':<25} {total_duration:.1f}s")
     print()
-
-    # Only show batch info if batching is actually enabled
-    if batch_size > 0:
-        print(f"📦 Batch size:             {batch_size}")
-        if group_by == "school":
-            print("🏫 Batch scope:            School")
-        elif group_by == "board":
-            print("🏢 Batch scope:            Board")
-        else:
-            print("🏷️  Batch scope:            Sequential")
-
     print(f"👥 Clients processed:      {total_clients}")
-    if skip_cleanup:
-        print("🧹 Cleanup:                Skipped")
 
 
 def main() -> int:
@@ -448,23 +460,15 @@ def main() -> int:
         return 1
 
     # Extract config settings
-    pipeline_config = config.get("pipeline", {})
     encryption_enabled = config.get("encryption", {}).get("enabled", False)
-    auto_remove_output = pipeline_config.get("auto_remove_output", False)
-    keep_intermediate = pipeline_config.get("keep_intermediate_files", False)
-    map_school = pipeline_config.get("map_school", False)
 
-    if map_school:
-        map_file = config_dir / "map_school.json"
-        if map_file.exists():
-            "School mapping file provided."
-        else:
-            print(
-                "Expected school mapping file at '{map_file}', but file does not exist."
-            )
-            return 1
+    map_file = config_dir / config.get("map_file")
+
+    if map_file.exists():
+        "School mapping file provided."
     else:
-        map_file = None
+        print("Expected school mapping file at '{map_file}', but file does not exist.")
+        return 1
 
     print_header(args.input_file)
 
@@ -475,7 +479,7 @@ def main() -> int:
     try:
         # Step 1: Prepare output directory
         step_start = time.time()
-        if not run_step_1_prepare_output(output_dir, log_dir, auto_remove_output):
+        if not run_step_1_prepare_output(output_dir, log_dir, config_dir):
             return 2  # User cancelled
         step_duration = time.time() - step_start
         step_times.append(("Output Preparation", step_duration))
@@ -539,53 +543,35 @@ def main() -> int:
             step_times.append(("PDF Encryption", step_duration))
             print_step_complete(7, "Encryption", step_duration)
 
-        # Step 8: Batching PDFs (optional, skipped if encryption enabled)
-        batching_was_run = False
-        if not encryption_enabled:
-            batching_config = config.get("batching", {})
-            batch_size = batching_config.get("batch_size", 0)
+        # Step 8: Bundling PDFs (optional, independent of encryption)
+        bundling_config = config.get("bundling", {})
+        bundle_size = bundling_config.get("bundle_size", 0)
 
-            if batch_size > 0:
-                step_start = time.time()
-                run_step_8_batch_pdfs(
-                    output_dir,
-                    args.language,
-                    run_id,
-                    config_dir,
-                )
-                step_duration = time.time() - step_start
-                step_times.append(("PDF Batching", step_duration))
-                print_step_complete(8, "Batching", step_duration)
-                batching_was_run = True
-            else:
-                print_step(8, "Batching")
-                print("Batching skipped (batch_size set to 0).")
+        if bundle_size > 0:
+            step_start = time.time()
+            run_step_8_bundle_pdfs(
+                output_dir,
+                args.language,
+                run_id,
+                config_dir,
+            )
+            step_duration = time.time() - step_start
+            step_times.append(("PDF Bundling", step_duration))
+            print_step_complete(8, "Bundling", step_duration)
         else:
-            print_step(8, "Batching")
-            print("Batching skipped (encryption enabled).")
+            print_step(8, "Bundling")
+            print("Bundling skipped (bundle_size set to 0).")
 
         # Step 9: Cleanup
-        run_step_9_cleanup(output_dir, keep_intermediate, config_dir)
+        run_step_9_cleanup(output_dir, config_dir)
 
         # Print summary
         total_duration = time.time() - total_start
 
-        # Only show batching config if batching actually ran
-        if batching_was_run:
-            batching_config = config.get("batching", {})
-            batch_size = batching_config.get("batch_size", 0)
-            group_by = batching_config.get("group_by")
-        else:
-            batch_size = 0
-            group_by = None
-
         print_summary(
             step_times,
             total_duration,
-            batch_size,
-            group_by,
             total_clients,
-            keep_intermediate,
         )
 
         return 0

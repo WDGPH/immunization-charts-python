@@ -1,5 +1,5 @@
-batching:
-  batch_size: 100
+bundling:
+  bundle_size: 100
   group_by: null
 chart_diseases_header:
 - Diphtheria
@@ -15,15 +15,6 @@ chart_diseases_header:
 - Meningococcal
 - Varicella
 - Other
-cleanup:
-  remove_directories:
-  - artifacts
-  - pdf_individual
-  - pdf_combined
-  remove_extensions:
-  - typ
-  - json
-  - csv
 date_data_cutoff: '2025-08-31'
 date_notice_delivery: '2025-04-08'
 encryption:
@@ -36,11 +27,6 @@ ignore_agents:
 - HBIg
 - RabIg
 - Ig
-phu_data:
-  phu_address: Tunnel Health, 123 Placeholder Street, Sample City, ON A1A 1A1
-  phu_email: mainpublichealth@rodenthealth.ca
-  phu_phone: 555-555-5555 ext. 1234
-  phu_website: https://www.test-immunization.ca
 pdf_validation:
   rules:
     client_id_presence: error
@@ -48,11 +34,14 @@ pdf_validation:
     exactly_two_pages: warn
     signature_overflow: warn
 pipeline:
-  auto_remove_output: true
-  keep_intermediate_files: true
-  map_school: true
+  after_run:
+    remove_artifacts: false
+    remove_unencrypted_pdfs: false
+  before_run:
+    clear_output_directory: true
+map_file: map_school.json
 qr:
-  enabled: true
+  enabled: false
   payload_template: https://www.test-immunization.ca/update?client_id={client_id}&dob={date_of_birth_iso}&lang={language_code}
 typst:
   bin: typst

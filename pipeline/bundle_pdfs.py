@@ -1,37 +1,37 @@
-"""Batch per-client PDFs into combined bundles with manifests.
+"""Bundle per-client PDFs into combined files with manifests.
 
-This module batches individual per-client PDFs into combined bundles with
+This module combines individual per-client PDFs into bundled files with
 accompanying manifest records. It can be invoked as a CLI tool or imported for
-unit testing. Batching supports three modes:
+unit testing. Bundling supports three modes:
 
 * Size-based (default): chunk the ordered list of PDFs into groups of
-  ``batch_size``.
+  ``bundle_size``.
 * School-based: group by ``school_code`` and then chunk each group while
   preserving client order.
 * Board-based: group by ``board_code`` and chunk each group.
 
-Each batch produces a merged PDF inside ``output/pdf_combined`` and a manifest JSON
+Each bundle produces a merged PDF inside ``output/pdf_combined`` and a manifest JSON
 record inside ``output/metadata`` that captures critical metadata for audits.
 
 **Input Contract:**
 - Reads individual PDF files from output/pdf_individual/
 - Reads client metadata from preprocessed artifact JSON
-- Assumes batch_size > 0 in config (batching is optional; disabled when batch_size=0)
+- Assumes bundle_size > 0 in config (bundling is optional; disabled when bundle_size=0)
 
 **Output Contract:**
 - Writes merged PDF files to output/pdf_combined/
-- Writes batch manifest JSON to output/metadata/
-- Returns list of created batch files
+- Writes bundle manifest JSON to output/metadata/
+- Returns list of created bundle files
 
 **Error Handling:**
-- Configuration errors (invalid batch_size, group_by) raise immediately (infrastructure)
-- Per-batch errors (PDF merge failure) log and continue (optional feature)
-- Pipeline completes even if some batches fail to create (optional step)
+- Configuration errors (invalid bundle_size, group_by) raise immediately (infrastructure)
+- Per-bundle errors (PDF merge failure) log and continue (optional feature)
+- Pipeline completes even if some bundles fail to create (optional step)
 
 **Validation Contract:**
 
 What this module validates:
-- Batch size is positive (batch_size > 0)
+- Bundle size is positive (bundle_size > 0)
 - Group-by strategy is valid (size, school, board, or None)
 - PDF files can be discovered and merged
 - Manifest records have required metadata
@@ -41,7 +41,7 @@ What this module assumes (validated upstream):
 - Client metadata in artifact is complete (validated by preprocessing step)
 - Output directory can be created (general I/O)
 
-Note: This is an optional step. Per-batch errors are logged but don't halt pipeline.
+Note: This is an optional step. Per-bundle errors are logged but don't halt pipeline.
 """
 
 from __future__ import annotations
@@ -59,15 +59,15 @@ from pypdf import PdfReader, PdfWriter
 
 from .config_loader import load_config
 from .data_models import PdfRecord
-from .enums import BatchStrategy, BatchType
+from .enums import BundleStrategy, BundleType
 
 LOG = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
 
 @dataclass(frozen=True)
-class BatchConfig:
-    """Configuration for PDF batching operation.
+class BundleConfig:
+    """Configuration for PDF bundling operation.
 
     Attributes
     ----------
@@ -75,49 +75,49 @@ class BatchConfig:
         Root output directory containing pipeline artifacts
     language : str
         Language code ('en' or 'fr')
-    batch_size : int
-        Maximum number of clients per batch (0 disables batching)
-    batch_strategy : BatchStrategy
-        Strategy for grouping PDFs into batches
+    bundle_size : int
+        Maximum number of clients per bundle (0 disables bundling)
+    bundle_strategy : BundleStrategy
+        Strategy for grouping PDFs into bundles
     run_id : str
         Pipeline run identifier
     """
 
     output_dir: Path
     language: str
-    batch_size: int
-    batch_strategy: BatchStrategy
+    bundle_size: int
+    bundle_strategy: BundleStrategy
     run_id: str
 
 
 @dataclass(frozen=True)
-class BatchPlan:
-    """Plan for a single batch of PDFs.
+class BundlePlan:
+    """Plan for a single bundle of PDFs.
 
     Attributes
     ----------
-    batch_type : BatchType
-        Type/strategy used for this batch
-    batch_identifier : str | None
-        School or board code if batch was grouped, None for size-based
-    batch_number : int
-        Sequential batch number
-    total_batches : int
-        Total number of batches in this operation
+    bundle_type : BundleType
+        Type/strategy used for this bundle
+    bundle_identifier : str | None
+        School or board code if bundle was grouped, None for size-based
+    bundle_number : int
+        Sequential bundle number
+    total_bundles : int
+        Total number of bundles in this operation
     clients : List[PdfRecord]
-        List of PDFs and metadata in this batch
+        List of PDFs and metadata in this bundle
     """
 
-    batch_type: BatchType
-    batch_identifier: str | None
-    batch_number: int
-    total_batches: int
+    bundle_type: BundleType
+    bundle_identifier: str | None
+    bundle_number: int
+    total_bundles: int
     clients: List[PdfRecord]
 
 
 @dataclass(frozen=True)
-class BatchResult:
-    """Result of a completed batch operation.
+class BundleResult:
+    """Result of a completed bundle operation.
 
     Attributes
     ----------
@@ -125,13 +125,13 @@ class BatchResult:
         Path to the merged PDF file
     manifest_path : Path
         Path to the JSON manifest file
-    batch_plan : BatchPlan
-        The plan used to create this batch
+    bundle_plan : BundlePlan
+        The plan used to create this bundle
     """
 
     pdf_path: Path
     manifest_path: Path
-    batch_plan: BatchPlan
+    bundle_plan: BundlePlan
 
 
 PDF_PATTERN = re.compile(
@@ -139,20 +139,20 @@ PDF_PATTERN = re.compile(
 )
 
 
-def batch_pdfs_with_config(
+def bundle_pdfs_with_config(
     output_dir: Path,
     language: str,
     run_id: str,
     config_path: Path | None = None,
-) -> List[BatchResult]:
-    """Batch PDFs using configuration from parameters.yaml.
+) -> List[BundleResult]:
+    """Bundle PDFs using configuration from parameters.yaml.
 
     Parameters
     ----------
     output_dir : Path
         Root output directory containing pipeline artifacts.
     language : str
-        Language prefix to batch ('en' or 'fr').
+        Language prefix to bundle ('en' or 'fr').
     run_id : str
         Pipeline run identifier to locate preprocessing artifacts.
     config_path : Path, optional
@@ -160,39 +160,39 @@ def batch_pdfs_with_config(
 
     Returns
     -------
-    List[BatchResult]
-        List of batch results created.
+    List[BundleResult]
+        List of bundle results created.
     """
     config = load_config(config_path)
 
-    batching_config = config.get("batching", {})
-    batch_size = batching_config.get("batch_size", 0)
-    group_by = batching_config.get("group_by", None)
+    bundling_config = config.get("bundling", {})
+    bundle_size = bundling_config.get("bundle_size", 0)
+    group_by = bundling_config.get("group_by", None)
 
-    batch_strategy = BatchStrategy.from_string(group_by)
+    bundle_strategy = BundleStrategy.from_string(group_by)
 
-    config_obj = BatchConfig(
+    config_obj = BundleConfig(
         output_dir=output_dir.resolve(),
         language=language,
-        batch_size=batch_size,
-        batch_strategy=batch_strategy,
+        bundle_size=bundle_size,
+        bundle_strategy=bundle_strategy,
         run_id=run_id,
     )
 
-    return batch_pdfs(config_obj)
+    return bundle_pdfs(config_obj)
 
 
 def main(
     output_dir: Path, language: str, run_id: str, config_path: Path | None = None
-) -> List[BatchResult]:
-    """Main entry point for PDF batching.
+) -> List[BundleResult]:
+    """Main entry point for PDF bundling.
 
     Parameters
     ----------
     output_dir : Path
         Root output directory containing pipeline artifacts.
     language : str
-        Language prefix to batch ('en' or 'fr').
+        Language prefix to bundle ('en' or 'fr').
     run_id : str
         Pipeline run identifier.
     config_path : Path, optional
@@ -200,14 +200,14 @@ def main(
 
     Returns
     -------
-    List[BatchResult]
-        List of batches created.
+    List[BundleResult]
+        List of bundles created.
     """
-    results = batch_pdfs_with_config(output_dir, language, run_id, config_path)
+    results = bundle_pdfs_with_config(output_dir, language, run_id, config_path)
     if results:
-        print(f"Created {len(results)} batches in {output_dir / 'pdf_combined'}")
+        print(f"Created {len(results)} bundles in {output_dir / 'pdf_combined'}")
     else:
-        print("No batches created.")
+        print("No bundles created.")
     return results
 
 
@@ -249,7 +249,7 @@ def slugify(value: str) -> str:
     """Convert a string to a URL-safe slug format.
 
     Converts spaces and special characters to underscores, removes consecutive
-    underscores, and lowercases the result. Used for generating batch filenames
+    underscores, and lowercases the result. Used for generating bundle filenames
     from school/board names.
 
     Parameters
@@ -328,6 +328,9 @@ def build_client_lookup(
 def discover_pdfs(output_dir: Path, language: str) -> List[Path]:
     """Discover all individual PDF files for a given language.
 
+    Discovers non-encrypted PDF files only. Encrypted PDFs (with _encrypted suffix)
+    are excluded from bundling since bundling operates on the original unencrypted PDFs.
+
     Parameters
     ----------
     output_dir : Path
@@ -338,13 +341,15 @@ def discover_pdfs(output_dir: Path, language: str) -> List[Path]:
     Returns
     -------
     List[Path]
-        Sorted list of PDF file paths matching the language, or empty list
+        Sorted list of non-encrypted PDF file paths matching the language, or empty list
         if pdf_individual directory doesn't exist.
     """
     pdf_dir = output_dir / "pdf_individual"
     if not pdf_dir.exists():
         return []
-    return sorted(pdf_dir.glob(f"{language}_notice_*.pdf"))
+    # Exclude encrypted PDFs (those with _encrypted suffix)
+    all_pdfs = pdf_dir.glob(f"{language}_notice_*.pdf")
+    return sorted([p for p in all_pdfs if not p.stem.endswith("_encrypted")])
 
 
 def build_pdf_records(
@@ -406,7 +411,7 @@ def ensure_ids(records: Sequence[PdfRecord], *, attr: str, log_path: Path) -> No
         sample = missing[0]
         raise ValueError(
             "Missing {attr} for client {client} (sequence {sequence});\n"
-            "Cannot batch without identifiers. See {log_path} for preprocessing warnings.".format(
+            "Cannot bundle without identifiers. See {log_path} for preprocessing warnings.".format(
                 attr=attr.replace("_", " "),
                 client=sample.client_id,
                 sequence=sample.sequence,
@@ -423,73 +428,73 @@ def group_records(records: Sequence[PdfRecord], key: str) -> Dict[str, List[PdfR
     return dict(sorted(grouped.items(), key=lambda item: item[0]))
 
 
-def plan_batches(
-    config: BatchConfig, records: List[PdfRecord], log_path: Path
-) -> List[BatchPlan]:
-    """Plan how to group PDFs into batches based on configuration.
+def plan_bundles(
+    config: BundleConfig, records: List[PdfRecord], log_path: Path
+) -> List[BundlePlan]:
+    """Plan how to group PDFs into bundles based on configuration.
 
     Parameters
     ----------
-    config : BatchConfig
-        Batching configuration including strategy and batch size
+    config : BundleConfig
+        Bundling configuration including strategy and bundle size
     records : List[PdfRecord]
-        List of PDF records to batch
+        List of PDF records to bundle
     log_path : Path
         Path to logging file
 
     Returns
     -------
-    List[BatchPlan]
-        List of batch plans
+    List[BundlePlan]
+        List of bundle plans
     """
-    if config.batch_size <= 0:
+    if config.bundle_size <= 0:
         return []
 
-    plans: List[BatchPlan] = []
+    plans: List[BundlePlan] = []
 
-    if config.batch_strategy == BatchStrategy.SCHOOL:
+    if config.bundle_strategy == BundleStrategy.SCHOOL:
         ensure_ids(records, attr="school", log_path=log_path)
         grouped = group_records(records, "school")
         for identifier, items in grouped.items():
-            total_batches = (len(items) + config.batch_size - 1) // config.batch_size
-            for index, chunk in enumerate(chunked(items, config.batch_size), start=1):
+            total_bundles = (len(items) + config.bundle_size - 1) // config.bundle_size
+            for index, chunk in enumerate(chunked(items, config.bundle_size), start=1):
                 plans.append(
-                    BatchPlan(
-                        batch_type=BatchType.SCHOOL_GROUPED,
-                        batch_identifier=identifier,
-                        batch_number=index,
-                        total_batches=total_batches,
+                    BundlePlan(
+                        bundle_type=BundleType.SCHOOL_GROUPED,
+                        bundle_identifier=identifier,
+                        bundle_number=index,
+                        total_bundles=total_bundles,
                         clients=chunk,
                     )
                 )
         return plans
 
-    if config.batch_strategy == BatchStrategy.BOARD:
+    if config.bundle_strategy == BundleStrategy.BOARD:
         ensure_ids(records, attr="board", log_path=log_path)
         grouped = group_records(records, "board")
         for identifier, items in grouped.items():
-            total_batches = (len(items) + config.batch_size - 1) // config.batch_size
-            for index, chunk in enumerate(chunked(items, config.batch_size), start=1):
+            total_bundles = (len(items) + config.bundle_size - 1) // config.bundle_size
+            for index, chunk in enumerate(chunked(items, config.bundle_size), start=1):
                 plans.append(
-                    BatchPlan(
-                        batch_type=BatchType.BOARD_GROUPED,
-                        batch_identifier=identifier,
-                        batch_number=index,
-                        total_batches=total_batches,
+                    BundlePlan(
+                        bundle_type=BundleType.BOARD_GROUPED,
+                        bundle_identifier=identifier,
+                        bundle_number=index,
+                        total_bundles=total_bundles,
                         clients=chunk,
                     )
                 )
         return plans
 
-    # Size-based batching (default)
-    total_batches = (len(records) + config.batch_size - 1) // config.batch_size
-    for index, chunk in enumerate(chunked(records, config.batch_size), start=1):
+    # Size-based bundling (default)
+    total_bundles = (len(records) + config.bundle_size - 1) // config.bundle_size
+    for index, chunk in enumerate(chunked(records, config.bundle_size), start=1):
         plans.append(
-            BatchPlan(
-                batch_type=BatchType.SIZE_BASED,
-                batch_identifier=None,
-                batch_number=index,
-                total_batches=total_batches,
+            BundlePlan(
+                bundle_type=BundleType.SIZE_BASED,
+                bundle_identifier=None,
+                bundle_number=index,
+                total_bundles=total_bundles,
                 clients=chunk,
             )
         )
@@ -531,23 +536,23 @@ def merge_pdf_files(pdf_paths: Sequence[Path], destination: Path) -> None:
         writer.write(output_stream)
 
 
-def write_batch(
-    config: BatchConfig,
-    plan: BatchPlan,
+def write_bundle(
+    config: BundleConfig,
+    plan: BundlePlan,
     *,
     combined_dir: Path,
     metadata_dir: Path,
     artifact_path: Path,
-) -> BatchResult:
-    # Generate filename based on batch type and identifiers
-    if plan.batch_type == BatchType.SCHOOL_GROUPED:
-        identifier_slug = slugify(plan.batch_identifier or "unknown")
-        name = f"{config.language}_school_{identifier_slug}_{plan.batch_number:03d}_of_{plan.total_batches:03d}"
-    elif plan.batch_type == BatchType.BOARD_GROUPED:
-        identifier_slug = slugify(plan.batch_identifier or "unknown")
-        name = f"{config.language}_board_{identifier_slug}_{plan.batch_number:03d}_of_{plan.total_batches:03d}"
+) -> BundleResult:
+    # Generate filename based on bundle type and identifiers
+    if plan.bundle_type == BundleType.SCHOOL_GROUPED:
+        identifier_slug = slugify(plan.bundle_identifier or "unknown")
+        name = f"{config.language}_school_{identifier_slug}_{plan.bundle_number:03d}_of_{plan.total_bundles:03d}"
+    elif plan.bundle_type == BundleType.BOARD_GROUPED:
+        identifier_slug = slugify(plan.bundle_identifier or "unknown")
+        name = f"{config.language}_board_{identifier_slug}_{plan.bundle_number:03d}_of_{plan.total_bundles:03d}"
     else:  # SIZE_BASED
-        name = f"{config.language}_batch_{plan.batch_number:03d}_of_{plan.total_batches:03d}"
+        name = f"{config.language}_bundle_{plan.bundle_number:03d}_of_{plan.total_bundles:03d}"
 
     output_pdf = combined_dir / f"{name}.pdf"
     manifest_path = metadata_dir / f"{name}_manifest.json"
@@ -560,11 +565,11 @@ def write_batch(
     manifest = {
         "run_id": config.run_id,
         "language": config.language,
-        "batch_type": plan.batch_type.value,
-        "batch_identifier": plan.batch_identifier,
-        "batch_number": plan.batch_number,
-        "total_batches": plan.total_batches,
-        "batch_size": config.batch_size,
+        "bundle_type": plan.bundle_type.value,
+        "bundle_identifier": plan.bundle_identifier,
+        "bundle_number": plan.bundle_number,
+        "total_bundles": plan.total_bundles,
+        "bundle_size": config.bundle_size,
         "total_clients": len(plan.clients),
         "total_pages": total_pages,
         "sha256": checksum,
@@ -594,14 +599,14 @@ def write_batch(
 
     manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
     LOG.info("Created %s (%s clients)", output_pdf.name, len(plan.clients))
-    return BatchResult(
-        pdf_path=output_pdf, manifest_path=manifest_path, batch_plan=plan
+    return BundleResult(
+        pdf_path=output_pdf, manifest_path=manifest_path, bundle_plan=plan
     )
 
 
-def batch_pdfs(config: BatchConfig) -> List[BatchResult]:
-    if config.batch_size <= 0:
-        LOG.info("Batch size <= 0; skipping batching step.")
+def bundle_pdfs(config: BundleConfig) -> List[BundleResult]:
+    if config.bundle_size <= 0:
+        LOG.info("Bundle size <= 0; skipping bundling step.")
         return []
 
     artifact_path = (
@@ -619,13 +624,13 @@ def batch_pdfs(config: BatchConfig) -> List[BatchResult]:
 
     records = build_pdf_records(config.output_dir, config.language, clients)
     if not records:
-        LOG.info("No PDFs found for language %s; nothing to batch.", config.language)
+        LOG.info("No PDFs found for language %s; nothing to bundle.", config.language)
         return []
 
     log_path = config.output_dir / "logs" / f"preprocess_{config.run_id}.log"
-    plans = plan_batches(config, records, log_path)
+    plans = plan_bundles(config, records, log_path)
     if not plans:
-        LOG.info("No batch plans produced; check batch size and filters.")
+        LOG.info("No bundle plans produced; check bundle size and filters.")
         return []
 
     combined_dir = config.output_dir / "pdf_combined"
@@ -633,10 +638,10 @@ def batch_pdfs(config: BatchConfig) -> List[BatchResult]:
     metadata_dir = config.output_dir / "metadata"
     metadata_dir.mkdir(parents=True, exist_ok=True)
 
-    results: List[BatchResult] = []
+    results: List[BundleResult] = []
     for plan in plans:
         results.append(
-            write_batch(
+            write_bundle(
                 config,
                 plan,
                 combined_dir=combined_dir,
@@ -645,7 +650,7 @@ def batch_pdfs(config: BatchConfig) -> List[BatchResult]:
             )
         )
 
-    LOG.info("Generated %d batch(es).", len(results))
+    LOG.info("Generated %d bundle(s).", len(results))
     return results
 
 
