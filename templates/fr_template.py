@@ -36,8 +36,8 @@ TEMPLATE_PREFIX = """// --- CCEYA NOTICE TEMPLATE (TEST VERSION) --- //
 #set par(justify: false)
 #set page("us-letter")
 
-// Formatting links 
-#show link: underline
+// Formatting links - prevent URLs from splitting across lines
+#show link: it => box(underline(it))
 
 // Font formatting
 #set text(
