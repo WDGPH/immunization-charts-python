@@ -76,8 +76,12 @@ Veuillez informer la Santé publique et votre centre de garde d'enfants chaque f
   columns: (1fr, auto),
   gutter: 10pt,
   [*Si vous choisissez de ne pas immuniser votre enfant*, une exemption médicale valide ou une déclaration de conscience ou de croyance religieuse doit être remplie et soumise à la Santé publique. Les liens vers ces formulaires se trouvent à #text(fill:conf.wdgteal)[#link("https://www.test-immunization.ca/exemptions")]. Veuillez noter que cette exemption est uniquement pour la garde d'enfants et qu'une nouvelle exemption sera requise lors de l'inscription à l'école primaire.],
-  [#if "qr_code" in client [
-    #image(client.qr_code, width: 2cm)
+  [#if "qr_img" in client [
+    #if "qr_url" in client [
+      #link(client.qr_url)[#image(client.qr_img, width: 3cm)]
+    ] else [
+      #image(client.qr_img, width: 3cm)
+    ]
   ]]
 )
 

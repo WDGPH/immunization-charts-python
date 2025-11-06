@@ -304,7 +304,16 @@ def build_template_context(
         qr_filename = f"qr_code_{client.sequence}_{client.client_id}.png"
         qr_path = qr_output_dir / qr_filename
         if qr_path.exists():
-            client_data["qr_code"] = to_root_relative(qr_path)
+            client_data["qr_img"] = to_root_relative(qr_path)
+
+            # Also include QR URL (payload) if available
+            if client.qr and client.qr.get("payload"):
+                client_data["qr_url"] = client.qr["payload"]
+
+    # If qr payload is present but no qr_output_dir, still include it
+    # (may occur if QR generation is disabled but qr payload exists in artifact)
+    if client.qr and client.qr.get("payload") and "qr_url" not in client_data:
+        client_data["qr_url"] = client.qr["payload"]
 
     # Load and translate chart disease header
     chart_diseases_translated = load_and_translate_chart_diseases(client.language)

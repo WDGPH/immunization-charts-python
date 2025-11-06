@@ -47,6 +47,7 @@ import json
 import logging
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+from urllib.parse import quote
 
 import yaml
 
@@ -73,6 +74,45 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(mess
 
 # Allowed template fields for QR payloads (from centralized enum)
 SUPPORTED_QR_TEMPLATE_FIELDS = TemplateField.all_values()
+
+
+def encode_qr_payload_url(payload_url: str) -> str:
+    """URL-encode parameter values in a QR payload URL.
+
+    This function preserves the URL structure (scheme, domain, path, parameter
+    delimiters) while properly encoding parameter values to handle special
+    characters like spaces, accents, and special symbols.
+
+    Parameters
+    ----------
+    payload_url : str
+        A URL string like "https://example.com/surveys/?s=ABC&qrfn=First Name&qrln=Last Name"
+
+    Returns
+    -------
+    str
+        The same URL with parameter values properly percent-encoded (e.g., spaces → %20)
+    """
+    # Split URL into scheme+domain+path and query string
+    if "?" not in payload_url:
+        return payload_url
+
+    base_url, query_string = payload_url.split("?", 1)
+
+    # Parse and re-encode each parameter
+    encoded_params = []
+    for param in query_string.split("&"):
+        if "=" in param:
+            key, value = param.split("=", 1)
+            # URL-encode the value (preserve unreserved characters)
+            encoded_value = quote(value, safe="")
+            encoded_params.append(f"{key}={encoded_value}")
+        else:
+            # No value, just preserve the key
+            encoded_params.append(param)
+
+    # Reconstruct the URL
+    return base_url + "?" + "&".join(encoded_params)
 
 
 def generate_qr_code(
@@ -271,6 +311,8 @@ def generate_qr_codes(
                 qr_context,
                 allowed_fields=SUPPORTED_QR_TEMPLATE_FIELDS,
             )
+            # Properly URL-encode the payload for QR code
+            qr_payload = encode_qr_payload_url(qr_payload)
         except (KeyError, ValueError) as exc:
             LOG.warning(
                 "Could not format QR payload for client %s: %s",
@@ -288,6 +330,19 @@ def generate_qr_codes(
                 filename=f"qr_code_{sequence}_{client_id}.png",
             )
             generated_files.append(qr_path)
+
+            # Store the QR payload in the client record
+            try:
+                rel_path = qr_path.relative_to(ROOT_DIR)
+            except ValueError:
+                # For testing: if path is not under ROOT_DIR, use as-is
+                rel_path = qr_path
+            client["qr"] = {
+                "payload": qr_payload,
+                "filename": f"qr_code_{sequence}_{client_id}.png",
+                "path": str(rel_path),
+            }
+
             LOG.info("Generated QR code for client %s: %s", client_id, qr_path)
         except RuntimeError as exc:
             LOG.warning(
@@ -295,6 +350,13 @@ def generate_qr_codes(
                 client_id,
                 exc,
             )
+
+    # Write updated artifact back to disk with qr fields
+    if generated_files:
+        artifact_path.write_text(
+            json.dumps(artifact, indent=2, ensure_ascii=False), encoding="utf-8"
+        )
+        LOG.info("Updated artifact with QR codes: %s", artifact_path)
 
     return generated_files
 

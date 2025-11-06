@@ -60,8 +60,8 @@ class ClientRecord:
         Custom pipeline metadata (warnings, flags, etc.).
     qr : Optional[Dict[str, Any]]
         QR code information (if generated):
-        - payload: QR code data string
-        - filename: PNG filename
+        - payload: URL encoded in QR code (same string that becomes QR PNG data)
+        - filename: PNG filename (e.g., "qr_code_00001_1234567890.png")
         - path: Relative path to PNG file
     """
 
