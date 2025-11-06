@@ -293,6 +293,7 @@ class TestBuildTemplateContext:
         assert "vaccines_due_array" in context
         assert "received" in context
         assert "num_rows" in context
+        assert "phu_data" in context
 
     def test_build_template_context_includes_client_id(self) -> None:
         """Verify client_id is in context.
@@ -371,6 +372,59 @@ class TestBuildTemplateContext:
             "date_data_cutoff:" in client_data_str
             or "date_data_cutoff" in client_data_str
         )
+
+    def test_build_template_context_map_file(self, tmp_test_dir: Path) -> None:
+        """Verify handling of map file.
+
+        Real-world significance:
+        - Map file must be present with expected values
+        - Must avoid missing or mixing up template values
+        """
+        # Test
+        map_path = tmp_test_dir / "map.json"
+        map_path.write_text("not valid json {{{")
+
+        client = sample_input.create_test_client_record(
+            school_name="Test School",
+        )
+
+        with pytest.raises(Exception):  # json.JSONDecodeError or similar
+            generate_notices.build_template_context(client, map_file=map_path)
+
+        # Missing "DEFAULT" in .json file
+        test_json = {"SCHOOL_1": {}}
+        json_string = json.dumps(test_json)
+        map_path.write_text(json_string)
+        with pytest.raises(Exception):  # json.JSONDecodeError or similar
+            generate_notices.build_template_context(client, map_file=map_path)
+
+        # Missing required keys in "DEFAULT"
+        required_keys = {"phu_number"}
+        test_json = {"DEFAULT": {}}
+        json_string = json.dumps(test_json)
+        map_path.write_text(json_string)
+        with pytest.raises(Exception):  # json.JSONDecodeError or similar
+            generate_notices.build_template_context(
+                client, map_file=map_path, required_keys=required_keys
+            )
+
+        # Check that finds school and substitutes provided value, and uses defaults for keys not provided for school
+        required_keys = {"phu_phone", "phu_email"}
+        test_json = {
+            "DEFAULT": {
+                "phu_phone": "555-555-5555 ext. 1234",
+                "phu_email": "mainpublichealth@rodenthealth.ca",
+            },
+            "TEST_SCHOOL": {"phu_phone": "555-555-5555 ext. 4321"},
+        }
+        json_string = json.dumps(test_json)
+        map_path.write_text(json_string)
+        context = generate_notices.build_template_context(
+            client, map_file=map_path, required_keys=required_keys
+        )
+        assert context["phu_data"]
+        assert context["phu_data"]["phu_email"] == "mainpublichealth@rodenthealth.ca"
+        assert context["phu_data"]["phu_phone"] == "555-555-5555 ext. 4321"
 
 
 @pytest.mark.unit
