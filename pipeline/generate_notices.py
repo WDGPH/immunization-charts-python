@@ -146,7 +146,7 @@ def get_language_renderer(language: Language, templates_package: str):
     # Try to import from the requested package first, then fall back to the
     # shared `templates` package if needed.
     try:
-        return _import_renderer('phu_templates', module_name)
+        return _import_renderer(templates_package, module_name)
     except Exception as exc:  # pragma: no cover - bubble up original import error
         raise ImportError(
             f"Could not import renderer for language {language.value} from {templates_package} or fallback templates: {exc}"

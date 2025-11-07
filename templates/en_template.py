@@ -49,11 +49,11 @@ TEMPLATE_PREFIX = """// --- CCEYA NOTICE TEMPLATE (TEST VERSION) --- //
 
 #v(0.2cm)
 
-#conf.header_info_cim("__LOGO_PATH__", black, 16pt, "Request for Immunization Record")
+#conf.header_info_cim("__LOGO_PATH__", 6cm, black, 16pt, "Request for Immunization Record")
 
 #v(0.2cm)
 
-#conf.client_info_tbl_en(equal_split: false, vline: false, client, client_id, font_size, "Childcare Centre")
+#conf.client_info_tbl_en(equal_split: false, vline: false, client, client_id, font_size, "Childcare Centre", 81pt)
 
 #v(0.3cm)
 
