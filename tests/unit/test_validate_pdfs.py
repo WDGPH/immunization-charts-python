@@ -769,3 +769,122 @@ class TestClientIdValidation:
 
         # Should have no warnings because all rules are disabled
         assert len(result.warnings) == 0
+
+
+@pytest.mark.unit
+class TestQRCodeValidation:
+    """Tests for QR code detection and validation functionality."""
+
+    def test_decode_qr_from_generated_image(self) -> None:
+        """Verify QR code can be decoded from a generated QR code image.
+
+        Real-world significance:
+        - Validates the QR decoding pipeline works with real QR codes
+        - Ensures OpenCV detector can handle typical QR code formats
+        - Confirms numpy/opencv integration functions correctly
+
+        Assertion: Generated QR code payload matches input string
+        """
+        import cv2
+        import numpy as np
+        import qrcode
+
+        # Generate a test QR code
+        payload = "https://example.com/test"
+        qr = qrcode.QRCode(version=1, box_size=10, border=4)
+        qr.add_data(payload)
+        qr.make(fit=True)
+
+        img = qr.make_image(fill_color="black", back_color="white")
+        pil_img = img.get_image() if hasattr(img, "get_image") else img
+
+        # Convert PIL to numpy array (RGB)
+        img_array = np.array(pil_img.convert("RGB"))
+
+        # Convert RGB to BGR for OpenCV
+        img_bgr = cv2.cvtColor(img_array, cv2.COLOR_RGB2BGR)
+
+        # Decode using our function
+        decoded = validate_pdfs.decode_qr_from_image(img_bgr)
+
+        assert decoded == payload
+
+    def test_extract_qr_codes_from_pdf_no_qr(self, tmp_path: Path) -> None:
+        """Verify QR extraction handles PDFs without QR codes gracefully.
+
+        Real-world significance:
+        - Some notices may not have QR codes (optional feature)
+        - Validation must not crash on QR-less PDFs
+        - Enables mixed batches with/without QR codes
+
+        Assertion: Empty list returned for PDF without QR codes
+        """
+        pdf_path = tmp_path / "test.pdf"
+        writer = PdfWriter()
+        writer.add_blank_page(width=612, height=792)
+        with open(pdf_path, "wb") as f:
+            writer.write(f)
+
+        qr_codes = validate_pdfs.extract_qr_codes_from_pdf(pdf_path)
+
+        assert qr_codes == []
+
+    def test_qr_matches_link_disabled(self, tmp_path: Path) -> None:
+        """Verify QR validation rule respects disabled configuration.
+
+        Real-world significance:
+        - Users can disable QR validation if not using QR codes
+        - Rule must not execute when disabled (performance)
+
+        Assertion: No QR validation warnings when rule is disabled
+        """
+        pdf_path = tmp_path / "test.pdf"
+        writer = PdfWriter()
+        writer.add_blank_page(width=612, height=792)
+        with open(pdf_path, "wb") as f:
+            writer.write(f)
+
+        result = validate_pdfs.validate_pdf_structure(
+            pdf_path,
+            enabled_rules={
+                "qr_matches_link": "disabled",
+                "exactly_two_pages": "disabled",
+            },
+        )
+
+        # Should have no warnings because all rules are disabled
+        assert len(result.warnings) == 0
+        # QR-related measurements should not be present
+        assert "qr_codes_found" not in result.measurements
+
+    def test_qr_matches_link_skipped_when_disabled_in_config(
+        self, tmp_path: Path
+    ) -> None:
+        """Verify QR validation skips when qr.enabled is false in config.
+
+        Real-world significance:
+        - When QR generation is disabled, QR validation should automatically skip
+        - Prevents false negatives when QR codes are not generated
+        - Allows enabling validation rule independently of generation
+
+        Assertion: No QR validation warnings when qr_enabled=False
+        """
+        pdf_path = tmp_path / "test.pdf"
+        writer = PdfWriter()
+        writer.add_blank_page(width=612, height=792)
+        with open(pdf_path, "wb") as f:
+            writer.write(f)
+
+        result = validate_pdfs.validate_pdf_structure(
+            pdf_path,
+            enabled_rules={
+                "qr_matches_link": "error",  # Rule is enabled
+                "exactly_two_pages": "disabled",
+            },
+            qr_enabled=False,  # But QR generation is disabled
+        )
+
+        # Should have no QR warnings because qr_enabled is False
+        assert len(result.warnings) == 0
+        # QR-related measurements should not be present
+        assert "qr_codes_found" not in result.measurements

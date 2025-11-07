@@ -46,7 +46,7 @@ Module: `pipeline/validate_pdfs.py`
 Key functions:
 - `extract_measurements_from_markers(page_text: str) -> dict[str, float]`
   - Parses all `MEASURE_...:<value>` markers from page text and returns a dict of measurements (in points).
-- `validate_pdf_layout(pdf_path, reader, enabled_rules) -> (warnings, measurements)`
+- `validate_pdf(pdf_path, reader, enabled_rules) -> (warnings, measurements)`
   - Uses `pypdf.PdfReader` to extract page text.
   - Locates `MARK_END_SIGNATURE_BLOCK` to determine `signature_page`.
   - Reads `MEASURE_CONTACT_HEIGHT` and converts to inches as `contact_height_inches`.
@@ -206,7 +206,7 @@ Validator side (already implemented)
    - For a position marker: insert a unique text token like `MARK_<SOMETHING>` at the desired location.
 2. In `validate_pdfs.py`:
   - Extend `extract_measurements_from_markers` if needed (it already parses any `MEASURE_...:<value>` tokens).
-  - Read the measurement or locate the marker in `validate_pdf_layout`.
+  - Read the measurement or locate the marker in `validate_pdf`.
   - Convert units as needed (use 72 points = 1 inch for inches).
   - Store the measurement using its natural Python type so downstream JSON preserves meaning (e.g., counts as `int`, dimensions as `float`, identifiers as `str`). The `ValidationResult.measurements` dict accepts `int | float | str`; adding other types should include a deliberate type hint update.
   - Add a warning message under the new rule key when conditions fail.

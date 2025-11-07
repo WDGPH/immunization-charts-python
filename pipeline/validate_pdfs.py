@@ -46,6 +46,8 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import List
 
+import cv2
+import numpy as np
 from pypdf import PdfReader
 
 from .config_loader import load_config
@@ -237,11 +239,161 @@ def extract_measurements_from_markers(page_text: str) -> dict[str, float]:
     return measurements
 
 
-def validate_pdf_layout(
+def extract_qr_image_from_pdf(reader: PdfReader) -> np.ndarray | None:
+    """Extract potential QR code images from PDF by identifying square image.
+
+    Parameters
+    ----------
+    reader : PdfReader
+        Opened PDF reader instance.
+
+    Returns
+    -------
+    np.ndarray | None
+        Grayscale image array if found, None otherwise.
+    """
+    from PIL import Image
+
+    for page in reader.pages:
+        if "/Resources" not in page or "/XObject" not in page["/Resources"]:
+            continue
+
+        xobjects = page["/Resources"]["/XObject"].get_object()
+
+        for obj_name in xobjects:
+            obj = xobjects[obj_name]
+
+            if obj.get("/Subtype") != "/Image":
+                continue
+
+            width = obj["/Width"]
+            height = obj["/Height"]
+
+            # QR codes are square (within 2% tolerance)
+            if abs(width - height) / width > 0.02:
+                continue
+
+            # QR codes are typically 200-800px
+            if not (200 <= width <= 800):
+                continue
+
+            try:
+                data = obj.get_data()
+                img = Image.frombytes("L", (width, height), data)
+                return np.array(img)
+            except ValueError:
+                # ICC-based color space, try as grayscale
+                try:
+                    img = Image.frombytes("L", (width, height), data)
+                    return np.array(img)
+                except Exception:
+                    continue
+
+    return None
+
+
+def decode_qr_from_image(img_array: np.ndarray) -> str | None:
+    """Decode QR code from image using OpenCV.
+
+    Parameters
+    ----------
+    img_array : np.ndarray
+        BGR or grayscale image array.
+
+    Returns
+    -------
+    str | None
+        Decoded QR payload, or None if no QR code found.
+    """
+    try:
+        detector = cv2.QRCodeDetector()
+        data, points, _ = detector.detectAndDecode(img_array)
+
+        if data and points is not None:
+            return data
+
+        return None
+
+    except Exception:
+        return None
+
+
+def extract_qr_codes_from_pdf(pdf_path: Path) -> List[str]:
+    """Extract and decode QR codes from PDF by locating square images.
+
+    Parameters
+    ----------
+    pdf_path : Path
+        Path to the PDF file.
+
+    Returns
+    -------
+    List[str]
+        List of decoded QR code payloads.
+    """
+    reader = PdfReader(str(pdf_path))
+
+    qr_img = extract_qr_image_from_pdf(reader)
+
+    if qr_img is not None:
+        qr_data = decode_qr_from_image(qr_img)
+        if qr_data:
+            return [qr_data]
+
+    return []
+
+
+def extract_link_annotations(reader: PdfReader) -> List[str]:
+    """Extract all hyperlink URLs from PDF annotations.
+
+    Parameters
+    ----------
+    reader : PdfReader
+        Opened PDF reader instance.
+
+    Returns
+    -------
+    List[str]
+        List of URLs found in link annotations.
+    """
+    urls = []
+
+    for page in reader.pages:
+        if "/Annots" in page:
+            annotations = page["/Annots"]
+
+            # Handle indirect references
+            if hasattr(annotations, "get_object"):
+                annotations = annotations.get_object()
+
+            for annot_ref in annotations:
+                annot = annot_ref.get_object()
+
+                # Check if this is a link annotation
+                if annot.get("/Subtype") == "/Link":
+                    # Get the action
+                    if "/A" in annot:
+                        action = annot["/A"].get_object()
+
+                        # URI action
+                        if action.get("/S") == "/URI" and "/URI" in action:
+                            uri = action["/URI"]
+                            if isinstance(uri, str):
+                                urls.append(uri)
+                            elif hasattr(uri, "get_object"):
+                                uri_obj = uri.get_object()
+                                if isinstance(uri_obj, str):
+                                    urls.append(uri_obj)
+
+    return urls
+
+
+def validate_pdf(
     pdf_path: Path,
     reader: PdfReader,
     enabled_rules: dict[str, str],
     client_id_map: dict[str, str] | None = None,
+    qr_enabled: bool = True,
 ) -> tuple[List[str], dict[str, float]]:
     """Check PDF for layout issues using invisible markers and metadata.
 
@@ -256,6 +408,10 @@ def validate_pdf_layout(
     client_id_map : dict[str, str], optional
         Mapping of PDF filename (without path) to expected client ID.
         If provided, client_id_presence validation uses this as source of truth.
+    qr_enabled : bool, optional
+        Whether QR code generation is enabled in the pipeline.
+        If False, qr_matches_link validation is skipped regardless of rule config.
+        Default: True
 
     Returns
     -------
@@ -343,6 +499,36 @@ def validate_pdf_layout(
             # If client ID check fails, skip silently (parsing error)
             pass
 
+    # Check QR code matches hyperlink URL
+    qr_rule = enabled_rules.get("qr_matches_link", "disabled")
+    if qr_rule != "disabled" and qr_enabled:
+        try:
+            qr_codes = extract_qr_codes_from_pdf(pdf_path)
+            link_urls = extract_link_annotations(reader)
+
+            measurements["qr_codes_found"] = len(qr_codes)
+            measurements["link_urls_found"] = len(link_urls)
+
+            if qr_codes:
+                measurements["qr_code_payload"] = qr_codes[0]
+            if link_urls:
+                measurements["link_url"] = link_urls[0]
+
+            # Validate: QR payload should match a link URL
+            if qr_codes and link_urls:
+                for qr_payload in qr_codes:
+                    if qr_payload not in link_urls:
+                        warnings.append(
+                            "qr_matches_link: QR payload does not match any link URL"
+                        )
+            elif qr_codes and not link_urls:
+                warnings.append(
+                    f"qr_matches_link: Found {len(qr_codes)} QR code(s) but no link URLs"
+                )
+
+        except Exception as e:
+            warnings.append(f"qr_matches_link: {str(e)}")
+
     return warnings, measurements
 
 
@@ -350,6 +536,7 @@ def validate_pdf_structure(
     pdf_path: Path,
     enabled_rules: dict[str, str] | None = None,
     client_id_map: dict[str, str] | None = None,
+    qr_enabled: bool = True,
 ) -> ValidationResult:
     """Validate a single PDF file for structure and layout.
 
@@ -361,6 +548,10 @@ def validate_pdf_structure(
         Validation rules configuration (rule_name -> "disabled"/"warn"/"error").
     client_id_map : dict[str, str], optional
         Mapping of PDF filename to expected client ID (from preprocessed_clients.json).
+    qr_enabled : bool, optional
+        Whether QR code generation is enabled in the pipeline.
+        If False, qr_matches_link validation is skipped regardless of rule config.
+        Default: True
 
     Returns
     -------
@@ -389,8 +580,12 @@ def validate_pdf_structure(
             warnings.append(f"exactly_two_pages: has {page_count} pages (expected 2)")
 
     # Validate layout using markers
-    layout_warnings, layout_measurements = validate_pdf_layout(
-        pdf_path, reader, enabled_rules, client_id_map=client_id_map
+    layout_warnings, layout_measurements = validate_pdf(
+        pdf_path,
+        reader,
+        enabled_rules,
+        client_id_map=client_id_map,
+        qr_enabled=qr_enabled,
     )
     warnings.extend(layout_warnings)
     measurements.update(layout_measurements)
@@ -449,6 +644,7 @@ def validate_pdfs(
     files: List[Path],
     enabled_rules: dict[str, str] | None = None,
     client_id_map: dict[str, str] | None = None,
+    qr_enabled: bool = True,
 ) -> ValidationSummary:
     """Validate all PDF files and generate summary.
 
@@ -460,6 +656,10 @@ def validate_pdfs(
         Validation rules configuration (rule_name -> "disabled"/"warn"/"error").
     client_id_map : dict[str, str], optional
         Mapping of PDF filename to expected client ID (from preprocessed_clients.json).
+    qr_enabled : bool, optional
+        Whether QR code generation is enabled in the pipeline.
+        If False, qr_matches_link validation is skipped regardless of rule config.
+        Default: True
 
     Returns
     -------
@@ -477,7 +677,10 @@ def validate_pdfs(
 
     for pdf_path in files:
         result = validate_pdf_structure(
-            pdf_path, enabled_rules=enabled_rules, client_id_map=client_id_map
+            pdf_path,
+            enabled_rules=enabled_rules,
+            client_id_map=client_id_map,
+            qr_enabled=qr_enabled,
         )
         results.append(result)
         page_count = int(result.measurements.get("page_count", 0))
@@ -510,6 +713,7 @@ def print_validation_summary(
     summary: ValidationSummary,
     *,
     validation_json_path: Path | None = None,
+    qr_enabled: bool = True,
 ) -> None:
     """Print human-readable validation summary to console.
 
@@ -519,6 +723,9 @@ def print_validation_summary(
         Validation summary to print.
     validation_json_path : Path, optional
         Path to validation JSON for reference in output.
+    qr_enabled : bool, optional
+        Whether QR code generation is enabled (for contextual messaging).
+        Default: True
     """
     # Per-rule summary (all rules, including disabled)
     print("Validation rules:")
@@ -529,6 +736,10 @@ def print_validation_summary(
         if rule.failed_count > 0:
             fail_label = "PDF" if rule.failed_count == 1 else "PDFs"
             count_str += f", ✗ {rule.failed_count} {fail_label} failed"
+
+        # Add context for QR validation when QR is disabled
+        if rule.rule_name == "qr_matches_link" and not qr_enabled:
+            count_str += " (skipped: QR generation disabled)"
 
         print(f"  {status_str}: {count_str}")
 
@@ -633,10 +844,18 @@ def main(
     if client_id_map is None:
         client_id_map = {}
 
+    # Load QR enabled flag from config
+    config_path = None if config_dir is None else config_dir / "parameters.yaml"
+    config = load_config(config_path)
+    qr_enabled = config.get("qr", {}).get("enabled", True)
+
     files = discover_pdfs(target)
     filtered = filter_by_language(files, language)
     summary = validate_pdfs(
-        filtered, enabled_rules=enabled_rules, client_id_map=client_id_map
+        filtered,
+        enabled_rules=enabled_rules,
+        client_id_map=client_id_map,
+        qr_enabled=qr_enabled,
     )
     summary.language = language
 
@@ -644,7 +863,9 @@ def main(
         write_validation_json(summary, json_output)
 
     # Always print summary
-    print_validation_summary(summary, validation_json_path=json_output)
+    print_validation_summary(
+        summary, validation_json_path=json_output, qr_enabled=qr_enabled
+    )
 
     # Check for error-level failures
     errors = check_for_errors(summary, enabled_rules)

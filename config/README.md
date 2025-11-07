@@ -280,21 +280,59 @@ This prevents silent failures from configuration typos and ensures templates are
 
 ## QR Code Configuration
 
-QR code generation can be enabled/disabled in `config/parameters.yaml` under the `qr` section. The payload supports flexible templating using client metadata as placeholders.
+QR code generation and validation is configured in `config/parameters.yaml` under the `qr` section. Payloads support flexible templating using client metadata as placeholders.
 
-Refer to the [Template Field Reference](#template-field-reference) for the complete list of supported placeholders.
+### QR Generation Settings
 
-Example override in `config/parameters.yaml`:
+**`qr.enabled`** (boolean):
+- When `true`: QR codes are generated during the notice generation step
+- When `false`: No QR codes are embedded in PDFs
+- Default: `true`
+
+**`qr.payload_template`** (string):
+- Template for QR code URL payload using placeholder fields
+- Refer to the [Template Field Reference](#template-field-reference) for all available fields
+- QR codes are square images (typically 570×570 pixels) embedded in the notice
+
+### QR Validation
+
+QR validation is controlled by the `qr_matches_link` rule under `pdf_validation.rules`:
+
+```yaml
+pdf_validation:
+  rules:
+    qr_matches_link: error  # or "warn" or "disabled"
+```
+
+**What it validates:**
+1. QR codes are successfully extracted from the compiled PDF (by identifying square images)
+2. QR codes are successfully decoded using OpenCV
+3. Decoded QR payload matches at least one PDF hyperlink URL (from `/Annots` objects)
+
+**Behavior:**
+- When enabled with severity `error`: Pipeline fails if QR validation fails on any PDF
+- When enabled with severity `warn`: Warnings are logged but pipeline continues
+- Measurements recorded in validation JSON: `qr_codes_found`, `qr_code_payload`, `link_urls_found`, `link_url`
+
+**Note:** QR validation can be enabled independently of QR generation. You can validate existing QR codes without re-generating them, or generate QR codes without validating them.
+
+### Example Configuration
 
 ```yaml
 qr:
   enabled: true
-  payload_template: https://www.test-immunization.ca/update?client_id={client_id}&dob={date_of_birth_iso}&lang={language_code}
+  payload_template: https://test-vaccine-portal.com?qrfn={first_name}&qrln={last_name}&qrdob={date_of_birth_iso}&qrsa={street_address}&qrct={city}&qrpc={postal_code}&qrid={client_id}
+
+pdf_validation:
+  rules:
+    qr_matches_link: error
 ```
 
-Tip:
-- Use `{date_of_birth_iso}` or `{date_of_birth_iso_compact}` for predictable date formats
-- The delivery date available to templates is `date_notice_delivery`
+**Tips:**
+- Use `{date_of_birth_iso}` (YYYY-MM-DD) or `{date_of_birth_iso_compact}` (YYYYMMDD) for predictable date formats
+- Use `{client_id}` for unique identification in tracking systems
+- Use `{language_code}` (`en` or `fr`) if the target system needs language-specific handling
+- All placeholders are validated at runtime; typos will raise clear error messages
 
 After updating the configuration, rerun the pipeline and regenerated notices will reflect the new QR payload.
 
@@ -310,18 +348,22 @@ Supported severity levels per rule:
 - `error`: fail the pipeline if any PDFs violate the rule
 
 Current rules:
-- `envelope_window_1_125`: Ensure contact area does not exceed 1.125" inches
 - `exactly_two_pages`: Ensure each notice has exactly 2 pages (notice + immunization record)
 - `signature_overflow`: Detect if the signature block spills onto page 2 (uses invisible Typst marker)
+- `envelope_window_1_125`: Ensure contact area does not exceed 1.125" inches (uses invisible measurement marker)
+- `client_id_presence`: Ensure the expected client ID appears somewhere in the PDF text (markerless text search)
+- `qr_matches_link`: Ensure embedded QR codes are valid and decoded payload matches a PDF hyperlink URL
 
 Example configuration:
 
 ```yaml
 pdf_validation:
   rules:
-    envelope_window_1_125: error
     exactly_two_pages: warn
-    signature_overflow: disabled
+    signature_overflow: warn
+    envelope_window_1_125: warn
+    client_id_presence: error
+    qr_matches_link: error
 ```
 
 Behavior:
@@ -329,7 +371,34 @@ Behavior:
 - A JSON report is written to `output/metadata/<lang>_validation_<run_id>.json` with per-PDF results and aggregates.
 - If any rule is set to `error` and fails, the pipeline stops with a clear error message listing failing rules and counts.
 - The validation logic is implemented in `pipeline/validate_pdfs.py` and invoked by the orchestrator.
-- The validation uses invisible markers embedded by the Typst templates to detect signature placement without affecting appearance.
+- Rules using invisible markers (signature_overflow, envelope_window_1_125) are embedded by the Typst templates without affecting appearance.
+- Rules using markerless text search (client_id_presence) scan extracted PDF text; no template changes needed.
+- QR validation (qr_matches_link) extracts and decodes QR images using OpenCV, then validates against PDF hyperlinks.
+
+### Rule Details
+
+**exactly_two_pages**
+- Checks: `page_count == 2`
+- Typical: Use `warn` or `error` (most notices should have exactly 2 pages)
+
+**signature_overflow**
+- Checks: Signature block ends on page 1 (uses `MARK_END_SIGNATURE_BLOCK` invisible marker)
+- Typical: Use `warn` or `error`
+
+**envelope_window_1_125**
+- Checks: Contact table height ≤ 1.125 inches (uses `MEASURE_CONTACT_HEIGHT` invisible marker)
+- Typical: Use `warn` or `error` (critical for Canada Post envelope windows)
+
+**client_id_presence**
+- Checks: Expected client ID found in extracted PDF text (markerless regex search for 10 digits)
+- Source of truth: `preprocessed_clients_<run_id>.json` artifact
+- Typical: Use `error` to catch notice generation bugs early
+
+**qr_matches_link**
+- Checks: Embedded QR code is valid and decoded payload matches at least one PDF hyperlink URL
+- Source: QR extracted from square image (570×570px typical), hyperlinks from `/Annots` objects
+- Typical: Use `error` if QR codes are required in notices
+- Note: Requires `qr.enabled: true` to populate the QR codes; validation can still be enabled independently
 
 ---
 

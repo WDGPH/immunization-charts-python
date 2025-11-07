@@ -32,6 +32,7 @@ pdf_validation:
     client_id_presence: error
     envelope_window_1_125: warn
     exactly_two_pages: warn
+    qr_matches_link: error
     signature_overflow: warn
 pipeline:
   after_run:
@@ -41,7 +42,7 @@ pipeline:
     clear_output_directory: true
 qr:
   enabled: false
-  payload_template: https://www.test-immunization.ca/update?client_id={client_id}&dob={date_of_birth_iso}&lang={language_code}
+  payload_template: https://www.test-immunization.ca/update?qrfn={first_name}&qrln={last_name}&qrdob={date_of_birth_iso}&qrsa={street_address}&qrct={city}&qrpc={postal_code}&qrid={client_id}
 typst:
   bin: typst
   font_path: /usr/share/fonts/truetype/freefont/
