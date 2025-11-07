@@ -255,10 +255,10 @@ def extract_qr_image_from_pdf(reader: PdfReader) -> np.ndarray | None:
     from PIL import Image
 
     for page in reader.pages:
-        if "/Resources" not in page or "/XObject" not in page["/Resources"]:
+        if "/Resources" not in page or "/XObject" not in page["/Resources"]:  # type: ignore[operator]
             continue
 
-        xobjects = page["/Resources"]["/XObject"].get_object()
+        xobjects = page["/Resources"]["/XObject"].get_object()  # type: ignore[index]
 
         for obj_name in xobjects:
             obj = xobjects[obj_name]
@@ -366,7 +366,7 @@ def extract_link_annotations(reader: PdfReader) -> List[str]:
             if hasattr(annotations, "get_object"):
                 annotations = annotations.get_object()
 
-            for annot_ref in annotations:
+            for annot_ref in annotations:  # type: ignore[union-attr]
                 annot = annot_ref.get_object()
 
                 # Check if this is a link annotation
