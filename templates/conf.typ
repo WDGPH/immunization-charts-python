@@ -30,7 +30,8 @@
   client_data,
   client_id,
   font_size,
-  school_type
+  school_type,
+  envelope_window_height
 ) = {
   // Define column widths based on equal_split
   let columns = if equal_split {
@@ -60,7 +61,7 @@
   let table_content = align(center)[
     #table(
       columns: columns,
-      rows: (81pt),
+      rows: (envelope_window_height),
       inset: font_size,
       col1_content,
       table.vline(stroke: vline_stroke),
@@ -88,7 +89,8 @@
   client_data,
   client_id,
   font_size,
-  school_type
+  school_type,
+  envelope_window_height
 ) = {
   // Define column widths based on equal_split
   let columns = if equal_split {
@@ -118,7 +120,7 @@
   let table_content = align(center)[
     #table(
       columns: columns,
-      rows: (81pt),
+      rows: (envelope_window_height),
       inset: font_size,
       col1_content,
       table.vline(stroke: vline_stroke),
