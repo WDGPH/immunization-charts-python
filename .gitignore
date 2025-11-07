@@ -13,3 +13,5 @@ dist/
 htmlcov/
 coverage.xml
 coverage.json
+templates/*.py
+templates/assets/*
