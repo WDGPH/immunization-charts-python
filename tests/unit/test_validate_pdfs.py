@@ -888,3 +888,63 @@ class TestQRCodeValidation:
         assert len(result.warnings) == 0
         # QR-related measurements should not be present
         assert "qr_codes_found" not in result.measurements
+
+    def test_qr_payload_mismatch_warning(self, tmp_path: Path) -> None:
+        """Verify validation detects when QR payload doesn't match any link URL.
+
+        Real-world significance:
+        - QR codes should match at least one PDF hyperlink
+        - Mismatches indicate generation errors or configuration problems
+        - This is the core validation rule: ensure QR content is correct
+
+        Assertion: Warning generated when QR payload is not in link URLs list
+        """
+        from unittest.mock import patch
+
+        # Create a simple blank PDF
+        pdf_path = tmp_path / "test.pdf"
+        writer = PdfWriter()
+        writer.add_blank_page(width=612, height=792)
+        with open(pdf_path, "wb") as f:
+            writer.write(f)
+
+        # Mock extract_qr_codes_from_pdf to return a QR payload
+        qr_payload = "https://survey.example.com/qr123"
+
+        # Mock extract_link_annotations to return different URLs
+        link_urls = [
+            "https://www.example.com/info",
+            "https://survey.example.com/different-qr",
+        ]
+
+        with patch.object(
+            validate_pdfs, "extract_qr_codes_from_pdf", return_value=[qr_payload]
+        ), patch.object(
+            validate_pdfs, "extract_link_annotations", return_value=link_urls
+        ):
+            # Run validation with qr_enabled=True
+            result = validate_pdfs.validate_pdf_structure(
+                pdf_path,
+                enabled_rules={
+                    "qr_matches_link": "warn",
+                    "exactly_two_pages": "disabled",
+                },
+                qr_enabled=True,
+            )
+
+            # Verify measurements are recorded
+            assert result.measurements["qr_codes_found"] == 1
+            assert result.measurements["link_urls_found"] == 2
+            assert result.measurements["qr_code_payload"] == qr_payload
+            assert result.measurements["link_url"] == link_urls[0]
+
+            # Most importantly: verify warning is generated for mismatch
+            assert len(result.warnings) == 1
+            assert "qr_matches_link" in result.warnings[0]
+            assert "does not match any link URL" in result.warnings[0]
+
+            # Verify validation failed due to mismatch
+            assert result.passed is False
+
+
+
