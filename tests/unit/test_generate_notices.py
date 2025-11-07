@@ -433,10 +433,10 @@ class TestLanguageSupport:
         - Both language renderers must be present
         """
         english_renderer = generate_notices.get_language_renderer(
-            generate_notices.Language.ENGLISH
+            generate_notices.Language.ENGLISH, templates_package="templates"
         )
         french_renderer = generate_notices.get_language_renderer(
-            generate_notices.Language.FRENCH
+            generate_notices.Language.FRENCH, templates_package="templates"
         )
         assert callable(english_renderer)
         assert callable(french_renderer)
@@ -445,13 +445,12 @@ class TestLanguageSupport:
         """Verify English notice can be rendered.
 
         Real-world significance:
-        - English-language notices are primary for Ontario PHUs
         - Must render without errors
         """
         # Just verify the language renderer is callable
         # (actual rendering requires full Typst setup)
         english_renderer = generate_notices.get_language_renderer(
-            generate_notices.Language.ENGLISH
+            generate_notices.Language.ENGLISH, templates_package="templates"
         )
         assert english_renderer is not None
 
@@ -459,11 +458,10 @@ class TestLanguageSupport:
         """Verify French notice can be rendered.
 
         Real-world significance:
-        - Quebec and Francophone deployments need French
         - Must render without errors for fr language code
         """
         # Just verify the language renderer is callable
         french_renderer = generate_notices.get_language_renderer(
-            generate_notices.Language.FRENCH
+            generate_notices.Language.FRENCH, templates_package="templates"
         )
         assert french_renderer is not None

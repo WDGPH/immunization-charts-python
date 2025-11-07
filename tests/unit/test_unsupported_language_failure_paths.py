@@ -123,11 +123,11 @@ class TestUnsupportedLanguageDetection:
 
         # Verify renderer dispatch works for valid languages
         en = Language.from_string("en")
-        en_renderer = generate_notices.get_language_renderer(en)
+    en_renderer = generate_notices.get_language_renderer(en, templates_package="templates")
         assert callable(en_renderer)
 
         fr = Language.from_string("fr")
-        fr_renderer = generate_notices.get_language_renderer(fr)
+    fr_renderer = generate_notices.get_language_renderer(fr, templates_package="templates")
         assert callable(fr_renderer)
 
     def test_valid_languages_pass_all_checks(self) -> None:
@@ -140,13 +140,13 @@ class TestUnsupportedLanguageDetection:
         # English
         en_lang = Language.from_string("en")
         assert en_lang == Language.ENGLISH
-        en_renderer = generate_notices.get_language_renderer(en_lang)
+    en_renderer = generate_notices.get_language_renderer(en_lang, templates_package="templates")
         assert callable(en_renderer)
 
         # French
         fr_lang = Language.from_string("fr")
         assert fr_lang == Language.FRENCH
-        fr_renderer = generate_notices.get_language_renderer(fr_lang)
+    fr_renderer = generate_notices.get_language_renderer(fr_lang, templates_package="templates")
         assert callable(fr_renderer)
 
     def test_language_all_codes_returns_supported_languages(self) -> None:
@@ -248,5 +248,5 @@ class TestLanguageFailurePathDocumentation:
 
         # Verify renderer dispatch works as documented
         en = Language.from_string("en")
-        en_renderer = generate_notices.get_language_renderer(en)
+    en_renderer = generate_notices.get_language_renderer(en, templates_package="templates")
         assert callable(en_renderer)
