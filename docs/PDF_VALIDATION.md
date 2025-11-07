@@ -205,12 +205,13 @@ Validator side (already implemented)
    - For a numeric metric: output `MEASURE_<NAME>:<points>` (points are recommended for consistency).
    - For a position marker: insert a unique text token like `MARK_<SOMETHING>` at the desired location.
 2. In `validate_pdfs.py`:
-   - Extend `extract_measurements_from_markers` if needed (it already parses any `MEASURE_...:<value>` tokens).
-   - Read the measurement or locate the marker in `validate_pdf_layout`.
-   - Convert units as needed (use 72 points = 1 inch for inches).
-   - Add a warning message under the new rule key when conditions fail.
+  - Extend `extract_measurements_from_markers` if needed (it already parses any `MEASURE_...:<value>` tokens).
+  - Read the measurement or locate the marker in `validate_pdf_layout`.
+  - Convert units as needed (use 72 points = 1 inch for inches).
+  - Store the measurement using its natural Python type so downstream JSON preserves meaning (e.g., counts as `int`, dimensions as `float`, identifiers as `str`). The `ValidationResult.measurements` dict accepts `int | float | str`; adding other types should include a deliberate type hint update.
+  - Add a warning message under the new rule key when conditions fail.
 3. Add the rule to `config/parameters.yaml` under `pdf_validation.rules` with `disabled|warn|error`.
-4. Add tests validating both the pass and fail paths and ensure the measurement is surfaced in `measurements`.
+4. Add tests validating both the pass and fail paths, checking that `measurements` includes the new key with the expected value and type.
 
 ## Troubleshooting
 
