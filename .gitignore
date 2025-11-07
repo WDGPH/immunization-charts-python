@@ -13,3 +13,4 @@ dist/
 htmlcov/
 coverage.xml
 coverage.json
+phu_templates/*
