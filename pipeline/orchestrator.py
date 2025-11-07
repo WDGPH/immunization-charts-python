@@ -56,7 +56,8 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 ROOT_DIR = SCRIPT_DIR.parent
 DEFAULT_INPUT_DIR = ROOT_DIR / "input"
 DEFAULT_OUTPUT_DIR = ROOT_DIR / "output"
-DEFAULT_TEMPLATES_ASSETS_DIR = ROOT_DIR / "templates" / "assets"
+PHU_TEMPLATES_ASSETS_DIR = ROOT_DIR / "phu_templates" / "assets"
+DEFAULT_TEST_TEMPLATES_ASSETS_DIR = ROOT_DIR / "templates" / "assets"
 DEFAULT_CONFIG_DIR = ROOT_DIR / "config"
 
 
@@ -100,6 +101,23 @@ Examples:
         default=DEFAULT_CONFIG_DIR,
         help=f"Config directory (default: {DEFAULT_CONFIG_DIR})",
     )
+    # Test mode is enabled by default. Use --no-test-mode to disable.
+    parser.add_argument(
+        "--test-mode",
+        dest="test_mode",
+        action="store_true",
+        help=(
+            "Enable test mode with verbose logging and additional checks. "
+            "(Default: enabled)"
+        ),
+    )
+    parser.add_argument(
+        "--no-test-mode",
+        dest="test_mode",
+        action="store_false",
+        help="Disable test mode and use production templates/assets.",
+    )
+    parser.set_defaults(test_mode=True)
 
     return parser.parse_args()
 
@@ -250,6 +268,7 @@ def run_step_4_generate_notices(
     run_id: str,
     assets_dir: Path,
     config_dir: Path,
+    templates_package,
 ) -> None:
     """Step 4: Generating Typst templates."""
     print_step(4, "Generating Typst templates")
@@ -265,6 +284,7 @@ def run_step_4_generate_notices(
         artifacts_dir,
         logo_path,
         signature_path,
+        templates_package=templates_package,
     )
     print(f"Generated {len(generated)} Typst files in {artifacts_dir}")
 
@@ -466,6 +486,18 @@ def main() -> int:
 
     print_header(args.input_file)
 
+    # Choose templates/assets directory based on test mode setting.
+    # Test mode is enabled by default and uses the shared `templates/assets` directory.
+    # Production mode (when --no-test-mode) uses PHU-specific templates in `phu_templates/assets`.
+    assets_dir = (
+        DEFAULT_TEST_TEMPLATES_ASSETS_DIR if getattr(args, "test_mode", True) else PHU_TEMPLATES_ASSETS_DIR
+    )
+    print(f"Using templates/assets directory: {assets_dir}")
+    # Map test_mode to templates package name used by generate_notices
+    templates_pkg = "templates" if getattr(args, "test_mode", True) else "phu_templates"
+    print(templates_pkg)
+    print(getattr(args, "test_mode", True) and "Test mode enabled." or "Test mode disabled.")
+
     total_start = time.time()
     step_times = []
     total_clients = 0
@@ -511,8 +543,9 @@ def main() -> int:
         run_step_4_generate_notices(
             output_dir,
             run_id,
-            DEFAULT_TEMPLATES_ASSETS_DIR,
+            assets_dir,
             config_dir,
+            templates_package=templates_pkg,
         )
         step_duration = time.time() - step_start
         step_times.append(("Template Generation", step_duration))

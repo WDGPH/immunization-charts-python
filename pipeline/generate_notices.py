@@ -54,8 +54,10 @@ from .preprocess import format_iso_date_for_language
 from .translation_helpers import display_label
 from .utils import deserialize_client_record
 
-from templates.en_template import render_notice as render_notice_en
-from templates.fr_template import render_notice as render_notice_fr
+#from phu_templates.fr_template import render_notice as render_notice_phu_fr
+#from phu_templates.en_template_row import render_notice as render_notice_phu_en
+import importlib
+# importlib_util intentionally not needed here
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 ROOT_DIR = SCRIPT_DIR.parent
@@ -65,13 +67,45 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(mess
 
 
 # Build renderer dict from Language enum
-_LANGUAGE_RENDERERS = {
-    Language.ENGLISH.value: render_notice_en,
-    Language.FRENCH.value: render_notice_fr,
+# NOTE: Templates are imported dynamically at runtime so callers can choose
+# which template package to use (shared `templates` for test mode, or
+# `phu_templates` for production PHU-specific templates). This avoids
+# hard imports at module import time which would require both packages to
+# be present.
+
+TEMPLATE_MODULE_MAP = {
+    # shared test templates package
+    "templates": {
+        Language.ENGLISH.value: "en_template",
+        Language.FRENCH.value: "fr_template",
+    },
+    # PHU-specific templates package (production)
+    "phu_templates": {
+        # PHU repo uses a different module name for English templates
+        Language.ENGLISH.value: "en_template_row",
+        # If a PHU-specific French template exists name it here, otherwise
+        # the code will fall back to the shared `templates` package.
+        Language.FRENCH.value: "fr_template",
+    },
 }
 
 
-def get_language_renderer(language: Language):
+def _import_renderer(module_base: str, module_name: str):
+    """Import a renderer function from a module if available.
+
+    Returns the `render_notice` callable from the resolved module.
+    Raises ImportError if the module cannot be imported or does not expose
+    `render_notice`.
+    """
+    full_name = f"{module_base}.{module_name}"
+    mod = importlib.import_module(full_name)
+    print(mod)
+    if not hasattr(mod, "render_notice"):
+        raise ImportError(f"Module {full_name} does not provide `render_notice`")
+    return getattr(mod, "render_notice")
+
+
+def get_language_renderer(language: Language, templates_package: str):
     """Get template renderer for given language.
 
     Maps Language enum values to their corresponding template rendering functions.
@@ -96,9 +130,27 @@ def get_language_renderer(language: Language):
     >>> renderer = get_language_renderer(Language.ENGLISH)
     >>> # renderer is now render_notice_en function
     """
-    # Language is already validated upstream (CLI choices + Language.from_string())
-    # Direct lookup; safe because only valid Language enums reach this function
-    return _LANGUAGE_RENDERERS[language.value]
+    # Attempt to import the renderer from the requested templates package.
+    # Resolve module name by package-specific map, falling back to the shared
+    # `templates` mapping if the requested package doesn't provide an entry.
+    pkg_map = TEMPLATE_MODULE_MAP.get(templates_package)
+    if pkg_map and language.value in pkg_map:
+        module_name = pkg_map[language.value]
+    else:
+        # fallback to shared templates mapping
+        module_name = TEMPLATE_MODULE_MAP["templates"].get(language.value)
+
+    if not module_name:
+        raise KeyError(f"Unsupported language for templates: {language}")
+
+    # Try to import from the requested package first, then fall back to the
+    # shared `templates` package if needed.
+    try:
+        return _import_renderer('phu_templates', module_name)
+    except Exception as exc:  # pragma: no cover - bubble up original import error
+        raise ImportError(
+            f"Could not import renderer for language {language.value} from {templates_package} or fallback templates: {exc}"
+        ) from exc
 
 
 def read_artifact(path: Path) -> ArtifactPayload:
@@ -402,9 +454,10 @@ def render_notice(
     logo: Path,
     signature: Path,
     qr_output_dir: Path | None = None,
+    templates_package: str = "templates",
 ) -> str:
     language = Language.from_string(client.language)
-    renderer = get_language_renderer(language)
+    renderer = get_language_renderer(language, templates_package)
     context = build_template_context(client, qr_output_dir)
     return renderer(
         context,
@@ -418,6 +471,7 @@ def generate_typst_files(
     output_dir: Path,
     logo_path: Path,
     signature_path: Path,
+    templates_package: str = "templates",
 ) -> List[Path]:
     output_dir.mkdir(parents=True, exist_ok=True)
     qr_output_dir = output_dir / "qr_codes"
@@ -436,6 +490,7 @@ def generate_typst_files(
             logo=logo_path,
             signature=signature_path,
             qr_output_dir=qr_output_dir,
+            templates_package=templates_package,
         )
         filename = f"{language}_notice_{client.sequence}_{client.client_id}.typ"
         file_path = typst_output_dir / filename
@@ -450,6 +505,7 @@ def main(
     output_dir: Path,
     logo_path: Path,
     signature_path: Path,
+    templates_package: str = "templates",
 ) -> List[Path]:
     """Main entry point for Typst notice generation.
 
@@ -475,6 +531,7 @@ def main(
         output_dir,
         logo_path,
         signature_path,
+        templates_package=templates_package,
     )
     print(
         f"Generated {len(generated)} Typst files in {output_dir} for language {payload.language}"

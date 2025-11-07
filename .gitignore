@@ -13,4 +13,7 @@ dist/
 htmlcov/
 coverage.xml
 coverage.json
-phu_templates/*
+phu_templates/* __pycache__/
+phu_templates/**/*.pyc
+phu_templates/*template*
+phu_templates/assets/
