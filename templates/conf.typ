@@ -28,7 +28,8 @@
   vline: true, 
   client_data,
   client_id,
-  font_size
+  font_size,
+  school_type
 ) = {
   // Define column widths based on equal_split
   let columns = if equal_split {
@@ -43,16 +44,15 @@
   let col1_content = align(left)[
     To Parent/Guardian of: #linebreak()
     *#client_data.name* #linebreak()
-    #v(0.02cm)
     *#client_data.address* #linebreak()
     *#client_data.city*, *Ontario* *#client_data.postal_code*
   ]
 
   // Content for the second column
   let col2_content = align(left)[
-    Client ID: #smallcaps[*#client_id.at(0)*] #v(0.02cm)
-    Date of Birth: *#client_data.date_of_birth* #v(0.02cm)
-    Childcare Centre: #smallcaps[*#client_data.school*]
+    Client ID: #smallcaps[*#client_id.at(0)*] #linebreak()
+    Date of Birth: *#client_data.date_of_birth* #linebreak()
+    #school_type: #smallcaps[*#client_data.school*]
   ]
 
   // Build the table content
@@ -86,7 +86,8 @@
   vline: true, 
   client_data,
   client_id,
-  font_size
+  font_size,
+  school_type
 ) = {
   // Define column widths based on equal_split
   let columns = if equal_split {
@@ -109,7 +110,7 @@
   let col2_content = align(left)[
     Identifiant du client: #smallcaps[*#client_id.at(0)*] #linebreak()
     Date de naissance: *#client_data.date_of_birth* #linebreak()
-    École: #smallcaps[*#client_data.school*]
+    #school_type: #smallcaps[*#client_data.school*]
   ]
 
   // Build the table content
