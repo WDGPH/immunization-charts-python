@@ -372,6 +372,54 @@ class TestBuildTemplateContext:
             or "date_data_cutoff" in client_data_str
         )
 
+    def test_build_template_context_includes_qr_url_when_present(self) -> None:
+        """Test that qr_url is included in template context when qr.payload present.
+
+        Real-world significance:
+        - Templates need qr_url to make QR codes clickable
+        - qr.payload field is set by generate_qr_codes step and read from artifact
+        - Must be passed through to Typst template rendering
+        """
+        # Create client with qr.payload already set (as would come from artifact)
+        client_base = sample_input.create_test_client_record()
+        # Use dataclass replace to create new instance with qr dict
+        from dataclasses import replace
+
+        client = replace(
+            client_base,
+            qr={
+                "payload": "https://survey.example.com/update?client_id=C001",
+                "filename": "qr_code_00001_C001.png",
+                "path": "/output/artifacts/qr_codes/qr_code_00001_C001.png",
+            },
+        )
+
+        context = generate_notices.build_template_context(client)
+
+        # client_data dict should contain qr_url key
+        assert "client_data" in context
+        client_data_str = context["client_data"]
+        assert "qr_url:" in client_data_str
+        assert "https://survey.example.com/update?client_id=C001" in client_data_str
+
+    def test_build_template_context_omits_qr_url_when_absent(self) -> None:
+        """Test that missing qr.payload doesn't break template generation.
+
+        Real-world significance:
+        - Defensive: if qr.payload not present, template should still work
+        - Graceful fallback if QR generation was skipped
+        """
+        client = sample_input.create_test_client_record()
+        # qr defaults to None in constructor
+
+        context = generate_notices.build_template_context(client)
+
+        # Should generate context without error
+        assert "client_data" in context
+        # qr_url should not be in client_data
+        client_data_str = context["client_data"]
+        assert "qr_url:" not in client_data_str
+
 
 @pytest.mark.unit
 class TestLanguageSupport:
