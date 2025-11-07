@@ -234,7 +234,7 @@ class TestValidatePdfStructure:
 
         result = validate_pdfs.validate_pdf_structure(pdf_path, enabled_rules={})
         assert result.filename == "test.pdf"
-        assert result.measurements["page_count"] == 2.0
+        assert result.measurements["page_count"] == 2
         assert result.passed is True
         assert len(result.warnings) == 0
 
@@ -269,7 +269,7 @@ class TestValidatePdfStructure:
             pdf_path,
             enabled_rules={"exactly_two_pages": "warn"},
         )
-        assert result.measurements["page_count"] == 3.0
+        assert result.measurements["page_count"] == 3
         assert result.passed is False
         assert len(result.warnings) == 1
         assert "exactly_two_pages" in result.warnings[0]
@@ -305,7 +305,7 @@ class TestValidatePdfStructure:
             pdf_path,
             enabled_rules={"exactly_two_pages": "disabled"},
         )
-        assert result.measurements["page_count"] == 3.0
+        assert result.measurements["page_count"] == 3
         assert result.passed  # No warning because rule is disabled
         assert not result.warnings
 
@@ -400,13 +400,13 @@ class TestWriteValidationJson:
                     filename="test1.pdf",
                     warnings=[],
                     passed=True,
-                    measurements={"page_count": 2.0},
+                    measurements={"page_count": 2},
                 ),
                 validate_pdfs.ValidationResult(
                     filename="test2.pdf",
                     warnings=["exactly_two_pages: has 3 pages (expected 2)"],
                     passed=False,
-                    measurements={"page_count": 3.0},
+                    measurements={"page_count": 3},
                 ),
             ],
         )
@@ -600,7 +600,8 @@ class TestRuleResultsAndMeasurements:
         # Should have measurements including page_count
         assert result.measurements is not None
         assert "page_count" in result.measurements
-        assert result.measurements["page_count"] == 2.0
+        assert type(result.measurements["page_count"]) == int
+        assert result.measurements["page_count"] == 2
 
     def test_rule_results_include_all_rules(self, tmp_path: Path) -> None:
         """Verify ValidationSummary includes results for all configured rules.

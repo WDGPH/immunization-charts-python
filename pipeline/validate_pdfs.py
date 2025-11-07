@@ -63,14 +63,19 @@ class ValidationResult:
         List of validation warnings (layout issues, unexpected page counts, etc.)
     passed : bool
         True if no warnings, False otherwise
-    measurements : dict[str, float]
-        Actual measurements extracted from PDF (e.g., page_count, contact_height_inches, signature_page)
+    measurements : dict[str, int | float | str]
+        Actual measurements extracted from PDF with proper types:
+        - page_count (int): Number of pages
+        - signature_page (int): Page where signature block ends
+        - contact_height_inches (float): Contact table height in inches
+        - client_id_found_page (int): Page where client ID was found
+        - client_id_found_value (str): The actual client ID found
     """
 
     filename: str
     warnings: List[str]
     passed: bool
-    measurements: dict[str, float]
+    measurements: dict[str, int | float | str]
 
 
 @dataclass
@@ -268,7 +273,7 @@ def validate_pdf_layout(
             try:
                 page_text = page.extract_text()
                 if "MARK_END_SIGNATURE_BLOCK" in page_text:
-                    measurements["signature_page"] = float(page_num)
+                    measurements["signature_page"] = page_num
                     if page_num != 1:
                         warnings.append(
                             f"signature_overflow: Signature block ends on page {page_num} "
@@ -319,7 +324,7 @@ def validate_pdf_layout(
                     found_id = find_client_id_in_text(page_text)
                     if found_id:
                         found_client_id = found_id
-                        measurements["client_id_found_page"] = float(page_num)
+                        measurements["client_id_found_page"] = page_num
                         break
 
                 # Warn if ID not found or doesn't match
@@ -333,7 +338,7 @@ def validate_pdf_layout(
                     )
                 else:
                     # Store the found ID for debugging
-                    measurements["client_id_found_value"] = float(int(found_client_id))
+                    measurements["client_id_found_value"] = found_client_id
         except Exception:
             # If client ID check fails, skip silently (parsing error)
             pass
@@ -375,7 +380,7 @@ def validate_pdf_structure(
     # Read PDF and count pages
     reader = PdfReader(str(pdf_path))
     page_count = len(reader.pages)
-    measurements["page_count"] = float(page_count)
+    measurements["page_count"] = page_count
 
     # Check for exactly 2 pages (standard notice format)
     rule_setting = enabled_rules.get("exactly_two_pages", "warn")
