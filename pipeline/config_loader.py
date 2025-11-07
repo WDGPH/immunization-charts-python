@@ -150,6 +150,7 @@ def validate_config(config: Dict[str, Any]) -> None:
     - All error messages are clear and actionable
     - Config is validated once at load time, not per-step
     """
+
     # Validate QR config
     qr_config = config.get("qr", {})
     qr_enabled = qr_config.get("enabled", True)

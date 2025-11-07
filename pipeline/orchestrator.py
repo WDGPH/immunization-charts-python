@@ -261,10 +261,7 @@ def run_step_4_generate_notices(
 
     # Generate Typst files using main function
     generated = generate_notices.main(
-        artifact_path,
-        artifacts_dir,
-        logo_path,
-        signature_path,
+        artifact_path, artifacts_dir, logo_path, signature_path
     )
     print(f"Generated {len(generated)} Typst files in {artifacts_dir}")
 
@@ -509,10 +506,7 @@ def main() -> int:
         # Step 4: Generating Notices
         step_start = time.time()
         run_step_4_generate_notices(
-            output_dir,
-            run_id,
-            DEFAULT_TEMPLATES_ASSETS_DIR,
-            config_dir,
+            output_dir, run_id, DEFAULT_TEMPLATES_ASSETS_DIR, config_dir
         )
         step_duration = time.time() - step_start
         step_times.append(("Template Generation", step_duration))

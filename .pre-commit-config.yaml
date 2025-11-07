@@ -5,3 +5,9 @@ repos:
       - id: ruff-check
         args: [--fix]  # Lint and auto-fix
       - id: ruff-format # Format code like black
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: pretty-format-json
+        args: [--autofix]
+        files: \.json$

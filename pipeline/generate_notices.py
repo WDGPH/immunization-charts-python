@@ -40,6 +40,7 @@ Functions with special validation notes:
 from __future__ import annotations
 
 import json
+import re
 import logging
 from pathlib import Path
 from typing import Dict, List, Mapping, Sequence
@@ -255,7 +256,10 @@ def load_and_translate_chart_diseases(language: str) -> List[str]:
 
 
 def build_template_context(
-    client: ClientRecord, qr_output_dir: Path | None = None
+    client: ClientRecord,
+    qr_output_dir: Path | None = None,
+    map_file: Path = ROOT_DIR / "config/map_school.json",
+    required_keys: Dict = {"phu_address", "phu_phone", "phu_email", "phu_website"},
 ) -> Dict[str, str]:
     """Build template context from client data.
 
@@ -270,7 +274,12 @@ def build_template_context(
         Client record with all required fields.
     qr_output_dir : Path, optional
         Directory containing QR code PNG files.
-
+    map_file: Filepath, optional
+        File containing mapping of schools to specific info (e.g. satellite PHU office info) to populate template.
+        By default, will use config/map_school.json.
+    required_keys: Dict, optional
+        Dictionary containing the keys that should come from the mapping file.
+        Each of these keys should be present in the "DEFAULT" section of the mapping file.
     Returns
     -------
     Dict[str, str]
@@ -305,6 +314,59 @@ def build_template_context(
         qr_path = qr_output_dir / qr_filename
         if qr_path.exists():
             client_data["qr_code"] = to_root_relative(qr_path)
+
+    # Check if mapping file exists
+    if not map_file.exists():
+        raise FileNotFoundError(
+            f"Expected school mapping file at {map_file}, but file does not exist. Please provide mapping file at {map_file}."
+        )
+
+    # Load mapping file data
+    with open(map_file, "r") as f:
+        map_data = json.load(f)
+
+    # Attempt to load default PHU data values from mapping file; this should also contain all required keys
+    try:
+        phu_data = map_data["DEFAULT"]
+    except KeyError as err:
+        raise (
+            f"Loading default PHU info, error when attempting to access 'DEFAULT' from {map_file}: {err}"
+        )
+
+    if not phu_data:
+        raise ValueError(
+            "Default values for PHU info not provided. "
+            f'Please define DEFAULT values {required_keys} in under "DEFAULT" key in {map_file}.'
+        )
+    else:
+        missing = [key for key in required_keys if key not in phu_data]
+        if missing:
+            missing_keys = ", ".join(missing)
+            raise KeyError(f"Missing phu_data keys in config: {missing_keys}")
+
+    # Clean school name
+    client_school_key = re.sub(r"\s+", "_", client_data["school"]).upper()
+
+    # Check if school has a mapping associated with it - otherwise, use default config values
+    if client_school_key in map_data.keys():
+        if client_school_key != "DEFAULT":
+            LOG.info(f"School-specific information provided for: {client_school_key}")
+
+            map_client_data = map_data[client_school_key]
+
+            # Replace default values with values in map file. If any are missing, keep default values.
+            for key in phu_data.keys():
+                if key in map_client_data.keys():
+                    phu_data[key] = map_client_data[key]
+                else:
+                    LOG.info(
+                        f"Mapping file for school {client_school_key} missing {key}. Using default value."
+                    )
+
+    else:
+        LOG.info(
+            f"School {client_school_key} not in mapping file. Using default values."
+        )
 
     # Load and translate chart disease header
     chart_diseases_translated = load_and_translate_chart_diseases(client.language)
@@ -346,6 +408,7 @@ def build_template_context(
     return {
         "client_row": to_typ_value([client.client_id]),
         "client_data": to_typ_value(client_data),
+        "phu_data": phu_data,
         "vaccines_due_str": to_typ_value(vaccines_due_str_translated),
         "vaccines_due_array": to_typ_value(vaccines_due_array_translated),
         "received": to_typ_value(received_translated),
@@ -405,10 +468,7 @@ def render_notice(
 
 
 def generate_typst_files(
-    payload: ArtifactPayload,
-    output_dir: Path,
-    logo_path: Path,
-    signature_path: Path,
+    payload: ArtifactPayload, output_dir: Path, logo_path: Path, signature_path: Path
 ) -> List[Path]:
     output_dir.mkdir(parents=True, exist_ok=True)
     qr_output_dir = output_dir / "qr_codes"
@@ -437,10 +497,7 @@ def generate_typst_files(
 
 
 def main(
-    artifact_path: Path,
-    output_dir: Path,
-    logo_path: Path,
-    signature_path: Path,
+    artifact_path: Path, output_dir: Path, logo_path: Path, signature_path: Path
 ) -> List[Path]:
     """Main entry point for Typst notice generation.
 
@@ -461,12 +518,7 @@ def main(
         List of generated Typst file paths.
     """
     payload = read_artifact(artifact_path)
-    generated = generate_typst_files(
-        payload,
-        output_dir,
-        logo_path,
-        signature_path,
-    )
+    generated = generate_typst_files(payload, output_dir, logo_path, signature_path)
     print(
         f"Generated {len(generated)} Typst files in {output_dir} for language {payload.language}"
     )

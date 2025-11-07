@@ -45,7 +45,7 @@ TEMPLATE_PREFIX = """// --- CCEYA NOTICE TEMPLATE (TEST VERSION) --- //
 )
 
 // Immunization Notice Section
-#let immunization_notice(client, client_id, immunizations_due, date, font_size) = block[
+#let immunization_notice(client, client_id, immunizations_due, date, font_size, phu_address, phu_phone, phu_email, phu_website) = block[
 
 #v(0.2cm)
 
@@ -64,10 +64,10 @@ As of *#date* our files show that your child has not received the following immu
 
 Please review the Immunization Record on page 2 and update your child's record by using one of the following options:
 
-1. By visiting #text(fill:conf.linkcolor)[#link("https://www.test-immunization.ca")]
-2. By emailing #text(fill:conf.linkcolor)[#link("records@test-immunization.ca")]
-3. By mailing a photocopy of your child's immunization record to Test Health, 123 Placeholder Street, Sample City, ON A1A 1A1
-4. By Phone: 555-555-5555 ext. 1234
+1. By visiting #text(fill:conf.linkcolor)[#link(phu_website)]
+2. By emailing #text(fill:conf.linkcolor)[#link(phu_email)]
+3. By mailing a photocopy of your child's immunization record to #phu_address
+4. By Phone: #phu_phone
 
 Please update Public Health and your childcare centre every time your child receives a vaccine. 
 
@@ -129,13 +129,17 @@ DYNAMIC_BLOCK = """
 #let num_rows = __NUM_ROWS__
 #let diseases = __CHART_DISEASES_TRANSLATED__
 #let date = data.date_data_cutoff
+#let phu_address = "__PHU_ADDRESS__"
+#let phu_phone = "__PHU_PHONE__"
+#let phu_email = "__PHU_EMAIL__"
+#let phu_website = "__PHU_WEBSITE__"
 
 #set page(
   margin: (top: 1cm, bottom: 2cm, left: 1.75cm, right: 2cm),
   footer: align(center, context numbering("1 / " + str(counter(page).final().first()), counter(page).get().first()))
 )
 
-#immunization_notice(data, client_row, vaccines_due_array, date, 11pt)
+#immunization_notice(data, client_row, vaccines_due_array, date, 11pt, phu_address, phu_phone, phu_email, phu_website)
 #pagebreak()
 #vaccine_table_page(client_row.at(0))
 #conf.immunization-table(5, num_rows, received, diseases, 11pt)
@@ -186,6 +190,7 @@ def render_notice(
         "received",
         "num_rows",
         "chart_diseases_translated",
+        "phu_data",
     )
     missing = [key for key in required_keys if key not in context]
     if missing:
@@ -204,5 +209,9 @@ def render_notice(
         .replace("__RECEIVED__", context["received"])
         .replace("__NUM_ROWS__", context["num_rows"])
         .replace("__CHART_DISEASES_TRANSLATED__", context["chart_diseases_translated"])
+        .replace("__PHU_ADDRESS__", context["phu_data"]["phu_address"])
+        .replace("__PHU_EMAIL__", context["phu_data"]["phu_email"])
+        .replace("__PHU_PHONE__", context["phu_data"]["phu_phone"])
+        .replace("__PHU_WEBSITE__", context["phu_data"]["phu_website"])
     )
     return prefix + dynamic
