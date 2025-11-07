@@ -8,6 +8,7 @@
 
 #let header_info_cim(
   logo,
+  logo_width,
   fill_colour,
   custom_size,
   custom_msg
@@ -16,7 +17,7 @@
   
     columns: (50%,50%), 
     gutter: 5%, 
-    [#image(logo, width: 6cm)],
+    [#image(logo, width: logo_width)],
     [#set align(center + bottom)
       #text(size: custom_size, fill: fill_colour)[*#custom_msg*]]
     
@@ -29,7 +30,8 @@
   client_data,
   client_id,
   font_size,
-  school_type
+  school_type,
+  envelope_window_height
 ) = {
   // Define column widths based on equal_split
   let columns = if equal_split {
@@ -59,7 +61,7 @@
   let table_content = align(center)[
     #table(
       columns: columns,
-      rows: (81pt),
+      rows: (envelope_window_height),
       inset: font_size,
       col1_content,
       table.vline(stroke: vline_stroke),
@@ -87,7 +89,8 @@
   client_data,
   client_id,
   font_size,
-  school_type
+  school_type,
+  envelope_window_height
 ) = {
   // Define column widths based on equal_split
   let columns = if equal_split {
@@ -117,7 +120,7 @@
   let table_content = align(center)[
     #table(
       columns: columns,
-      rows: (81pt),
+      rows: (envelope_window_height),
       inset: font_size,
       col1_content,
       table.vline(stroke: vline_stroke),
