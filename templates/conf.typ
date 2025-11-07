@@ -7,7 +7,10 @@
 #let linkcolor = rgb(0, 0, 238)
 
 #let header_info_cim(
-  logo
+  logo,
+  fill_colour,
+  custom_size,
+  custom_msg
 ) = {
   grid(
   
@@ -15,7 +18,7 @@
     gutter: 5%, 
     [#image(logo, width: 6cm)],
     [#set align(center + bottom)
-      #text(size: 18pt, fill: black)[*Request for your child's immunization record*]]
+      #text(size: custom_size, fill: fill_colour)[*#custom_msg*]]
     
   )
 }
