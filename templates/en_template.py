@@ -75,8 +75,12 @@ Please update Public Health and your childcare centre every time your child rece
   columns: (1fr, auto),
   gutter: 10pt,
   [*If you are choosing not to immunize your child*, a valid medical exemption or statement of conscience or religious belief must be submitted. Links to these forms can be located at #text(fill:conf.wdgteal)[#link("https://www.test-immunization.ca/exemptions")]. Please note this exemption is for childcare only and a new exemption will be required upon enrollment in elementary school.],
-  [#if "qr_code" in client [
-    #image(client.qr_code, width: 2cm)
+  [#if "qr_img" in client [
+    #if "qr_url" in client [
+      #link(client.qr_url)[#image(client.qr_img, width: 3cm)]
+    ] else [
+      #image(client.qr_img, width: 3cm)
+    ]
   ]]
 )
 

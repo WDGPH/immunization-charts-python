@@ -116,6 +116,86 @@ class TestLoadQrSettings:
 
 
 @pytest.mark.unit
+class TestEncodeQrPayloadUrl:
+    """Unit tests for encode_qr_payload_url function."""
+
+    def test_encode_url_with_spaces(self) -> None:
+        """Verify spaces in parameter values are encoded to %20.
+
+        Real-world significance:
+        - Client names and addresses contain spaces
+        - QR codes must have properly encoded URLs
+        """
+        url = "https://example.com/surveys/?qrfn=John Doe&qrln=Smith"
+
+        result = generate_qr_codes.encode_qr_payload_url(url)
+
+        assert "John%20Doe" in result
+        assert "Smith" in result
+        assert "https://example.com/surveys/?" in result
+
+    def test_encode_url_with_special_chars(self) -> None:
+        """Verify special characters are properly URL-encoded.
+
+        Real-world significance:
+        - Addresses may contain commas, ampersands, and other special chars
+        - QR URLs must be valid and scannable
+        """
+        url = "https://example.com/surveys/?address=123 Main St, Suite 5&postal=M1A 1A1"
+
+        result = generate_qr_codes.encode_qr_payload_url(url)
+
+        # Spaces and commas should be encoded
+        assert "%20" in result
+        assert "%2C" in result  # Comma encoded
+
+    def test_encode_url_preserves_structure(self) -> None:
+        """Verify URL structure is preserved during encoding.
+
+        Real-world significance:
+        - Domain, scheme, and parameter names must remain unchanged
+        - Only parameter values are encoded
+        """
+        url = "https://survey.example.com/surveys/?s=ABC&qrfn=First Name&qrid=12345"
+
+        result = generate_qr_codes.encode_qr_payload_url(url)
+
+        # Structure should be preserved
+        assert result.startswith("https://survey.example.com/surveys/?")
+        assert "s=ABC" in result
+        assert "qrid=12345" in result
+        assert "First%20Name" in result
+
+    def test_encode_url_without_query_string(self) -> None:
+        """Verify URLs without query strings pass through unchanged.
+
+        Real-world significance:
+        - Defensive: some URLs might not have query params
+        - Should not crash
+        """
+        url = "https://example.com/surveys"
+
+        result = generate_qr_codes.encode_qr_payload_url(url)
+
+        assert result == url
+
+    def test_encode_url_with_accents(self) -> None:
+        """Verify accented characters are properly encoded.
+
+        Real-world significance:
+        - Canadian names may contain accents (é, à, etc.)
+        - QR codes must handle international characters
+        """
+        url = "https://example.com/surveys/?qrfn=François&qrln=Français"
+
+        result = generate_qr_codes.encode_qr_payload_url(url)
+
+        # Accented chars should be percent-encoded
+        assert "%C3" in result  # UTF-8 encoded accents
+        assert "https://example.com/surveys/?" in result
+
+
+@pytest.mark.unit
 class TestFormatQrPayload:
     """Unit tests for format_qr_payload function."""
 
@@ -410,3 +490,92 @@ class TestGenerateQrCodes:
                 tmp_output_structure["root"],
                 config_path,
             )
+
+    def test_qr_url_added_to_artifact(self, tmp_output_structure) -> None:
+        """Test that QR payload is added to client qr dict in artifact.
+
+        Real-world significance:
+        - QR payload must be stored in artifact for downstream use
+        - Later steps read qr.payload from artifact to pass to templates
+        """
+        artifact = sample_input.create_test_artifact_payload(
+            num_clients=2, language="en"
+        )
+        artifact_path = tmp_output_structure["artifacts"] / "preprocessed.json"
+        sample_input.write_test_artifact(artifact, tmp_output_structure["artifacts"])
+
+        config_path = tmp_output_structure["root"] / "config.yaml"
+        config = {
+            "qr": {
+                "enabled": True,
+                "payload_template": "https://survey.example.com/update?client_id={client_id}",
+            }
+        }
+        config_path.write_text(yaml.dump(config))
+
+        with patch("pipeline.generate_qr_codes.generate_qr_code") as mock_gen:
+            mock_gen.return_value = Path("dummy.png")
+            generate_qr_codes.generate_qr_codes(
+                artifact_path.parent
+                / f"preprocessed_clients_{artifact.run_id}_{artifact.language}.json",
+                tmp_output_structure["root"],
+                config_path,
+            )
+
+        # Read updated artifact
+        updated_artifact_path = (
+            artifact_path.parent
+            / f"preprocessed_clients_{artifact.run_id}_{artifact.language}.json"
+        )
+        updated = json.loads(updated_artifact_path.read_text())
+
+        # Check first client has qr.payload
+        assert "qr" in updated["clients"][0]
+        assert "payload" in updated["clients"][0]["qr"]
+        assert (
+            "https://survey.example.com/update"
+            in updated["clients"][0]["qr"]["payload"]
+        )
+
+    def test_qr_url_matches_qr_payload(self, tmp_output_structure) -> None:
+        """Test that qr.payload contains the same URL encoded in QR code.
+
+        Real-world significance:
+        - URL in qr.payload must match the URL in the QR PNG
+        - Templates use qr.payload to make the QR code clickable
+        """
+        artifact = sample_input.create_test_artifact_payload(num_clients=1)
+        artifact_path = tmp_output_structure["artifacts"] / "preprocessed.json"
+        sample_input.write_test_artifact(artifact, tmp_output_structure["artifacts"])
+
+        config_path = tmp_output_structure["root"] / "config.yaml"
+        client_id = artifact.clients[0].client_id
+        config = {
+            "qr": {
+                "enabled": True,
+                "payload_template": f"https://example.com/survey?id={client_id}&lang=en",
+            }
+        }
+        config_path.write_text(yaml.dump(config))
+
+        with patch("pipeline.generate_qr_codes.generate_qr_code") as mock_gen:
+            mock_gen.return_value = Path("dummy.png")
+            generate_qr_codes.generate_qr_codes(
+                artifact_path.parent
+                / f"preprocessed_clients_{artifact.run_id}_{artifact.language}.json",
+                tmp_output_structure["root"],
+                config_path,
+            )
+
+        # Read updated artifact
+        updated_artifact_path = (
+            artifact_path.parent
+            / f"preprocessed_clients_{artifact.run_id}_{artifact.language}.json"
+        )
+        updated = json.loads(updated_artifact_path.read_text())
+
+        # The qr.payload should be the formatted payload
+        assert (
+            updated["clients"][0]["qr"]["payload"]
+            == f"https://example.com/survey?id={client_id}&lang=en"
+        )
