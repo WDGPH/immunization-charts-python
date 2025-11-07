@@ -9,6 +9,9 @@ from typing import Any, Dict, Optional
 
 import yaml
 
+from .enums import TemplateField
+from .utils import extract_template_fields
+
 SCRIPT_DIR = Path(__file__).resolve().parent
 DEFAULT_CONFIG_PATH = SCRIPT_DIR.parent / "config" / "parameters.yaml"
 
@@ -53,6 +56,66 @@ def load_config(config_path: Optional[Path] = None) -> Dict[str, Any]:
 
     validate_config(config)
     return config
+
+
+def validate_template_fields(
+    template: str,
+    context_name: str,
+    config_key: str,
+) -> None:
+    """Validate that all placeholders in a template are supported fields.
+
+    Checks template string placeholders against the centralized whitelist of
+    allowed template fields (TemplateField enum). Raises ValueError if any
+    unsupported placeholders are found.
+
+    This validation catches configuration errors early (at config load time)
+    instead of failing silently during QR generation or PDF encryption.
+
+    Parameters
+    ----------
+    template : str
+        Template string with placeholders (e.g., "{client_id}_{invalid_field}")
+    context_name : str
+        Human-readable name for error messages (e.g., "QR code payload", "encryption password")
+    config_key : str
+        Configuration key path for error messages (e.g., "qr.payload_template")
+
+    Raises
+    ------
+    ValueError
+        If template contains unsupported placeholder fields with detailed
+        error message listing invalid fields and available options.
+
+    Examples
+    --------
+    >>> validate_template_fields(
+    ...     "{client_id}_{invalid_field}",
+    ...     "QR code payload",
+    ...     "qr.payload_template"
+    ... )
+    ValueError: QR code payload template contains unsupported placeholder(s): ['invalid_field']
+    Config key: qr.payload_template
+    Supported fields: client_id, first_name, last_name, ...
+    """
+    allowed_fields = TemplateField.all_values()
+
+    try:
+        placeholders = extract_template_fields(template)
+    except ValueError as exc:
+        raise ValueError(
+            f"{context_name} template has invalid format syntax: {exc}\n"
+            f"Config key: {config_key}"
+        ) from exc
+
+    unsupported = placeholders - allowed_fields
+
+    if unsupported:
+        raise ValueError(
+            f"{context_name} template contains unsupported placeholder(s): {sorted(unsupported)}\n"
+            f"Config key: {config_key}\n"
+            f"Supported fields: {', '.join(sorted(allowed_fields))}"
+        )
 
 
 def validate_config(config: Dict[str, Any]) -> None:
@@ -105,6 +168,13 @@ def validate_config(config: Dict[str, Any]) -> None:
                 f"qr.payload_template must be a string, got {type(payload_template).__name__}"
             )
 
+        # Validate template placeholders against allowed fields
+        validate_template_fields(
+            payload_template,
+            "QR code payload",
+            "qr.payload_template",
+        )
+
     # Validate Typst config
     typst_config = config.get("typst", {})
     typst_bin = typst_config.get("bin", "typst")
@@ -155,6 +225,13 @@ def validate_config(config: Dict[str, Any]) -> None:
                 f"encryption.password.template must be a string, "
                 f"got {type(password_template).__name__}"
             )
+
+        # Validate template placeholders against allowed fields
+        validate_template_fields(
+            password_template,
+            "Encryption password",
+            "encryption.password.template",
+        )
 
     # Validate Cleanup config
     cleanup_config = config.get("cleanup", {})

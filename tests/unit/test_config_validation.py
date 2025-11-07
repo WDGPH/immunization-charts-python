@@ -350,3 +350,344 @@ class TestErrorMessages:
         error_msg = str(exc_info.value)
         # Error should mention the invalid value or strategy
         assert "group_by" in error_msg or "strategy" in error_msg
+
+
+@pytest.mark.unit
+class TestQRTemplateFieldValidation:
+    """Test QR template placeholder validation against allowed fields."""
+
+    def test_qr_validation_passes_with_valid_placeholders(self) -> None:
+        """QR validation should pass when all placeholders are supported."""
+        config: Dict[str, Any] = {
+            "qr": {
+                "enabled": True,
+                "payload_template": "https://example.com?id={client_id}&name={first_name}_{last_name}&dob={date_of_birth_iso}",
+            }
+        }
+        # Should not raise
+        validate_config(config)
+
+    def test_qr_validation_passes_with_all_supported_fields(self) -> None:
+        """QR validation should pass when using all supported template fields."""
+        config: Dict[str, Any] = {
+            "qr": {
+                "enabled": True,
+                "payload_template": (
+                    "https://example.com?"
+                    "id={client_id}&fn={first_name}&ln={last_name}&name={name}&"
+                    "dob={date_of_birth}&dob_iso={date_of_birth_iso}&"
+                    "dob_compact={date_of_birth_iso_compact}&school={school}&"
+                    "board={board}&street={street_address}&city={city}&"
+                    "province={province}&pc={postal_code}&lang={language_code}"
+                ),
+            }
+        }
+        # Should not raise
+        validate_config(config)
+
+    def test_qr_validation_fails_with_unsupported_placeholder(self) -> None:
+        """QR validation should fail when template contains unsupported placeholder."""
+        config: Dict[str, Any] = {
+            "qr": {
+                "enabled": True,
+                "payload_template": "https://example.com?id={client_id}&secret={password}",
+            }
+        }
+        with pytest.raises(ValueError) as exc_info:
+            validate_config(config)
+
+        error_msg = str(exc_info.value)
+        assert "unsupported placeholder" in error_msg.lower()
+        assert "password" in error_msg
+        assert "qr.payload_template" in error_msg
+
+    def test_qr_validation_fails_with_multiple_unsupported_placeholders(self) -> None:
+        """QR validation should fail and list all unsupported placeholders."""
+        config: Dict[str, Any] = {
+            "qr": {
+                "enabled": True,
+                "payload_template": "https://example.com?id={client_id}&bad1={invalid_field}&bad2={another_bad_field}",
+            }
+        }
+        with pytest.raises(ValueError) as exc_info:
+            validate_config(config)
+
+        error_msg = str(exc_info.value)
+        assert "unsupported placeholder" in error_msg.lower()
+        assert "invalid_field" in error_msg
+        assert "another_bad_field" in error_msg
+
+    def test_qr_validation_error_message_includes_supported_fields(self) -> None:
+        """QR validation error should list all supported fields for reference."""
+        config: Dict[str, Any] = {
+            "qr": {
+                "enabled": True,
+                "payload_template": "https://example.com?bad={unsupported}",
+            }
+        }
+        with pytest.raises(ValueError) as exc_info:
+            validate_config(config)
+
+        error_msg = str(exc_info.value)
+        # Should include some common supported fields
+        assert "client_id" in error_msg
+        assert "first_name" in error_msg
+        assert "date_of_birth_iso" in error_msg
+
+    def test_qr_validation_fails_with_typo_in_field_name(self) -> None:
+        """QR validation should catch common typos in field names."""
+        config: Dict[str, Any] = {
+            "qr": {
+                "enabled": True,
+                "payload_template": "https://example.com?id={clent_id}",  # Typo: clent instead of client
+            }
+        }
+        with pytest.raises(ValueError) as exc_info:
+            validate_config(config)
+
+        error_msg = str(exc_info.value)
+        assert "clent_id" in error_msg
+        assert "unsupported" in error_msg.lower()
+
+    def test_qr_validation_fails_with_invalid_format_syntax(self) -> None:
+        """QR validation should fail when template has invalid format string syntax."""
+        config: Dict[str, Any] = {
+            "qr": {
+                "enabled": True,
+                "payload_template": "https://example.com?id={client_id",  # Missing closing brace
+            }
+        }
+        with pytest.raises(ValueError) as exc_info:
+            validate_config(config)
+
+        error_msg = str(exc_info.value)
+        assert "invalid format" in error_msg.lower()
+
+    def test_qr_validation_skipped_when_disabled(self) -> None:
+        """QR template validation should be skipped when qr.enabled=false."""
+        config: Dict[str, Any] = {
+            "qr": {
+                "enabled": False,
+                # Even with invalid placeholders, validation should pass because QR is disabled
+            }
+        }
+        # Should not raise
+        validate_config(config)
+
+
+@pytest.mark.unit
+class TestEncryptionTemplateFieldValidation:
+    """Test encryption password template placeholder validation."""
+
+    def test_encryption_validation_passes_with_valid_placeholders(self) -> None:
+        """Encryption validation should pass when all placeholders are supported."""
+        config: Dict[str, Any] = {
+            **MINIMAL_VALID_CONFIG,
+            "encryption": {
+                "enabled": True,
+                "password": {
+                    "template": "{date_of_birth_iso_compact}",
+                },
+            },
+        }
+        # Should not raise
+        validate_config(config)
+
+    def test_encryption_validation_passes_with_complex_template(self) -> None:
+        """Encryption validation should pass with multi-field password template."""
+        config: Dict[str, Any] = {
+            **MINIMAL_VALID_CONFIG,
+            "encryption": {
+                "enabled": True,
+                "password": {
+                    "template": "{last_name}_{date_of_birth_iso_compact}_{postal_code}",
+                },
+            },
+        }
+        # Should not raise
+        validate_config(config)
+
+    def test_encryption_validation_fails_with_unsupported_placeholder(self) -> None:
+        """Encryption validation should fail when template contains unsupported placeholder."""
+        config: Dict[str, Any] = {
+            **MINIMAL_VALID_CONFIG,
+            "encryption": {
+                "enabled": True,
+                "password": {
+                    "template": "{date_of_birth_iso_compact}_{secret_key}",
+                },
+            },
+        }
+        with pytest.raises(ValueError) as exc_info:
+            validate_config(config)
+
+        error_msg = str(exc_info.value)
+        assert "unsupported placeholder" in error_msg.lower()
+        assert "secret_key" in error_msg
+        assert "encryption.password.template" in error_msg
+
+    def test_encryption_validation_fails_with_multiple_unsupported_placeholders(
+        self,
+    ) -> None:
+        """Encryption validation should fail and list all unsupported placeholders."""
+        config: Dict[str, Any] = {
+            **MINIMAL_VALID_CONFIG,
+            "encryption": {
+                "enabled": True,
+                "password": {
+                    "template": "{bad_field1}_{bad_field2}_{client_id}",
+                },
+            },
+        }
+        with pytest.raises(ValueError) as exc_info:
+            validate_config(config)
+
+        error_msg = str(exc_info.value)
+        assert "unsupported placeholder" in error_msg.lower()
+        assert "bad_field1" in error_msg
+        assert "bad_field2" in error_msg
+
+    def test_encryption_validation_error_includes_supported_fields(self) -> None:
+        """Encryption validation error should list all supported fields."""
+        config: Dict[str, Any] = {
+            **MINIMAL_VALID_CONFIG,
+            "encryption": {
+                "enabled": True,
+                "password": {
+                    "template": "{unsupported_field}",
+                },
+            },
+        }
+        with pytest.raises(ValueError) as exc_info:
+            validate_config(config)
+
+        error_msg = str(exc_info.value)
+        # Should include some common supported fields
+        assert "client_id" in error_msg
+        assert "date_of_birth_iso" in error_msg
+        assert "postal_code" in error_msg
+
+    def test_encryption_validation_fails_with_invalid_format_syntax(self) -> None:
+        """Encryption validation should fail when template has invalid format syntax."""
+        config: Dict[str, Any] = {
+            **MINIMAL_VALID_CONFIG,
+            "encryption": {
+                "enabled": True,
+                "password": {
+                    "template": "{date_of_birth_iso_compact",  # Missing closing brace
+                },
+            },
+        }
+        with pytest.raises(ValueError) as exc_info:
+            validate_config(config)
+
+        error_msg = str(exc_info.value)
+        assert "invalid format" in error_msg.lower()
+
+    def test_encryption_validation_skipped_when_disabled(self) -> None:
+        """Encryption template validation should be skipped when encryption.enabled=false."""
+        config: Dict[str, Any] = {
+            **MINIMAL_VALID_CONFIG,
+            "encryption": {
+                "enabled": False,
+                "password": {
+                    "template": "{unsupported_field}",  # Invalid but encryption is disabled
+                },
+            },
+        }
+        # Should not raise
+        validate_config(config)
+
+    def test_encryption_validation_handles_missing_encryption_section(self) -> None:
+        """Encryption validation should handle missing encryption section (defaults to disabled)."""
+        config: Dict[str, Any] = {
+            **MINIMAL_VALID_CONFIG,
+            # No encryption section; defaults to disabled
+        }
+        # Should not raise
+        validate_config(config)
+
+
+@pytest.mark.unit
+class TestTemplateValidationEdgeCases:
+    """Test edge cases and corner cases in template validation."""
+
+    def test_validation_with_empty_template_after_type_check(self) -> None:
+        """Empty template should fail at the 'not specified' check, not field validation."""
+        # QR case
+        config: Dict[str, Any] = {
+            "qr": {
+                "enabled": True,
+                "payload_template": "",
+            }
+        }
+        with pytest.raises(ValueError) as exc_info:
+            validate_config(config)
+        # Should fail on "not specified" check, not unsupported fields
+        assert "not specified" in str(exc_info.value).lower()
+
+    def test_validation_with_template_no_placeholders(self) -> None:
+        """Template with no placeholders should pass validation."""
+        config: Dict[str, Any] = {
+            "qr": {
+                "enabled": True,
+                "payload_template": "https://example.com/static-url",
+            }
+        }
+        # Should not raise (no placeholders to validate)
+        validate_config(config)
+
+    def test_validation_with_duplicate_placeholders(self) -> None:
+        """Template with duplicate placeholders should pass (sets deduplicate)."""
+        config: Dict[str, Any] = {
+            "qr": {
+                "enabled": True,
+                "payload_template": "https://example.com?id1={client_id}&id2={client_id}",
+            }
+        }
+        # Should not raise
+        validate_config(config)
+
+    def test_both_qr_and_encryption_validated_together(self) -> None:
+        """Both QR and encryption templates should be validated in same config."""
+        config: Dict[str, Any] = {
+            "qr": {
+                "enabled": True,
+                "payload_template": "https://example.com?id={client_id}&bad={invalid_qr}",
+            },
+            "encryption": {
+                "enabled": True,
+                "password": {
+                    "template": "{date_of_birth_iso_compact}_{invalid_enc}",
+                },
+            },
+        }
+        # Should fail on QR validation (happens first)
+        with pytest.raises(ValueError) as exc_info:
+            validate_config(config)
+
+        error_msg = str(exc_info.value)
+        # Should fail on QR first
+        assert "qr.payload_template" in error_msg or "invalid_qr" in error_msg
+
+    def test_encryption_validated_after_qr_passes(self) -> None:
+        """If QR validation passes, encryption validation should still run."""
+        config: Dict[str, Any] = {
+            "qr": {
+                "enabled": True,
+                "payload_template": "https://example.com?id={client_id}",  # Valid
+            },
+            "encryption": {
+                "enabled": True,
+                "password": {
+                    "template": "{invalid_field}",  # Invalid
+                },
+            },
+        }
+        with pytest.raises(ValueError) as exc_info:
+            validate_config(config)
+
+        error_msg = str(exc_info.value)
+        # Should fail on encryption
+        assert "encryption.password.template" in error_msg
+        assert "invalid_field" in error_msg
