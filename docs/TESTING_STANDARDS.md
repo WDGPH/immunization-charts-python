@@ -4,12 +4,6 @@ This document defines the testing strategy and organizational standards for the 
 
 ## Overview
 
-The project is a 9-step pipeline that processes Excel files into personalized immunization notices:
-
-```
-Input (Excel) → Preprocess → QR Codes → Notices → Compile → Validate → Encrypt (opt) → Batch (opt) → Cleanup → Output (PDF)
-```
-
 Tests are organized in three layers to provide different types of validation at different speeds.
 
 ## Test Organization
