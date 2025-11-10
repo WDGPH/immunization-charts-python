@@ -1576,11 +1576,10 @@ wheels = [
 
 [[package]]
 name = "pypandoc"
-version = "1.15"
+version = "1.16"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/e1/88/26e650d053df5f3874aa3c05901a14166ce3271f58bfe114fd776987efbd/pypandoc-1.15.tar.gz", hash = "sha256:ea25beebe712ae41d63f7410c08741a3cab0e420f6703f95bc9b3a749192ce13", size = 32940, upload-time = "2025-01-08T17:39:58.705Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/61/06/0763e0ccc81754d3eadb21b2cb86cf21bdedc9b52698c2ad6785db7f0a4e/pypandoc-1.15-py3-none-any.whl", hash = "sha256:4ededcc76c8770f27aaca6dff47724578428eca84212a31479403a9731fc2b16", size = 21321, upload-time = "2025-01-08T17:39:09.928Z" },
+    { url = "https://files.pythonhosted.org/packages/24/77/af1fc54740a0712988f9518e629d38edc7b8ffccd7549203f19c3d8a2db6/pypandoc-1.16-py3-none-any.whl", hash = "sha256:868f390d48388743e7a5885915cbbaa005dea36a825ecdfd571f8c523416c822", size = 19425, upload-time = "2025-11-08T15:44:38.429Z" },
 ]
 
 [[package]]
