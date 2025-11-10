@@ -60,6 +60,10 @@ These branches are initially created from the main branch (ensuring they start w
 
 * PHU Branch Stewards: Each PHU branch will have a main steward responsible for that branch. This should be documented in the branch specific README.
 
+## PHU Naming Conventions and Branching
+
+Please name all PHU specific branches or assets according to the naming convention in the ![WDGPH Standards Registry](https://github.com/WDGPH/standards-registry).
+
 ## Integrating Changes Between Main and PHU Branches 
 
 One of the most important aspects of this strategy is managing the flow of changes to and from the PHU branches: 
