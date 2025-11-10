@@ -22,6 +22,7 @@ from pathlib import Path
 import pytest
 
 from pipeline import generate_notices
+from pipeline.enums import Language
 from tests.fixtures import sample_input
 
 
@@ -433,10 +434,10 @@ class TestLanguageSupport:
         - Both language renderers must be present
         """
         english_renderer = generate_notices.get_language_renderer(
-            generate_notices.Language.ENGLISH, templates_package="templates"
+            Language.ENGLISH, templates_package="templates"
         )
         french_renderer = generate_notices.get_language_renderer(
-            generate_notices.Language.FRENCH, templates_package="templates"
+            Language.FRENCH, templates_package="templates"
         )
         assert callable(english_renderer)
         assert callable(french_renderer)
@@ -450,7 +451,7 @@ class TestLanguageSupport:
         # Just verify the language renderer is callable
         # (actual rendering requires full Typst setup)
         english_renderer = generate_notices.get_language_renderer(
-            generate_notices.Language.ENGLISH, templates_package="templates"
+            Language.ENGLISH, templates_package="templates"
         )
         assert english_renderer is not None
 
@@ -462,6 +463,6 @@ class TestLanguageSupport:
         """
         # Just verify the language renderer is callable
         french_renderer = generate_notices.get_language_renderer(
-            generate_notices.Language.FRENCH, templates_package="templates"
+            Language.FRENCH, templates_package="templates"
         )
         assert french_renderer is not None
