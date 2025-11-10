@@ -101,7 +101,7 @@ Examples:
         default=DEFAULT_CONFIG_DIR,
         help=f"Config directory (default: {DEFAULT_CONFIG_DIR})",
     )
-    # Test mode is enabled by default. Use --no-test-mode to disable.
+    # Test mode is enabled by default. Use --prod to disable.
     parser.add_argument(
         "--test-mode",
         dest="test_mode",
@@ -112,7 +112,7 @@ Examples:
         ),
     )
     parser.add_argument(
-        "--no-test-mode",
+        "--prod",
         dest="test_mode",
         action="store_false",
         help="Disable test mode and use production templates/assets.",
@@ -488,7 +488,7 @@ def main() -> int:
 
     # Choose templates/assets directory based on test mode setting.
     # Test mode is enabled by default and uses the shared `templates/assets` directory.
-    # Production mode (when --no-test-mode) uses PHU-specific templates in `phu_templates/assets`.
+    # Production mode (when --prod) uses PHU-specific templates in `phu_templates/assets`.
     assets_dir = (
         DEFAULT_TEST_TEMPLATES_ASSETS_DIR if getattr(args, "test_mode", True) else PHU_TEMPLATES_ASSETS_DIR
     )

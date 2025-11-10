@@ -191,13 +191,13 @@ python -m pipeline.orchestrator students.xlsx en
 python -m pipeline.orchestrator students.xlsx en --test-mode
 
 # production / PHU mode (uses phu_templates)
-python -m pipeline.orchestrator students.xlsx en --no-test-mode
+python -m pipeline.orchestrator students.xlsx en --prod
 ```
 
 If you use the project entrypoint (`uv run viper`) the flags are the same:
 
 ```bash
-uv run viper students.xlsx en --no-test-mode
+uv run viper students.xlsx en --prod
 ```
 
 Notes about import path and runners
@@ -207,7 +207,7 @@ Notes about import path and runners
 ```bash
 
 # or set PYTHONPATH for a single run
-PYTHONPATH=/home/jovyan/immunization-charts-python uv run viper students.xlsx en --no-test-mode
+PYTHONPATH=/home/jovyan/immunization-charts-python uv run viper students.xlsx en --prod
 ```
 
 Why this matters: the orchestrator and generator import template packages by name (e.g. `phu_templates.en_template_row`). If the repository root is not on `sys.path`, Python cannot find `phu_templates` and the pipeline will fail with "No module named 'phu_templates'". Installing editable or setting PYTHONPATH avoids that issue.
