@@ -355,7 +355,7 @@ def ensure_required_columns(df: pd.DataFrame) -> pd.DataFrame:
     df.columns = [col.strip().upper() for col in df.columns]
     missing = [col for col in REQUIRED_COLUMNS if col not in df.columns]
     if missing:
-        raise ValueError(f"Missing required columns: {missing}")
+        raise ValueError(f"Missing required columns: {missing} \n Found columns: {list(df.columns)} ")
 
     df.rename(columns=lambda x: x.replace(" ", "_"), inplace=True)
     df.rename(columns={"PROVINCE/TERRITORY": "PROVINCE"}, inplace=True)
