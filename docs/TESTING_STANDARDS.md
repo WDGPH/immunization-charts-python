@@ -4,13 +4,11 @@ This document defines the testing strategy and organizational standards for the 
 
 ## Overview
 
-The project is a 9-step pipeline that processes Excel files into personalized immunization notices:
-
-```
-Input (Excel) → Preprocess → QR Codes → Notices → Compile → Validate → Encrypt (opt) → Batch (opt) → Cleanup → Output (PDF)
-```
-
 Tests are organized in three layers to provide different types of validation at different speeds.
+
+## Frameworks and Metrics Used
+
+`pytest` is the framework used to write and run tests for the codebase. As a metric to determine the percentage of source code that is executed during testing, code coverage is used. `pytest-cov` is used to determine whether there are areas in the codebase that are not executed during testing, which may contribute to bugs. Code coverage is integrated in our GitHub actions when a pull request is made to ensure that new additions to the main code base are tested. 
 
 ## Test Organization
 
