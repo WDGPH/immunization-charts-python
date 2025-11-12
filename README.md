@@ -154,6 +154,7 @@ uv run viper <input_file> <language> [--output-dir PATH]
 - `--input-dir PATH`: Input directory (default: ../input)
 - `--output-dir PATH`: Output directory (default: ../output)
 - `--config-dir PATH`: Configuration directory (default: ../config)
+- `--template NAME`: PHU template name within `phu_templates/` (e.g., `wdgph`); defaults to built-in `templates/` when omitted
 
 **Configuration:**
 See the complete configuration reference and examples in `config/README.md`:
@@ -173,26 +174,30 @@ uv run viper students.xlsx en
 # Override output directory
 uv run viper students.xlsx en --output-dir /tmp/output
 
-# Use custom template directory
-uv run viper students.xlsx en --template-dir custom_template
+# Use a PHU-specific template (from phu_templates/my_phu/)
+uv run viper students.xlsx en --template my_phu
 ```
 
-### Using Custom Templates
+### Using PHU-Specific Templates
 
-Public Health Units can use custom template directories for organization-specific branding and layouts:
+Public Health Units can create custom template directories for organization-specific branding and layouts. All PHU templates live under the `phu_templates/` directory and are gitignored by default.
 
 ```bash
-uv run viper students.xlsx en --template-dir custom_template
+# Create your PHU template directory by copying defaults
+cp -r templates/ phu_templates/my_phu/
+
+# Customize templates and assets as needed, then run with your PHU template
+uv run viper students.xlsx en --template my_phu
 ```
 
-The template directory must contain:
-- `en_template.py` - English template module with `render_notice()` function
-- `fr_template.py` - French template module with `render_notice()` function
-- `conf.typ` - Typst configuration and utility functions
-- `assets/logo.png` - Organization logo image if used
-- `assets/signature.png` - Signature image if used
+The `--template` argument expects a template name within `phu_templates/` (flat names only; no `/` or `\`). For example, `--template my_phu` loads from `phu_templates/my_phu/`.
 
-Templates are loaded dynamically at runtime, enabling different organizations to maintain separate template sets without modifying core code. By default, the pipeline uses templates from the `templates/` directory. It's recommended to start custom template work off by copying the `templates/` directory contents into a new custom template directory.
+Each PHU template directory should contain:
+- `conf.typ` - Typst configuration and helper functions (required)
+- `{lang}_template.py` - Language modules with `render_notice()` for the languages you intend to generate (e.g., `en_template.py` for English, `fr_template.py` for French). Single-language templates are supported.
+- `assets/` - Optional directory for images like logos or signatures if your templates reference them
+
+Templates are loaded dynamically at runtime, enabling different organizations to maintain separate template sets without modifying core code. By default (when `--template` is not specified), the pipeline uses the built-in `templates/` directory. It's recommended to start by copying from `templates/` into `phu_templates/<your_name>/` and customizing from there.
 
 > ℹ️ **Typst preview note:** The WDGPH code-server development environments render Typst files via Tinymist. The shared template at `templates/conf.typ` only defines helper functions, colour tokens, and table layouts that the generated notice `.typ` files import; it doesn't emit any pages on its own, so Tinymist has nothing to preview if attempted on this file. To examine the actual markup that uses these helpers, run the pipeline with `pipeline.keep_intermediate_files: true` in `config/parameters.yaml` so the generated notice `.typ` files stay in `output/artifacts/` for manual inspection.
 
