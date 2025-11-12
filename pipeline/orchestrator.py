@@ -263,16 +263,42 @@ def run_step_3_generate_qr_codes(
 def run_step_4_generate_notices(
     output_dir: Path,
     run_id: str,
-    assets_dir: Path,
+    template_dir: Path,
     config_dir: Path,
 ) -> None:
-    """Step 4: Generating Typst templates."""
+    """Step 4: Generating Typst templates.
+
+    Parameters
+    ----------
+    output_dir : Path
+        Output directory for artifacts
+    run_id : str
+        Unique run identifier
+    template_dir : Path
+        Directory containing language templates and assets
+    config_dir : Path
+        Configuration directory
+    """
     print_step(4, "Generating Typst templates")
 
     artifact_path = output_dir / "artifacts" / f"preprocessed_clients_{run_id}.json"
     artifacts_dir = output_dir / "artifacts"
-    logo_path = assets_dir / "logo.png"
-    signature_path = assets_dir / "signature.png"
+
+    # Assets now come from template directory
+    logo_path = template_dir / "assets" / "logo.png"
+    signature_path = template_dir / "assets" / "signature.png"
+
+    # Validate assets exist (fail-fast)
+    if not logo_path.exists():
+        raise FileNotFoundError(
+            f"Logo not found: {logo_path}. "
+            f"Template directory must contain assets/logo.png"
+        )
+    if not signature_path.exists():
+        raise FileNotFoundError(
+            f"Signature not found: {signature_path}. "
+            f"Template directory must contain assets/signature.png"
+        )
 
     # Generate Typst files using main function
     generated = generate_notices.main(
@@ -280,6 +306,7 @@ def run_step_4_generate_notices(
         artifacts_dir,
         logo_path,
         signature_path,
+        template_dir,
     )
     print(f"Generated {len(generated)} Typst files in {artifacts_dir}")
 
@@ -526,7 +553,7 @@ def main() -> int:
         run_step_4_generate_notices(
             output_dir,
             run_id,
-            DEFAULT_TEMPLATES_ASSETS_DIR,
+            args.template_dir,
             config_dir,
         )
         step_duration = time.time() - step_start
