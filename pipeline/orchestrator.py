@@ -57,7 +57,6 @@ ROOT_DIR = SCRIPT_DIR.parent
 DEFAULT_INPUT_DIR = ROOT_DIR / "input"
 DEFAULT_OUTPUT_DIR = ROOT_DIR / "output"
 DEFAULT_TEMPLATES_DIR = ROOT_DIR / "templates"
-DEFAULT_TEMPLATES_ASSETS_DIR = ROOT_DIR / "templates" / "assets"
 DEFAULT_CONFIG_DIR = ROOT_DIR / "config"
 
 
@@ -314,8 +313,19 @@ def run_step_4_generate_notices(
 def run_step_5_compile_notices(
     output_dir: Path,
     config_dir: Path,
+    template_dir: Path,
 ) -> None:
-    """Step 5: Compiling Typst templates to PDFs."""
+    """Step 5: Compiling Typst templates to PDFs.
+
+    Parameters
+    ----------
+    output_dir : Path
+        Output directory containing artifacts and PDFs
+    config_dir : Path
+        Configuration directory
+    template_dir : Path
+        Template directory (used as Typst --root for imports)
+    """
     print_step(5, "Compiling Typst templates")
 
     # Load and validate configuration (fail-fast if invalid)
@@ -330,6 +340,7 @@ def run_step_5_compile_notices(
         artifacts_dir,
         pdf_dir,
         parameters_path,
+        template_dir,
     )
     if compiled:
         print(f"Compiled {compiled} Typst file(s) to PDFs in {pdf_dir}.")
@@ -562,7 +573,11 @@ def main() -> int:
 
         # Step 5: Compiling Notices
         step_start = time.time()
-        run_step_5_compile_notices(output_dir, config_dir)
+        run_step_5_compile_notices(
+            output_dir,
+            config_dir,
+            args.template_dir,
+        )
         step_duration = time.time() - step_start
         step_times.append(("Template Compilation", step_duration))
         print_step_complete(5, "Compilation", step_duration)
