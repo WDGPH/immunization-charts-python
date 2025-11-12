@@ -205,7 +205,12 @@ def compile_with_config(
     )
 
 
-def main(artifact_dir: Path, output_dir: Path, config_path: Path | None = None, template_dir: Path | None = None) -> int:
+def main(
+    artifact_dir: Path,
+    output_dir: Path,
+    config_path: Path | None = None,
+    template_dir: Path | None = None,
+) -> int:
     """Main entry point for Typst compilation.
 
     Parameters

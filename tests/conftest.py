@@ -261,14 +261,14 @@ def custom_templates(tmp_test_dir: Path) -> Generator[Path, None, None]:
     ...     assert "en" in renderers
     """
     import shutil
-    
+
     # Create custom template directory in tmp_test_dir
     custom_dir = tmp_test_dir / "custom_templates"
     custom_dir.mkdir(parents=True, exist_ok=True)
 
     # Get path to source templates in project
     src_templates = Path(__file__).parent.parent / "templates"
-    
+
     if not src_templates.exists():
         raise FileNotFoundError(
             f"Source templates directory not found: {src_templates}. "
@@ -290,6 +290,6 @@ def custom_templates(tmp_test_dir: Path) -> Generator[Path, None, None]:
         if dest_assets.exists():
             shutil.rmtree(dest_assets)
         shutil.copytree(src_assets, dest_assets)
-    
+
     yield custom_dir
     # Cleanup handled automatically by tmp_test_dir fixture

@@ -95,17 +95,18 @@ class TestCustomTemplateDirectory:
         )
 
         output_dir = tmp_path / "output"
-        
+
         # Copy assets to output directory (simulating orchestrator behavior)
         assets_dir = output_dir / "assets"
         assets_dir.mkdir(parents=True, exist_ok=True)
-        
+
         import shutil
+
         logo_src = custom_templates / "assets" / "logo.png"
         signature_src = custom_templates / "assets" / "signature.png"
         logo_path = assets_dir / "logo.png"
         signature_path = assets_dir / "signature.png"
-        
+
         shutil.copy2(logo_src, logo_path)
         shutil.copy2(signature_src, signature_path)
 
@@ -154,7 +155,7 @@ class TestCustomTemplateDirectory:
         # Create a minimal test .typ file that imports conf.typ
         typ_file = typst_dir / "test.typ"
         typ_file.write_text(
-            '#set text(fill: black)\nHello World',
+            "#set text(fill: black)\nHello World",
             encoding="utf-8",
         )
 
@@ -182,7 +183,7 @@ class TestCustomTemplateDirectory:
         - Generate step must work with custom templates
         - Dynamic loading must resolve templates correctly
         - Generated .typ files must have correct imports
-        
+
         NOTE: Skips actual Typst compilation since it requires .typ to be
         in/under --root directory, which is handled by the real orchestrator.
         """
@@ -198,17 +199,18 @@ class TestCustomTemplateDirectory:
         )
 
         output_dir = tmp_path / "output"
-        
+
         # Copy assets to output directory (simulating orchestrator behavior)
         assets_dir = output_dir / "assets"
         assets_dir.mkdir(parents=True, exist_ok=True)
-        
+
         import shutil
+
         logo_src = custom_templates / "assets" / "logo.png"
         signature_src = custom_templates / "assets" / "signature.png"
         logo_path = assets_dir / "logo.png"
         signature_path = assets_dir / "signature.png"
-        
+
         shutil.copy2(logo_src, logo_path)
         shutil.copy2(signature_src, signature_path)
 
@@ -226,20 +228,21 @@ class TestCustomTemplateDirectory:
 
         # Verify generated file has correct structure
         content = typst_files[0].read_text(encoding="utf-8")
-        
+
         # Should have absolute import from project root
         assert '#import "/templates/conf.typ"' in content
-        
+
         # Should have logo and signature paths
         assert "logo.png" in content or "__LOGO_PATH__" not in content
         assert "signature.png" in content or "__SIGNATURE_PATH__" not in content
-        
-        # Should have custom template content (French)
-        assert "Demande de dossier d'immunisation" in content or "immunization_notice" in content
 
-    def test_custom_template_assets_validated(
-        self, custom_templates: Path
-    ) -> None:
+        # Should have custom template content (French)
+        assert (
+            "Demande de dossier d'immunisation" in content
+            or "immunization_notice" in content
+        )
+
+    def test_custom_template_assets_validated(self, custom_templates: Path) -> None:
         """Verify custom template has all required assets.
 
         Real-world significance:

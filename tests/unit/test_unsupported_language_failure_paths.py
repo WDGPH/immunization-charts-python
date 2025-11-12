@@ -122,6 +122,7 @@ class TestUnsupportedLanguageDetection:
         """
         # Build renderers from default template directory
         from pathlib import Path
+
         templates_dir = Path(__file__).parent.parent.parent / "templates"
         renderers = generate_notices.build_language_renderers(templates_dir)
 
@@ -143,9 +144,10 @@ class TestUnsupportedLanguageDetection:
         """
         # Build renderers from default template directory
         from pathlib import Path
+
         templates_dir = Path(__file__).parent.parent.parent / "templates"
         renderers = generate_notices.build_language_renderers(templates_dir)
-        
+
         # English
         en_lang = Language.from_string("en")
         assert en_lang == Language.ENGLISH
@@ -250,9 +252,10 @@ class TestLanguageFailurePathDocumentation:
         """
         # Build renderers from default template directory
         from pathlib import Path
+
         templates_dir = Path(__file__).parent.parent.parent / "templates"
         renderers = generate_notices.build_language_renderers(templates_dir)
-        
+
         # This test is primarily documentation; verify current state
         assert Language.all_codes() == {"en", "fr"}
 

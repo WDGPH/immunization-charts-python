@@ -117,9 +117,7 @@ def validate_args(args: argparse.Namespace) -> None:
             f"Input file not found: {args.input_dir / args.input_file}"
         )
     if not args.template_dir.exists():
-        raise FileNotFoundError(
-            f"Template directory not found: {args.template_dir}"
-        )
+        raise FileNotFoundError(f"Template directory not found: {args.template_dir}")
     if not args.template_dir.is_dir():
         raise NotADirectoryError(
             f"Template path is not a directory: {args.template_dir}"
