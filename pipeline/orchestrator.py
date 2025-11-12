@@ -110,7 +110,7 @@ Examples:
         default=None,
         dest="template_dir",
         help="PHU template name within phu_templates/ (e.g., 'wdgph'). "
-        "If not specified, uses default templates/ directory.",
+        "If not specified, pipeline is run in testing mode, defaulting to the templates/ directory.",
     )
 
     return parser.parse_args()
