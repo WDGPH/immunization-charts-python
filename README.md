@@ -172,7 +172,27 @@ uv run viper students.xlsx en
 
 # Override output directory
 uv run viper students.xlsx en --output-dir /tmp/output
+
+# Use custom template directory
+uv run viper students.xlsx en --template-dir custom_template
 ```
+
+### Using Custom Templates
+
+Public Health Units can use custom template directories for organization-specific branding and layouts:
+
+```bash
+uv run viper students.xlsx en --template-dir custom_template
+```
+
+The template directory must contain:
+- `en_template.py` - English template module with `render_notice()` function
+- `fr_template.py` - French template module with `render_notice()` function
+- `conf.typ` - Typst configuration and utility functions
+- `assets/logo.png` - Organization logo image if used
+- `assets/signature.png` - Signature image if used
+
+Templates are loaded dynamically at runtime, enabling different organizations to maintain separate template sets without modifying core code. By default, the pipeline uses templates from the `templates/` directory. It's recommended to start custom template work off by copying the `templates/` directory contents into a new custom template directory.
 
 > ℹ️ **Typst preview note:** The WDGPH code-server development environments render Typst files via Tinymist. The shared template at `templates/conf.typ` only defines helper functions, colour tokens, and table layouts that the generated notice `.typ` files import; it doesn't emit any pages on its own, so Tinymist has nothing to preview if attempted on this file. To examine the actual markup that uses these helpers, run the pipeline with `pipeline.keep_intermediate_files: true` in `config/parameters.yaml` so the generated notice `.typ` files stay in `output/artifacts/` for manual inspection.
 
