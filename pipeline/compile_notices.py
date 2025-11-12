@@ -88,6 +88,7 @@ def compile_file(
         Optional path to directory containing custom fonts.
     root_dir : Path
         Root directory for relative path resolution in Typst compilation.
+        This should be the template directory containing conf.typ and assets/.
     verbose : bool
         If True, print compilation status message.
     """
@@ -124,6 +125,7 @@ def compile_typst_files(
         Optional custom fonts directory.
     root_dir : Path
         Root directory for relative path resolution.
+        Should be the template directory containing conf.typ and assets/.
     verbose : bool
         If True, print per-file compilation status.
 
@@ -154,17 +156,24 @@ def compile_with_config(
     artifact_dir: Path,
     output_dir: Path,
     config_path: Path | None = None,
+    template_dir: Path | None = None,
 ) -> int:
     """Compile Typst files using configuration from parameters.yaml.
+
+    Reads typst configuration (binary path, font path) from parameters.yaml
+    and compiles all Typst files in the artifact directory.
 
     Parameters
     ----------
     artifact_dir : Path
-        Directory containing Typst artifacts (.typ files).
+        Directory containing Typst template files
     output_dir : Path
-        Directory where compiled PDFs will be written.
+        Directory where compiled PDFs will be written
     config_path : Path, optional
         Path to parameters.yaml. If not provided, uses default location.
+    template_dir : Path, optional
+        Template directory containing conf.typ and assets/ (used as Typst --root)
+        If not provided, defaults to project root.
 
     Returns
     -------
@@ -182,17 +191,20 @@ def compile_with_config(
 
     font_path = Path(font_path_str) if font_path_str else None
 
+    # Use provided template_dir as Typst root, otherwise fall back to project root
+    root_dir = template_dir if template_dir else ROOT_DIR
+
     return compile_typst_files(
         artifact_dir,
         output_dir,
         typst_bin=typst_bin,
         font_path=font_path,
-        root_dir=ROOT_DIR,
+        root_dir=root_dir,
         verbose=False,
     )
 
 
-def main(artifact_dir: Path, output_dir: Path, config_path: Path | None = None) -> int:
+def main(artifact_dir: Path, output_dir: Path, config_path: Path | None = None, template_dir: Path | None = None) -> int:
     """Main entry point for Typst compilation.
 
     Parameters
@@ -203,13 +215,16 @@ def main(artifact_dir: Path, output_dir: Path, config_path: Path | None = None) 
         Directory for output PDFs.
     config_path : Path, optional
         Path to parameters.yaml configuration file.
+    template_dir : Path, optional
+        Template directory containing conf.typ and assets/. Used as Typst --root.
+        If not provided, defaults to project root.
 
     Returns
     -------
     int
         Number of files compiled.
     """
-    compiled = compile_with_config(artifact_dir, output_dir, config_path)
+    compiled = compile_with_config(artifact_dir, output_dir, config_path, template_dir)
     if compiled:
         print(f"Compiled {compiled} Typst file(s) to PDFs in {output_dir}.")
     return compiled
