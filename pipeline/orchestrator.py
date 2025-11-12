@@ -57,6 +57,7 @@ ROOT_DIR = SCRIPT_DIR.parent
 DEFAULT_INPUT_DIR = ROOT_DIR / "input"
 DEFAULT_OUTPUT_DIR = ROOT_DIR / "output"
 DEFAULT_TEMPLATES_DIR = ROOT_DIR / "templates"
+DEFAULT_PHU_TEMPLATES_DIR = ROOT_DIR / "phu_templates"
 DEFAULT_CONFIG_DIR = ROOT_DIR / "config"
 
 
@@ -101,10 +102,12 @@ Examples:
         help=f"Config directory (default: {DEFAULT_CONFIG_DIR})",
     )
     parser.add_argument(
-        "--template-dir",
-        type=Path,
-        default=DEFAULT_TEMPLATES_DIR,
-        help=f"Template directory (default: {DEFAULT_TEMPLATES_DIR})",
+        "--template",
+        type=str,
+        default=None,
+        dest="template_dir",
+        help="PHU template name within phu_templates/ (e.g., 'wdgph'). "
+        "If not specified, uses default templates/ directory.",
     )
 
     return parser.parse_args()
@@ -116,8 +119,35 @@ def validate_args(args: argparse.Namespace) -> None:
         raise FileNotFoundError(
             f"Input file not found: {args.input_dir / args.input_file}"
         )
-    if not args.template_dir.exists():
-        raise FileNotFoundError(f"Template directory not found: {args.template_dir}")
+
+    # Resolve template directory
+    if args.template_dir is None:
+        # No custom template specified; use default
+        args.template_dir = DEFAULT_TEMPLATES_DIR
+    else:
+        # Custom PHU template specified; resolve within phu_templates/
+        # Validate no path separators (prevent nested directories)
+        if "/" in args.template_dir or "\\" in args.template_dir:
+            raise ValueError(
+                f"Template name cannot contain path separators: {args.template_dir}\n"
+                f"Expected a simple name like 'wdgph' or 'my_phu', not a path."
+            )
+
+        phu_template_path = DEFAULT_PHU_TEMPLATES_DIR / args.template_dir
+        if not phu_template_path.exists():
+            raise FileNotFoundError(
+                f"PHU template directory not found: {phu_template_path}\n"
+                f"Expected location: phu_templates/{args.template_dir}\n"
+                f"Ensure the directory exists and contains required template files."
+            )
+        if not phu_template_path.is_dir():
+            raise NotADirectoryError(
+                f"PHU template path is not a directory: {phu_template_path}"
+            )
+        # Update args.template_dir to resolved Path
+        args.template_dir = phu_template_path
+
+    # Validate template directory contents
     if not args.template_dir.is_dir():
         raise NotADirectoryError(
             f"Template path is not a directory: {args.template_dir}"
@@ -272,30 +302,28 @@ def run_step_4_generate_notices(
     run_id : str
         Unique run identifier
     template_dir : Path
-        Directory containing language templates and assets
+        Directory containing language templates and optional assets
     config_dir : Path
         Configuration directory
+
+    Notes
+    -----
+    Assets (logo.png, signature.png) are optional. They are only required if
+    the template actually references them. If a template references an asset
+    that doesn't exist, generation will fail with a clear error message.
     """
     print_step(4, "Generating Typst templates")
 
     artifact_path = output_dir / "artifacts" / f"preprocessed_clients_{run_id}.json"
     artifacts_dir = output_dir / "artifacts"
 
-    # Assets now come from template directory
+    # Assets now come from template directory (optional)
     logo_path = template_dir / "assets" / "logo.png"
     signature_path = template_dir / "assets" / "signature.png"
 
-    # Validate assets exist (fail-fast)
-    if not logo_path.exists():
-        raise FileNotFoundError(
-            f"Logo not found: {logo_path}. "
-            f"Template directory must contain assets/logo.png"
-        )
-    if not signature_path.exists():
-        raise FileNotFoundError(
-            f"Signature not found: {signature_path}. "
-            f"Template directory must contain assets/signature.png"
-        )
+    # Note: Assets are NOT validated here. If a template references an asset
+    # that doesn't exist, the template rendering will fail with a clear error.
+    # This allows templates without assets to work without requiring dummy files.
 
     # Generate Typst files using main function
     generated = generate_notices.main(

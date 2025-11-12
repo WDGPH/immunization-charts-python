@@ -194,12 +194,15 @@ class TestBuildLanguageRenderers:
         assert callable(renderers["en"])
         assert callable(renderers["fr"])
 
-    def test_build_language_renderers_missing_language(self, tmp_path: Path) -> None:
-        """Verify error when template missing for a language.
+    def test_build_language_renderers_missing_language_allowed(
+        self, tmp_path: Path
+    ) -> None:
+        """Verify that missing language template is allowed (not required).
 
         Real-world significance:
-        - Template directory incomplete
-        - Should fail immediately before processing clients
+        - PHU templates can support single language (e.g., English only)
+        - Missing language just means that language isn't available
+        - Error only occurs when that specific language is requested
         """
         # Create only English template
         en_template = tmp_path / "en_template.py"
@@ -208,9 +211,12 @@ class TestBuildLanguageRenderers:
             encoding="utf-8",
         )
 
-        # Should fail when trying to load French
-        with pytest.raises(FileNotFoundError, match="fr_template.py"):
-            generate_notices.build_language_renderers(tmp_path)
+        # Should NOT raise - just returns only English
+        renderers = generate_notices.build_language_renderers(tmp_path)
+
+        assert "en" in renderers
+        assert "fr" not in renderers
+        assert len(renderers) == 1
 
     def test_build_language_renderers_returns_dict_with_correct_types(
         self, templates_dir: Path

@@ -126,6 +126,7 @@ class TestValidateArgs:
         args = MagicMock()
         args.input_file = "students.xlsx"
         args.input_dir = tmp_test_dir
+        args.template_dir = None  # Use default templates
 
         # Should not raise
         orchestrator.validate_args(args)
