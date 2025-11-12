@@ -93,6 +93,8 @@ REQUIRED_COLUMNS = [
     "STREET ADDRESS LINE 2",
 ]
 
+THRESHOLD = 80
+
 def convert_date_string(
     date_str: str | datetime | pd.Timestamp, locale: str = "en"
 ) -> str | None:
@@ -328,7 +330,7 @@ def read_input(file_path: Path) -> pd.DataFrame:
 
 def normalize(col: str) -> str:
     """Normalize formatting prior to matching."""
-    return col.lower().strip().replace(" ", "_").replace("-", "_")
+    return col.lower().strip().replace("_", " ").replace("-", " ")
 
 
 def map_columns(df: pd.DataFrame, required_columns=REQUIRED_COLUMNS):
@@ -385,7 +387,7 @@ def map_columns(df: pd.DataFrame, required_columns=REQUIRED_COLUMNS):
         # Remove column if it has a score of 0
         best_match = required_columns[index]
 
-        if score >= 80:  # adjustable threshold
+        if score >= THRESHOLD:  # adjustable threshold
             # Map the original column name, not the normalized one
             actual_in_col = next(c for c in input_cols if normalize(c) == input_col)
             col_map[actual_in_col] = best_match
