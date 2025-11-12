@@ -30,6 +30,61 @@ from tests.fixtures import sample_input
 
 
 @pytest.mark.unit
+class TestMapColumns:
+    """Unit tests for map_columns() column mapping utility."""
+
+    def test_maps_exact_column_names(self):
+        """Verify that exact column names are mapped correctly."""
+        df = pd.DataFrame(
+            {
+                "SCHOOL NAME": ["Test School"],
+                "CLIENT ID": ["C001"],
+                "FIRST NAME": ["Alice"],
+                "LAST NAME": ["Zephyr"],
+                "DATE OF BIRTH": ["2015-01-01"],
+                "CITY": ["Guelph"],
+                "POSTAL CODE": ["N1H 2T2"],
+                "PROVINCE/TERRITORY": ["ON"],
+                "OVERDUE DISEASE": ["Measles"],
+                "IMMS GIVEN": [""],
+                "STREET ADDRESS LINE 1": ["123 Main"],
+                "STREET ADDRESS LINE 2": [""],
+            }
+        )
+
+        mapped_df, col_map = preprocess.map_columns(df)
+
+        assert set(mapped_df.columns) == set(preprocess.REQUIRED_COLUMNS)
+        for col in preprocess.REQUIRED_COLUMNS:
+            assert col in col_map.values()
+
+    def test_maps_inexact_column_names(self):
+        """Verify that inexact column names are mapped correctly."""
+        df = pd.DataFrame(
+            {
+                "school-name": ["Test School"],
+                "client id": ["C001"],
+                "First Name": ["Alice"],
+                "last_name": ["Zephyr"],
+                "date-of-birth": ["2015-01-01"],
+                "City": ["Guelph"],
+                "postal_code": ["N1H 2T2"],
+                "province territory": ["ON"],
+                "overdue disease": ["Measles"],
+                "imms given": [""],
+                "street address line 1": ["123 Main"],
+                "street address line 2": [""],
+            }
+        )
+
+        mapped_df, col_map = preprocess.map_columns(df)
+
+        assert set(mapped_df.columns) == set(preprocess.REQUIRED_COLUMNS)
+        for col in preprocess.REQUIRED_COLUMNS:
+            assert col in col_map.values()
+
+
+@pytest.mark.unit
 class TestNormalize:
     """Unit tests for normalize() column name formatter."""
 
