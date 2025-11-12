@@ -84,21 +84,24 @@ Examples:
         help=f"Language for output ({', '.join(sorted(Language.all_codes()))})",
     )
     parser.add_argument(
-        "--input-dir",
+        "--input",
         type=Path,
         default=DEFAULT_INPUT_DIR,
+        dest="input_dir",
         help=f"Input directory (default: {DEFAULT_INPUT_DIR})",
     )
     parser.add_argument(
-        "--output-dir",
+        "--output",
         type=Path,
         default=DEFAULT_OUTPUT_DIR,
+        dest="output_dir",
         help=f"Output directory (default: {DEFAULT_OUTPUT_DIR})",
     )
     parser.add_argument(
-        "--config-dir",
+        "--config",
         type=Path,
         default=DEFAULT_CONFIG_DIR,
+        dest="config_dir",
         help=f"Config directory (default: {DEFAULT_CONFIG_DIR})",
     )
     parser.add_argument(

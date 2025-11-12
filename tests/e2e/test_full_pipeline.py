@@ -105,7 +105,7 @@ class TestFullPipelineExecution:
             "viper",
             str(input_file.name),
             language,
-            "--input-dir",
+            "--input",
             str(input_file.parent),
         ]
 

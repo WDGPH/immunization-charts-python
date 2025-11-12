@@ -143,7 +143,7 @@ The main pipeline orchestrator (`orchestrator.py`) automates the end-to-end work
 
 **Usage Example:**
 ```bash
-uv run viper <input_file> <language> [--output-dir PATH]
+uv run viper <input_file> <language> [--output PATH]
 ```
 
 **Required Arguments:**
@@ -151,9 +151,9 @@ uv run viper <input_file> <language> [--output-dir PATH]
 - `<language>`: Language code (`en` or `fr`)
 
 **Optional Arguments:**
-- `--input-dir PATH`: Input directory (default: ../input)
-- `--output-dir PATH`: Output directory (default: ../output)
-- `--config-dir PATH`: Configuration directory (default: ../config)
+- `--input PATH`: Input directory (default: ../input)
+- `--output PATH`: Output directory (default: ../output)
+- `--config PATH`: Configuration directory (default: ../config)
 - `--template NAME`: PHU template name within `phu_templates/` (e.g., `wdgph`); defaults to built-in `templates/` when omitted
 
 **Configuration:**
@@ -172,7 +172,7 @@ Direct link: [Configuration Reference](./config/README.md)
 uv run viper students.xlsx en
 
 # Override output directory
-uv run viper students.xlsx en --output-dir /tmp/output
+uv run viper students.xlsx en --output /tmp/output
 
 # Use a PHU-specific template (from phu_templates/my_phu/)
 uv run viper students.xlsx en --template my_phu
