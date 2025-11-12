@@ -120,14 +120,18 @@ class TestUnsupportedLanguageDetection:
         - Output: Callable template renderer
         - No error handling needed (error indicates upstream validation failed)
         """
+        # Build renderers from default template directory
+        from pathlib import Path
+        templates_dir = Path(__file__).parent.parent.parent / "templates"
+        renderers = generate_notices.build_language_renderers(templates_dir)
 
         # Verify renderer dispatch works for valid languages
         en = Language.from_string("en")
-        en_renderer = generate_notices.get_language_renderer(en)
+        en_renderer = generate_notices.get_language_renderer(en, renderers)
         assert callable(en_renderer)
 
         fr = Language.from_string("fr")
-        fr_renderer = generate_notices.get_language_renderer(fr)
+        fr_renderer = generate_notices.get_language_renderer(fr, renderers)
         assert callable(fr_renderer)
 
     def test_valid_languages_pass_all_checks(self) -> None:
@@ -137,16 +141,21 @@ class TestUnsupportedLanguageDetection:
         - Confirms that supported languages work end-to-end
         - Positive test case for all failure points
         """
+        # Build renderers from default template directory
+        from pathlib import Path
+        templates_dir = Path(__file__).parent.parent.parent / "templates"
+        renderers = generate_notices.build_language_renderers(templates_dir)
+        
         # English
         en_lang = Language.from_string("en")
         assert en_lang == Language.ENGLISH
-        en_renderer = generate_notices.get_language_renderer(en_lang)
+        en_renderer = generate_notices.get_language_renderer(en_lang, renderers)
         assert callable(en_renderer)
 
         # French
         fr_lang = Language.from_string("fr")
         assert fr_lang == Language.FRENCH
-        fr_renderer = generate_notices.get_language_renderer(fr_lang)
+        fr_renderer = generate_notices.get_language_renderer(fr_lang, renderers)
         assert callable(fr_renderer)
 
     def test_language_all_codes_returns_supported_languages(self) -> None:
@@ -239,6 +248,11 @@ class TestLanguageFailurePathDocumentation:
 
         Result: **THREE-LINE CHANGE** in code + config updates
         """
+        # Build renderers from default template directory
+        from pathlib import Path
+        templates_dir = Path(__file__).parent.parent.parent / "templates"
+        renderers = generate_notices.build_language_renderers(templates_dir)
+        
         # This test is primarily documentation; verify current state
         assert Language.all_codes() == {"en", "fr"}
 
@@ -248,5 +262,5 @@ class TestLanguageFailurePathDocumentation:
 
         # Verify renderer dispatch works as documented
         en = Language.from_string("en")
-        en_renderer = generate_notices.get_language_renderer(en)
+        en_renderer = generate_notices.get_language_renderer(en, renderers)
         assert callable(en_renderer)

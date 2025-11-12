@@ -432,11 +432,18 @@ class TestLanguageSupport:
         - Pipeline must support bilingual notices
         - Both language renderers must be present
         """
+        # Build renderers from default template directory
+        from pathlib import Path
+        templates_dir = Path(__file__).parent.parent.parent / "templates"
+        renderers = generate_notices.build_language_renderers(templates_dir)
+        
         english_renderer = generate_notices.get_language_renderer(
-            generate_notices.Language.ENGLISH
+            generate_notices.Language.ENGLISH,
+            renderers
         )
         french_renderer = generate_notices.get_language_renderer(
-            generate_notices.Language.FRENCH
+            generate_notices.Language.FRENCH,
+            renderers
         )
         assert callable(english_renderer)
         assert callable(french_renderer)
@@ -448,10 +455,16 @@ class TestLanguageSupport:
         - English-language notices are primary for Ontario PHUs
         - Must render without errors
         """
+        # Build renderers from default template directory
+        from pathlib import Path
+        templates_dir = Path(__file__).parent.parent.parent / "templates"
+        renderers = generate_notices.build_language_renderers(templates_dir)
+        
         # Just verify the language renderer is callable
         # (actual rendering requires full Typst setup)
         english_renderer = generate_notices.get_language_renderer(
-            generate_notices.Language.ENGLISH
+            generate_notices.Language.ENGLISH,
+            renderers
         )
         assert english_renderer is not None
 
@@ -462,8 +475,14 @@ class TestLanguageSupport:
         - Quebec and Francophone deployments need French
         - Must render without errors for fr language code
         """
+        # Build renderers from default template directory
+        from pathlib import Path
+        templates_dir = Path(__file__).parent.parent.parent / "templates"
+        renderers = generate_notices.build_language_renderers(templates_dir)
+        
         # Just verify the language renderer is callable
         french_renderer = generate_notices.get_language_renderer(
-            generate_notices.Language.FRENCH
+            generate_notices.Language.FRENCH,
+            renderers
         )
         assert french_renderer is not None
