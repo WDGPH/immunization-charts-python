@@ -15,3 +15,6 @@ coverage.xml
 coverage.json
 !input/rodent_dataset.xlsx
 input/*
+phu_templates/*
+!phu_templates/README.md
+!phu_templates/.gitkeep

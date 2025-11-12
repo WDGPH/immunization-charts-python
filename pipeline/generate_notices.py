@@ -77,7 +77,7 @@ def load_template_module(template_dir: Path, language_code: str):
     Parameters
     ----------
     template_dir : Path
-        Directory containing template modules (e.g., templates/ or phu_templates/custom/)
+        Directory containing template modules (e.g., templates/ or phu_templates/my_phu/)
     language_code : str
         Two-character ISO language code (e.g., "en", "fr")
 
@@ -134,13 +134,15 @@ def load_template_module(template_dir: Path, language_code: str):
 def build_language_renderers(template_dir: Path) -> dict:
     """Build renderer dictionary from templates in specified directory.
 
-    Discovers and loads all language template modules from the given directory,
+    Discovers and loads all available language template modules from the given directory,
     building a mapping of language codes to their render_notice functions.
 
     **Validation Contract:**
-    - All languages in Language enum must have corresponding template files
-    - Each template must have valid render_notice() function
-    - Raises immediately if any template missing or invalid
+    - Only languages with corresponding template files are included
+    - Each available template must have valid render_notice() function
+    - Raises immediately if any template file exists but is invalid
+    - Does NOT require all Language enum values to be present
+    - Later validation ensures requested language is available when needed
 
     Parameters
     ----------
@@ -152,23 +154,29 @@ def build_language_renderers(template_dir: Path) -> dict:
     dict
         Mapping of language codes (str) to render_notice functions (callable)
         Format: {"en": <function>, "fr": <function>, ...}
+        May contain subset of all languages; only includes available templates
 
     Raises
     ------
-    FileNotFoundError
-        If any required template file is missing
     AttributeError
-        If any template doesn't define render_notice()
+        If a template file exists but doesn't define render_notice()
 
     Examples
     --------
     >>> renderers = build_language_renderers(Path("templates"))
     >>> renderers["en"](context, logo_path="/logo.png", signature_path="/sig.png")
+
+    >>> # PHU providing only English
+    >>> renderers = build_language_renderers(Path("phu_templates/my_phu"))
+    >>> renderers  # May only contain {"en": <function>}
     """
     renderers = {}
     for lang in Language:
-        module = load_template_module(template_dir, lang.value)
-        renderers[lang.value] = module.render_notice
+        module_path = template_dir / f"{lang.value}_template.py"
+        # Only load if template file exists
+        if module_path.exists():
+            module = load_template_module(template_dir, lang.value)
+            renderers[lang.value] = module.render_notice
     return renderers
 
 
@@ -181,8 +189,8 @@ def get_language_renderer(language: Language, renderers: dict):
 
     **Validation Contract:** Assumes language is a valid Language enum (validated
     upstream at CLI entry point via argparse choices, and again by Language.from_string()
-    before calling this function). Assumes renderers dict is complete (validated by
-    build_language_renderers()).
+    before calling this function). Checks that language is available in renderers dict;
+    raises with helpful error if template for requested language is not available.
 
     Parameters
     ----------
@@ -190,12 +198,18 @@ def get_language_renderer(language: Language, renderers: dict):
         Language enum value (guaranteed to be valid from Language enum).
     renderers : dict
         Mapping of language codes to render_notice functions, built by
-        build_language_renderers()
+        build_language_renderers(). May only contain subset of all languages.
 
     Returns
     -------
     callable
         Template rendering function for the language.
+
+    Raises
+    ------
+    FileNotFoundError
+        If requested language template is not available in renderers dict.
+        Provides helpful message listing available languages.
 
     Examples
     --------
@@ -203,8 +217,13 @@ def get_language_renderer(language: Language, renderers: dict):
     >>> renderer = get_language_renderer(Language.ENGLISH, renderers)
     >>> # renderer is now the render_notice function from en_template
     """
-    # Language is already validated upstream (CLI choices + Language.from_string())
-    # Direct lookup; safe because only valid Language enums reach this function
+    if language.value not in renderers:
+        available = ", ".join(sorted(renderers.keys())) if renderers else "none"
+        raise FileNotFoundError(
+            f"Template not available for language: {language.value}\n"
+            f"Available languages: {available}\n"
+            f"Ensure your template directory contains {language.value}_template.py"
+        )
     return renderers[language.value]
 
 

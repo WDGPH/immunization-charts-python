@@ -282,3 +282,102 @@ class TestCustomTemplateDirectory:
         assert en_module.stat().st_size > 0
         assert fr_module.stat().st_size > 0
         assert conf.stat().st_size > 0
+
+    def test_single_language_template_english_only(self, tmp_path: Path) -> None:
+        """Verify PHU can provide template for only English (no French).
+
+        Real-world significance:
+        - Not all PHUs need bilingual templates
+        - Pipeline should work with single-language templates
+        - Requesting unsupported language should fail with clear error
+        """
+        # Create single-language template (English only)
+        en_template_dir = tmp_path / "en_only_template"
+        en_template_dir.mkdir()
+
+        # Copy English template and conf only
+        import shutil
+
+        shutil.copy2(
+            Path(__file__).parent.parent.parent / "templates" / "en_template.py",
+            en_template_dir / "en_template.py",
+        )
+        shutil.copy2(
+            Path(__file__).parent.parent.parent / "templates" / "conf.typ",
+            en_template_dir / "conf.typ",
+        )
+
+        # Build renderers - should only have English
+        renderers = generate_notices.build_language_renderers(en_template_dir)
+
+        assert "en" in renderers, "English should be available"
+        assert "fr" not in renderers, "French should NOT be available"
+        assert callable(renderers["en"])
+
+    def test_single_language_template_french_only(self, tmp_path: Path) -> None:
+        """Verify PHU can provide template for only French (no English).
+
+        Real-world significance:
+        - Some PHUs may only provide French
+        - Pipeline should work with single-language templates
+        - Only the provided language can be requested
+        """
+        # Create single-language template (French only)
+        fr_template_dir = tmp_path / "fr_only_template"
+        fr_template_dir.mkdir()
+
+        # Copy French template and conf only
+        import shutil
+
+        shutil.copy2(
+            Path(__file__).parent.parent.parent / "templates" / "fr_template.py",
+            fr_template_dir / "fr_template.py",
+        )
+        shutil.copy2(
+            Path(__file__).parent.parent.parent / "templates" / "conf.typ",
+            fr_template_dir / "conf.typ",
+        )
+
+        # Build renderers - should only have French
+        renderers = generate_notices.build_language_renderers(fr_template_dir)
+
+        assert "fr" in renderers, "French should be available"
+        assert "en" not in renderers, "English should NOT be available"
+        assert callable(renderers["fr"])
+
+    def test_missing_language_raises_helpful_error(self, tmp_path: Path) -> None:
+        """Verify requesting unavailable language gives helpful error.
+
+        Real-world significance:
+        - Users should understand why generation fails
+        - Error message should indicate available languages
+        - Should guide users to provide correct language
+        """
+        # Create single-language template (English only)
+        en_template_dir = tmp_path / "en_only_template"
+        en_template_dir.mkdir()
+
+        import shutil
+
+        shutil.copy2(
+            Path(__file__).parent.parent.parent / "templates" / "en_template.py",
+            en_template_dir / "en_template.py",
+        )
+        shutil.copy2(
+            Path(__file__).parent.parent.parent / "templates" / "conf.typ",
+            en_template_dir / "conf.typ",
+        )
+
+        # Build renderers
+        renderers = generate_notices.build_language_renderers(en_template_dir)
+
+        # Try to get French renderer - should fail
+        from pipeline.enums import Language
+
+        with pytest.raises(FileNotFoundError) as exc_info:
+            generate_notices.get_language_renderer(Language.FRENCH, renderers)
+
+        error_msg = str(exc_info.value)
+        assert "fr" in error_msg, "Error should mention missing 'fr'"
+        assert "Available languages: en" in error_msg, "Error should list available: en"
+        assert "fr_template.py" in error_msg, "Error should mention required file name"
