@@ -29,7 +29,7 @@ TEMPLATE_PREFIX = """// --- CCEYA NOTICE TEMPLATE (TEST VERSION) --- //
 // Date Last Updated: 2025-09-16
 // ----------------------------------------- //
 
-#import "/templates/conf.typ"
+#import "conf.typ"
 
 // General document formatting 
 #set text(fill: black)
