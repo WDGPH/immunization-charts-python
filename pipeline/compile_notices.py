@@ -172,8 +172,8 @@ def compile_with_config(
     config_path : Path, optional
         Path to parameters.yaml. If not provided, uses default location.
     template_dir : Path, optional
-        Template directory containing conf.typ and assets/ (used as Typst --root)
-        If not provided, defaults to project root.
+        Template directory for dynamic template loading. Typst compilation always
+        uses PROJECT_ROOT as --root to find both templates and output artifacts.
 
     Returns
     -------
@@ -191,8 +191,9 @@ def compile_with_config(
 
     font_path = Path(font_path_str) if font_path_str else None
 
-    # Use provided template_dir as Typst root, otherwise fall back to project root
-    root_dir = template_dir if template_dir else ROOT_DIR
+    # Typst compilation always uses PROJECT_ROOT to find both templates and output artifacts.
+    # template_dir parameter is for dynamic template loading in generate_notices, not for Typst --root.
+    root_dir = ROOT_DIR
 
     return compile_typst_files(
         artifact_dir,
