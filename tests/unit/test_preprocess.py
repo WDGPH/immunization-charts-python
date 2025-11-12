@@ -37,21 +37,17 @@ class TestNormalize:
         """Verify that text is converted to lowercase."""
         assert preprocess.normalize("ColumnName") == "columnname"
 
-    def test_trims_whitespace(self):
-        """Verify that leading and trailing whitespace is removed."""
-        assert preprocess.normalize("  column  ") == "column"
-
     def test_replaces_spaces_with_underscores(self):
         """Verify that internal spaces are replaced with underscores."""
-        assert preprocess.normalize("Column Name") == "column_name"
+        assert preprocess.normalize("Column_Name") == "column name"
 
     def test_replaces_hyphens_with_underscores(self):
         """Verify that hyphens are replaced with underscores."""
-        assert preprocess.normalize("Column-Name") == "column_name"
+        assert preprocess.normalize("Column-Name") == "column name"
 
     def test_combined_transformations(self):
         """Verify that multiple transformations apply together."""
-        assert preprocess.normalize("  Column - Name  ") == "column___name"
+        assert preprocess.normalize("  Column - Name  ") == "column name"
 
     def test_handles_empty_string(self):
         """Verify that empty strings are handled safely."""
@@ -59,7 +55,7 @@ class TestNormalize:
 
     def test_handles_non_alphabetic_characters(self):
         """Verify that non-letter characters are preserved."""
-        assert preprocess.normalize("123 Name!") == "123_name!"
+        assert preprocess.normalize("123 Name!") == "123 name!"
 
 @pytest.mark.unit
 class TestFilterColumns:

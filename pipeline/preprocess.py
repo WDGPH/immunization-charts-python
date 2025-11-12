@@ -330,7 +330,14 @@ def read_input(file_path: Path) -> pd.DataFrame:
 
 def normalize(col: str) -> str:
     """Normalize formatting prior to matching."""
-    return col.lower().strip().replace("_", " ").replace("-", " ")
+
+    # Trim whitespaces
+    col_normalized = col.lower().strip().replace("_", " ").replace("-", " ")
+
+    # Check to see if double whitespace
+    col_normalized = re.sub(r"\s+", " ", col_normalized)
+
+    return col_normalized
 
 
 def map_columns(df: pd.DataFrame, required_columns=REQUIRED_COLUMNS):
