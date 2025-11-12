@@ -70,6 +70,28 @@ LOG = logging.getLogger(__name__)
 
 _FORMATTER = Formatter()
 
+IGNORE_AGENTS = [
+    "-unspecified",
+    "unspecified",
+    "Not Specified",
+    "Not specified",
+    "Not Specified-unspecified",
+]
+
+REQUIRED_COLUMNS = [
+    "SCHOOL NAME",
+    "CLIENT ID",
+    "FIRST NAME",
+    "LAST NAME",
+    "DATE OF BIRTH",
+    "CITY",
+    "POSTAL CODE",
+    "PROVINCE/TERRITORY",
+    "OVERDUE DISEASE",
+    "IMMS GIVEN",
+    "STREET ADDRESS LINE 1",
+    "STREET ADDRESS LINE 2",
+]
 
 def convert_date_string(
     date_str: str | datetime | pd.Timestamp, locale: str = "en"
@@ -198,31 +220,6 @@ def over_16_check(date_of_birth, date_notice_delivery):
         age -= 1
 
     return age >= 16
-
-
-IGNORE_AGENTS = [
-    "-unspecified",
-    "unspecified",
-    "Not Specified",
-    "Not specified",
-    "Not Specified-unspecified",
-]
-
-REQUIRED_COLUMNS = [
-    "SCHOOL NAME",
-    "CLIENT ID",
-    "FIRST NAME",
-    "LAST NAME",
-    "DATE OF BIRTH",
-    "CITY",
-    "POSTAL CODE",
-    "PROVINCE/TERRITORY",
-    "OVERDUE DISEASE",
-    "IMMS GIVEN",
-    "STREET ADDRESS LINE 1",
-    "STREET ADDRESS LINE 2",
-]
-
 
 def configure_logging(output_dir: Path, run_id: str) -> Path:
     """Configure file logging for the preprocessing step.
