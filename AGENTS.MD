@@ -33,7 +33,7 @@
 
 * **Orchestrator:** `pipeline/orchestrator.py` is the `viper` CLI entry point and coordinates 9 steps.
 * **Steps:** Modules are organized by steps 1–9, not by functional themes.
-* **Templates:** `templates/` contains default language templates (`en_template.py`, `fr_template.py`), Typst config (`conf.typ`), and assets. Templates are loaded dynamically at runtime via `build_language_renderers()` in `generate_notices.py`, enabling custom template directories via `--template-dir` CLI argument. Each template module must define `render_notice()` function. Template directory isolation: templates, conf.typ, and assets stay together. Typesetting is separate from orchestration.
+* **Templates:** `templates/` contains default language templates (`en_template.py`, `fr_template.py`), Typst config (`conf.typ`), and assets. `phu_templates/` is the container for PHU-specific template customizations (gitignored). Templates are loaded dynamically at runtime via `build_language_renderers()` in `generate_notices.py`. The `--template` CLI argument expects a template name within `phu_templates/` (e.g., `--template wdgph` → `phu_templates/wdgph/`). Template names cannot contain path separators (no nesting). Each template module must define a `render_notice()` function. Template directory isolation: templates, conf.typ, and assets stay together. Typesetting is separate from orchestration.
 
 ---
 
