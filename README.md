@@ -185,32 +185,14 @@ Control mode with the CLI flag:
 
 ```bash
 # test mode (default)
-python -m pipeline.orchestrator students.xlsx en
+uv run viper students.xlsx en
 
 # explicitly enable test mode (same as default)
-python -m pipeline.orchestrator students.xlsx en --test-mode
+uv run viper students.xlsx en --test-mode
 
 # production / PHU mode (uses phu_templates)
-python -m pipeline.orchestrator students.xlsx en --prod
-```
-
-If you use the project entrypoint (`uv run viper`) the flags are the same:
-
-```bash
 uv run viper students.xlsx en --prod
 ```
-
-Notes about import path and runners
-- Run from the repository root so Python can import the top-level packages (`templates`, `phu_templates`).
-- If your runner changes working directories (some wrappers do), make the project importable by either installing the package in editable mode or setting PYTHONPATH:
-
-```bash
-
-# or set PYTHONPATH for a single run
-PYTHONPATH=/home/jovyan/immunization-charts-python uv run viper students.xlsx en --prod
-```
-
-Why this matters: the orchestrator and generator import template packages by name (e.g. `phu_templates.en_template_row`). If the repository root is not on `sys.path`, Python cannot find `phu_templates` and the pipeline will fail with "No module named 'phu_templates'". Installing editable or setting PYTHONPATH avoids that issue.
 
 > ℹ️ **Typst preview note:** The WDGPH code-server development environments render Typst files via Tinymist. The shared template at `templates/conf.typ` only defines helper functions, colour tokens, and table layouts that the generated notice `.typ` files import; it doesn't emit any pages on its own, so Tinymist has nothing to preview if attempted on this file. To examine the actual markup that uses these helpers, run the pipeline with `pipeline.keep_intermediate_files: true` in `config/parameters.yaml` so the generated notice `.typ` files stay in `output/artifacts/` for manual inspection.
 
