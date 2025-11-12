@@ -133,7 +133,9 @@ class TestLoadTemplateModule:
         error_msg = str(exc_info.value)
         assert str(invalid_template) in error_msg
 
-    def test_load_template_module_syntax_error_in_template(self, tmp_path: Path) -> None:
+    def test_load_template_module_syntax_error_in_template(
+        self, tmp_path: Path
+    ) -> None:
         """Verify error when template has syntax errors.
 
         Real-world significance:

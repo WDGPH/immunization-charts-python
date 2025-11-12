@@ -434,16 +434,15 @@ class TestLanguageSupport:
         """
         # Build renderers from default template directory
         from pathlib import Path
+
         templates_dir = Path(__file__).parent.parent.parent / "templates"
         renderers = generate_notices.build_language_renderers(templates_dir)
-        
+
         english_renderer = generate_notices.get_language_renderer(
-            generate_notices.Language.ENGLISH,
-            renderers
+            generate_notices.Language.ENGLISH, renderers
         )
         french_renderer = generate_notices.get_language_renderer(
-            generate_notices.Language.FRENCH,
-            renderers
+            generate_notices.Language.FRENCH, renderers
         )
         assert callable(english_renderer)
         assert callable(french_renderer)
@@ -457,14 +456,14 @@ class TestLanguageSupport:
         """
         # Build renderers from default template directory
         from pathlib import Path
+
         templates_dir = Path(__file__).parent.parent.parent / "templates"
         renderers = generate_notices.build_language_renderers(templates_dir)
-        
+
         # Just verify the language renderer is callable
         # (actual rendering requires full Typst setup)
         english_renderer = generate_notices.get_language_renderer(
-            generate_notices.Language.ENGLISH,
-            renderers
+            generate_notices.Language.ENGLISH, renderers
         )
         assert english_renderer is not None
 
@@ -477,12 +476,12 @@ class TestLanguageSupport:
         """
         # Build renderers from default template directory
         from pathlib import Path
+
         templates_dir = Path(__file__).parent.parent.parent / "templates"
         renderers = generate_notices.build_language_renderers(templates_dir)
-        
+
         # Just verify the language renderer is callable
         french_renderer = generate_notices.get_language_renderer(
-            generate_notices.Language.FRENCH,
-            renderers
+            generate_notices.Language.FRENCH, renderers
         )
         assert french_renderer is not None
