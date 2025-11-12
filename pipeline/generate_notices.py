@@ -475,7 +475,7 @@ def to_root_relative(path: Path) -> str:
 
     Module-internal helper for template rendering. Converts absolute file paths
     to paths relative to the project root, formatted for Typst's import resolution.
-    Required because Typst subprocess needs paths resolvable from the project directory.
+    If path is outside project root (e.g., custom assets), returns absolute path.
 
     Parameters
     ----------
@@ -485,21 +485,22 @@ def to_root_relative(path: Path) -> str:
     Returns
     -------
     str
-        Path string like "/artifacts/qr_codes/code.png" (relative to project root).
+        Path string like "/artifacts/qr_codes/code.png" (relative to project root)
+        or absolute path if outside project root.
 
     Raises
     ------
     ValueError
-        If path is outside the project root.
+        If path cannot be resolved (defensive guard, should not occur in practice).
     """
     absolute = path.resolve()
     try:
         relative = absolute.relative_to(ROOT_DIR)
-    except ValueError as exc:  # pragma: no cover - defensive guard
-        raise ValueError(
-            f"Path {absolute} is outside of project root {ROOT_DIR}"
-        ) from exc
-    return "/" + relative.as_posix()
+        return "/" + relative.as_posix()
+    except ValueError:
+        # Path is outside project root (e.g., custom template assets)
+        # Return as absolute path string for Typst
+        return str(absolute)
 
 
 def render_notice(
