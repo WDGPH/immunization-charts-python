@@ -25,6 +25,41 @@ def normalize(col: str) -> str:
 
 
 def map_columns(df: pd.DataFrame, required_columns=REQUIRED_COLUMNS):
+    """
+    Map dataframe columns to a set of required column names using fuzzy matching.
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        Input dataframe whose columns will be matched and optionally renamed.
+    required_columns : Sequence[str], optional
+        Sequence of expected/required column names to match against. Defaults to REQUIRED_COLUMNS.
+    Returns
+    -------
+    tuple[pandas.DataFrame, dict]
+        A tuple (renamed_df, col_map) where `renamed_df` is `df` with columns renamed according to successful matches,
+        and `col_map` is a dict mapping original column names (keys) to matched required column names (values).
+    Behavior
+    --------
+    - Normalizes input column names and required column names using `normalize(...)` before matching.
+    - For each normalized input column, finds the best fuzzy match among normalized `required_columns` using
+      `process.extractOne(..., scorer=fuzz.partial_ratio)`.
+    - If the best match score is >= 80 (threshold in the implementation), the original input column name is mapped to the
+      corresponding required column name; the mapping is recorded and the dataframe is renamed accordingly.
+    - A debug line is printed for each accepted match: "Matching '<normalized_input>' to '<best_match>' with score <score>".
+    - Columns with a best match score < 80 are ignored (not included in `col_map`); matches with score 0 are effectively dropped.
+    - The code resolves the original column name by locating the first column whose normalized form equals the normalized input.
+      If multiple original columns normalize to the same value, the first encountered is used.
+    Notes
+    -----
+    - The function depends on external helpers: `normalize`, `process.extractOne`, and `fuzz.partial_ratio`.
+    - The match threshold (80) is adjustable; lowering it makes matching more permissive, raising it makes it stricter.
+    - A `StopIteration` may occur if a normalized input column cannot be resolved back to an original column name.
+    - `required_columns` should be an iterable of strings; `df.columns` are expected to be convertible to strings.
+    Examples
+    --------
+    # Example usage (illustrative only):
+    # renamed_df, mapping = map_columns(df, required_columns=['state', 'date', 'count'])
+    """
     input_cols = df.columns
     col_map = {}
 
