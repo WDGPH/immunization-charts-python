@@ -56,6 +56,7 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 ROOT_DIR = SCRIPT_DIR.parent
 DEFAULT_INPUT_DIR = ROOT_DIR / "input"
 DEFAULT_OUTPUT_DIR = ROOT_DIR / "output"
+DEFAULT_TEMPLATES_DIR = ROOT_DIR / "templates"
 DEFAULT_TEMPLATES_ASSETS_DIR = ROOT_DIR / "templates" / "assets"
 DEFAULT_CONFIG_DIR = ROOT_DIR / "config"
 
@@ -100,6 +101,12 @@ Examples:
         default=DEFAULT_CONFIG_DIR,
         help=f"Config directory (default: {DEFAULT_CONFIG_DIR})",
     )
+    parser.add_argument(
+        "--template-dir",
+        type=Path,
+        default=DEFAULT_TEMPLATES_DIR,
+        help=f"Template directory (default: {DEFAULT_TEMPLATES_DIR})",
+    )
 
     return parser.parse_args()
 
@@ -109,6 +116,14 @@ def validate_args(args: argparse.Namespace) -> None:
     if args.input_file and not (args.input_dir / args.input_file).exists():
         raise FileNotFoundError(
             f"Input file not found: {args.input_dir / args.input_file}"
+        )
+    if not args.template_dir.exists():
+        raise FileNotFoundError(
+            f"Template directory not found: {args.template_dir}"
+        )
+    if not args.template_dir.is_dir():
+        raise NotADirectoryError(
+            f"Template path is not a directory: {args.template_dir}"
         )
 
 
