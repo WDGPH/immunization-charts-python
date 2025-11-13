@@ -176,7 +176,7 @@ class TestRenderNotice:
             signature_path="/sig.png",
         )
 
-        # Should include import statement
+        # Should include import statement (absolute import from project root)
         assert '#import "/templates/conf.typ"' in result
 
     def test_render_notice_includes_dynamic_block(self) -> None:
@@ -273,6 +273,7 @@ class TestTemplateConstants:
         Real-world significance:
         - Typst must import conf.typ helpers
         - Setup code must be present
+        - Uses absolute import from project root for generated .typ files
         """
         assert '#import "/templates/conf.typ"' in TEMPLATE_PREFIX
 

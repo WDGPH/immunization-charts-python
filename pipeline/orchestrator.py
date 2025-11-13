@@ -56,7 +56,8 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 ROOT_DIR = SCRIPT_DIR.parent
 DEFAULT_INPUT_DIR = ROOT_DIR / "input"
 DEFAULT_OUTPUT_DIR = ROOT_DIR / "output"
-DEFAULT_TEMPLATES_ASSETS_DIR = ROOT_DIR / "templates" / "assets"
+DEFAULT_TEMPLATES_DIR = ROOT_DIR / "templates"
+DEFAULT_PHU_TEMPLATES_DIR = ROOT_DIR / "phu_templates"
 DEFAULT_CONFIG_DIR = ROOT_DIR / "config"
 
 
@@ -83,22 +84,33 @@ Examples:
         help=f"Language for output ({', '.join(sorted(Language.all_codes()))})",
     )
     parser.add_argument(
-        "--input-dir",
+        "--input",
         type=Path,
         default=DEFAULT_INPUT_DIR,
+        dest="input_dir",
         help=f"Input directory (default: {DEFAULT_INPUT_DIR})",
     )
     parser.add_argument(
-        "--output-dir",
+        "--output",
         type=Path,
         default=DEFAULT_OUTPUT_DIR,
+        dest="output_dir",
         help=f"Output directory (default: {DEFAULT_OUTPUT_DIR})",
     )
     parser.add_argument(
-        "--config-dir",
+        "--config",
         type=Path,
         default=DEFAULT_CONFIG_DIR,
+        dest="config_dir",
         help=f"Config directory (default: {DEFAULT_CONFIG_DIR})",
+    )
+    parser.add_argument(
+        "--template",
+        type=str,
+        default=None,
+        dest="template_dir",
+        help="PHU template name within phu_templates/ (e.g., 'wdgph'). "
+        "If not specified, pipeline is run in testing mode, defaulting to the templates/ directory.",
     )
 
     return parser.parse_args()
@@ -109,6 +121,39 @@ def validate_args(args: argparse.Namespace) -> None:
     if args.input_file and not (args.input_dir / args.input_file).exists():
         raise FileNotFoundError(
             f"Input file not found: {args.input_dir / args.input_file}"
+        )
+
+    # Resolve template directory
+    if args.template_dir is None:
+        # No custom template specified; use default
+        args.template_dir = DEFAULT_TEMPLATES_DIR
+    else:
+        # Custom PHU template specified; resolve within phu_templates/
+        # Validate no path separators (prevent nested directories)
+        if "/" in args.template_dir or "\\" in args.template_dir:
+            raise ValueError(
+                f"Template name cannot contain path separators: {args.template_dir}\n"
+                f"Expected a simple name like 'wdgph' or 'my_phu', not a path."
+            )
+
+        phu_template_path = DEFAULT_PHU_TEMPLATES_DIR / args.template_dir
+        if not phu_template_path.exists():
+            raise FileNotFoundError(
+                f"PHU template directory not found: {phu_template_path}\n"
+                f"Expected location: phu_templates/{args.template_dir}\n"
+                f"Ensure the directory exists and contains required template files."
+            )
+        if not phu_template_path.is_dir():
+            raise NotADirectoryError(
+                f"PHU template path is not a directory: {phu_template_path}"
+            )
+        # Update args.template_dir to resolved Path
+        args.template_dir = phu_template_path
+
+    # Validate template directory contents
+    if not args.template_dir.is_dir():
+        raise NotADirectoryError(
+            f"Template path is not a directory: {args.template_dir}"
         )
 
 
@@ -250,16 +295,40 @@ def run_step_3_generate_qr_codes(
 def run_step_4_generate_notices(
     output_dir: Path,
     run_id: str,
-    assets_dir: Path,
+    template_dir: Path,
     config_dir: Path,
 ) -> None:
-    """Step 4: Generating Typst templates."""
+    """Step 4: Generating Typst templates.
+
+    Parameters
+    ----------
+    output_dir : Path
+        Output directory for artifacts
+    run_id : str
+        Unique run identifier
+    template_dir : Path
+        Directory containing language templates and optional assets
+    config_dir : Path
+        Configuration directory
+
+    Notes
+    -----
+    Assets (logo.png, signature.png) are optional. They are only required if
+    the template actually references them. If a template references an asset
+    that doesn't exist, generation will fail with a clear error message.
+    """
     print_step(4, "Generating Typst templates")
 
     artifact_path = output_dir / "artifacts" / f"preprocessed_clients_{run_id}.json"
     artifacts_dir = output_dir / "artifacts"
-    logo_path = assets_dir / "logo.png"
-    signature_path = assets_dir / "signature.png"
+
+    # Assets now come from template directory (optional)
+    logo_path = template_dir / "assets" / "logo.png"
+    signature_path = template_dir / "assets" / "signature.png"
+
+    # Note: Assets are NOT validated here. If a template references an asset
+    # that doesn't exist, the template rendering will fail with a clear error.
+    # This allows templates without assets to work without requiring dummy files.
 
     # Generate Typst files using main function
     generated = generate_notices.main(
@@ -267,6 +336,7 @@ def run_step_4_generate_notices(
         artifacts_dir,
         logo_path,
         signature_path,
+        template_dir,
     )
     print(f"Generated {len(generated)} Typst files in {artifacts_dir}")
 
@@ -274,8 +344,19 @@ def run_step_4_generate_notices(
 def run_step_5_compile_notices(
     output_dir: Path,
     config_dir: Path,
+    template_dir: Path,
 ) -> None:
-    """Step 5: Compiling Typst templates to PDFs."""
+    """Step 5: Compiling Typst templates to PDFs.
+
+    Parameters
+    ----------
+    output_dir : Path
+        Output directory containing artifacts and PDFs
+    config_dir : Path
+        Configuration directory
+    template_dir : Path
+        Template directory (used as Typst --root for imports)
+    """
     print_step(5, "Compiling Typst templates")
 
     # Load and validate configuration (fail-fast if invalid)
@@ -290,6 +371,7 @@ def run_step_5_compile_notices(
         artifacts_dir,
         pdf_dir,
         parameters_path,
+        template_dir,
     )
     if compiled:
         print(f"Compiled {compiled} Typst file(s) to PDFs in {pdf_dir}.")
@@ -513,7 +595,7 @@ def main() -> int:
         run_step_4_generate_notices(
             output_dir,
             run_id,
-            DEFAULT_TEMPLATES_ASSETS_DIR,
+            args.template_dir,
             config_dir,
         )
         step_duration = time.time() - step_start
@@ -522,7 +604,11 @@ def main() -> int:
 
         # Step 5: Compiling Notices
         step_start = time.time()
-        run_step_5_compile_notices(output_dir, config_dir)
+        run_step_5_compile_notices(
+            output_dir,
+            config_dir,
+            args.template_dir,
+        )
         step_duration = time.time() - step_start
         step_times.append(("Template Compilation", step_duration))
         print_step_complete(5, "Compilation", step_duration)
