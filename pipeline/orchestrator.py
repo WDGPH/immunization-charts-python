@@ -178,7 +178,9 @@ def run_step_2_preprocess(
     # Load and process input data
     input_path = input_dir / input_file
     df_raw = preprocess.read_input(input_path)
-    df = preprocess.ensure_required_columns(df_raw)
+    mapped_df, column_mapping = preprocess.map_columns(df_raw)
+    df_filtered = preprocess.filter_columns(mapped_df)
+    df = preprocess.ensure_required_columns(df_filtered)
 
     # Load configuration
     vaccine_reference_path = preprocess.VACCINE_REFERENCE_PATH
