@@ -224,7 +224,7 @@ def check_addresses_complete(df: pd.DataFrame) -> pd.DataFrame:
 
         incomplete_records = df.loc[~df["address_complete"]]
 
-        incomplete_path = Path("output/artifacts/incomplete_addresses.csv")
+        incomplete_path = Path("output/incomplete_addresses.csv")
         incomplete_records.to_csv(incomplete_path, index=False)
         LOG.info("Incomplete address records written to %s", incomplete_path)
 
