@@ -207,39 +207,37 @@ class TestPipelineSteps:
             )
             assert result is False
 
-    def test_run_step_2_preprocess(
-        self, tmp_test_dir: Path, tmp_output_structure: dict
-    ) -> None:
-        """Verify Step 2: preprocess returns client count.
+    def test_run_step_2_preprocess(self, tmp_test_dir: Path, tmp_output_structure: dict) -> None:
+        """Verify Step 2: preprocess returns client count."""
+        mock_df = MagicMock()
+        mock_mapped_df = MagicMock()
+        mock_filtered_df = MagicMock()
+        mock_final_df = MagicMock()
+        mock_result = MagicMock()
+        client1 = MagicMock(sequence=1, client_id="1")
+        client2 = MagicMock(sequence=2, client_id="2")
+        mock_result.clients = [client1, client2]
+        mock_result.warnings = []
 
-        Real-world significance:
-        - Must read input file and normalize clients
-        - Returns total count for reporting
-        """
-        with patch("pipeline.orchestrator.preprocess") as mock_preprocess:
-            with patch("pipeline.orchestrator.json"):
-                # Mock the preprocessing result
-                mock_result = MagicMock()
-                mock_result.clients = [{"client_id": "1"}, {"client_id": "2"}]
-                mock_result.warnings = []
+        with patch("pipeline.orchestrator.preprocess.read_input", return_value=mock_df), \
+            patch("pipeline.orchestrator.preprocess.map_columns", return_value=(mock_mapped_df, {})), \
+            patch("pipeline.orchestrator.preprocess.filter_columns", return_value=mock_filtered_df), \
+            patch("pipeline.orchestrator.preprocess.ensure_required_columns", return_value=mock_final_df), \
+            patch("pipeline.orchestrator.preprocess.build_preprocess_result", return_value=mock_result), \
+            patch("pipeline.orchestrator.preprocess.configure_logging", return_value=tmp_test_dir / "log.txt"), \
+            patch("pipeline.orchestrator.preprocess.write_artifact", return_value="artifact.json"), \
+            patch("pipeline.orchestrator.json.loads", return_value={"vaccine": "MMR"}), \
+            patch("builtins.print"):
 
-                mock_preprocess.build_preprocess_result.return_value = mock_result
-                mock_preprocess.read_input.return_value = MagicMock()
-                mock_preprocess.ensure_required_columns.return_value = MagicMock()
-                mock_preprocess.configure_logging.return_value = (
-                    tmp_test_dir / "log.txt"
-                )
+            total = orchestrator.run_step_2_preprocess(
+                input_dir=tmp_test_dir,
+                input_file="test.xlsx",
+                output_dir=tmp_output_structure["root"],
+                language="en",
+                run_id="test_20250101_120000",
+            )
 
-                with patch("builtins.print"):
-                    total = orchestrator.run_step_2_preprocess(
-                        input_dir=tmp_test_dir,
-                        input_file="test.xlsx",
-                        output_dir=tmp_output_structure["root"],
-                        language="en",
-                        run_id="test_20250101_120000",
-                    )
-
-                assert total == 2
+        assert total == 2
 
     def test_run_step_3_generate_qr_codes_disabled(
         self, tmp_output_structure: dict, config_file: Path
