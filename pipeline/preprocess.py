@@ -172,6 +172,65 @@ def format_iso_date_for_language(iso_date: str, language: str) -> str:
 
     return format_date(date_obj, format="long", locale=locale)
 
+def check_addresses_complete(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Check if address fields are complete in the DataFrame.
+
+    Adds a boolean 'address_complete' column based on presence of
+    street address, city, province, and postal code.
+    """
+
+    df = df.copy()
+
+    # Normalize text fields: convert to string, strip whitespace, convert "" to NA
+    address_cols = [
+        "STREET_ADDRESS_LINE_1",
+        "STREET_ADDRESS_LINE_2",
+        "CITY",
+        "PROVINCE",
+        "POSTAL_CODE",
+    ]
+
+    for col in address_cols:
+        df[col] = (
+            df[col]
+            .astype(str)
+            .str.strip()
+            .replace({"": pd.NA, "nan": pd.NA})
+        )
+
+    # Build combined address line
+    df["ADDRESS"] = (
+        df["STREET_ADDRESS_LINE_1"].fillna("") + " " +
+        df["STREET_ADDRESS_LINE_2"].fillna("")
+    ).str.strip()
+
+    df["ADDRESS"] = df["ADDRESS"].replace({"": pd.NA})
+
+    # Check completeness
+    df["address_complete"] = (
+        df["ADDRESS"].notna()
+        & df["CITY"].notna()
+        & df["PROVINCE"].notna()
+        & df["POSTAL_CODE"].notna()
+    )
+
+    if not df["address_complete"].all():
+        incomplete_count = (~df["address_complete"]).sum()
+        LOG.warning(
+            "There are %d records with incomplete address information.",
+            incomplete_count,
+        )
+
+        incomplete_records = df.loc[~df["address_complete"]]
+
+        incomplete_path = Path("incomplete_addresses.csv")
+        incomplete_records.to_csv(incomplete_path, index=False)
+        LOG.info("Incomplete address records written to %s", incomplete_path)
+
+    # Return only rows with complete addresses
+    return df.loc[df["address_complete"]].drop(columns=["address_complete"])
+
 
 def convert_date_iso(date_str: str) -> str:
     """Convert a date from English display format to ISO format.
