@@ -4,11 +4,9 @@ This module combines individual per-client PDFs into bundled files with
 accompanying manifest records. It can be invoked as a CLI tool or imported for
 unit testing. Bundling supports three modes:
 
-* Size-based (default): chunk the ordered list of PDFs into groups of
-  ``bundle_size``.
-* School-based: group by ``school_code`` and then chunk each group while
-  preserving client order.
-* Board-based: group by ``board_code`` and chunk each group.
+* Size-based (default): bundle the clients into fixed-size groups, i.e., 100 per bundle.
+* School-based: group the clients by school code then bundle the clients into fixed-sized groups
+* Board-based: group the clients by board code then bundle the clients into fixed-sized groups
 
 Each bundle produces a merged PDF inside ``output/pdf_combined`` and a manifest JSON
 record inside ``output/metadata`` that captures critical metadata for audits.
