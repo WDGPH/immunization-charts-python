@@ -39,8 +39,10 @@ Functions with special validation notes:
 
 from __future__ import annotations
 
+import importlib.util
 import json
 import logging
+import sys
 from pathlib import Path
 from typing import Dict, List, Mapping, Sequence
 
@@ -54,9 +56,6 @@ from .preprocess import format_iso_date_for_language
 from .translation_helpers import display_label
 from .utils import deserialize_client_record
 
-from templates.en_template import render_notice as render_notice_en
-from templates.fr_template import render_notice as render_notice_fr
-
 SCRIPT_DIR = Path(__file__).resolve().parent
 ROOT_DIR = SCRIPT_DIR.parent
 
@@ -64,41 +63,168 @@ LOG = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
 
-# Build renderer dict from Language enum
-_LANGUAGE_RENDERERS = {
-    Language.ENGLISH.value: render_notice_en,
-    Language.FRENCH.value: render_notice_fr,
-}
+def load_template_module(template_dir: Path, language_code: str):
+    """Dynamically load a template module from specified directory.
+
+    Loads a language-specific template module at runtime from a custom directory.
+    This enables PHU-specific template customization without code changes.
+
+    **Validation Contract:**
+    - Template file must exist at {template_dir}/{language_code}_template.py
+    - Module must define render_notice() function
+    - Raises immediately if file missing or render_notice() not found
+
+    Parameters
+    ----------
+    template_dir : Path
+        Directory containing template modules (e.g., templates/ or phu_templates/my_phu/)
+    language_code : str
+        Two-character ISO language code (e.g., "en", "fr")
+
+    Returns
+    -------
+    module
+        Loaded Python module with render_notice() function
+
+    Raises
+    ------
+    FileNotFoundError
+        If template file doesn't exist at expected path
+    ImportError
+        If module cannot be loaded
+    AttributeError
+        If module doesn't define render_notice() function
+
+    Examples
+    --------
+    >>> module = load_template_module(Path("templates"), "en")
+    >>> module.render_notice(context, logo_path="/logo.png", signature_path="/sig.png")
+    """
+    module_name = f"{language_code}_template"
+    module_path = template_dir / f"{module_name}.py"
+
+    # Validate file exists
+    if not module_path.exists():
+        raise FileNotFoundError(
+            f"Template module not found: {module_path}. "
+            f"Expected {module_name}.py in {template_dir}"
+        )
+
+    # Load module dynamically
+    spec = importlib.util.spec_from_file_location(module_name, module_path)
+    if spec is None or spec.loader is None:
+        raise ImportError(f"Could not load template module: {module_path}")
+
+    module = importlib.util.module_from_spec(spec)
+
+    # Register in sys.modules to prevent duplicate loads
+    sys.modules[f"_dynamic_{module_name}"] = module
+    spec.loader.exec_module(module)
+
+    # Validate render_notice() exists
+    if not hasattr(module, "render_notice"):
+        raise AttributeError(
+            f"Template module {module_name} must define render_notice() function. "
+            f"Check {module_path} and ensure it implements the required interface."
+        )
+
+    return module
 
 
-def get_language_renderer(language: Language):
-    """Get template renderer for given language.
+def build_language_renderers(template_dir: Path) -> dict:
+    """Build renderer dictionary from templates in specified directory.
 
-    Maps Language enum values to their corresponding template rendering functions.
-    This provides a single, extensible dispatch point for template selection.
+    Discovers and loads all available language template modules from the given directory,
+    building a mapping of language codes to their render_notice functions.
+
+    **Validation Contract:**
+    - Only languages with corresponding template files are included
+    - Each available template must have valid render_notice() function
+    - Raises immediately if any template file exists but is invalid
+    - Does NOT require all Language enum values to be present
+    - Later validation ensures requested language is available when needed
+
+    Parameters
+    ----------
+    template_dir : Path
+        Directory containing language template modules
+
+    Returns
+    -------
+    dict
+        Mapping of language codes (str) to render_notice functions (callable)
+        Format: {"en": <function>, "fr": <function>, ...}
+        May contain subset of all languages; only includes available templates
+
+    Raises
+    ------
+    AttributeError
+        If a template file exists but doesn't define render_notice()
+
+    Examples
+    --------
+    >>> renderers = build_language_renderers(Path("templates"))
+    >>> renderers["en"](context, logo_path="/logo.png", signature_path="/sig.png")
+
+    >>> # PHU providing only English
+    >>> renderers = build_language_renderers(Path("phu_templates/my_phu"))
+    >>> renderers  # May only contain {"en": <function>}
+    """
+    renderers = {}
+    for lang in Language:
+        module_path = template_dir / f"{lang.value}_template.py"
+        # Only load if template file exists
+        if module_path.exists():
+            module = load_template_module(template_dir, lang.value)
+            renderers[lang.value] = module.render_notice
+    return renderers
+
+
+def get_language_renderer(language: Language, renderers: dict):
+    """Get template renderer for given language from provided renderer dict.
+
+    Maps Language enum values to their corresponding template rendering functions
+    from a dynamically-built renderer dictionary. This provides a single dispatch
+    point for template selection with runtime-configurable template sources.
 
     **Validation Contract:** Assumes language is a valid Language enum (validated
     upstream at CLI entry point via argparse choices, and again by Language.from_string()
-    before calling this function). No defensive validation needed.
+    before calling this function). Checks that language is available in renderers dict;
+    raises with helpful error if template for requested language is not available.
 
     Parameters
     ----------
     language : Language
         Language enum value (guaranteed to be valid from Language enum).
+    renderers : dict
+        Mapping of language codes to render_notice functions, built by
+        build_language_renderers(). May only contain subset of all languages.
 
     Returns
     -------
     callable
         Template rendering function for the language.
 
+    Raises
+    ------
+    FileNotFoundError
+        If requested language template is not available in renderers dict.
+        Provides helpful message listing available languages.
+
     Examples
     --------
-    >>> renderer = get_language_renderer(Language.ENGLISH)
-    >>> # renderer is now render_notice_en function
+    >>> renderers = build_language_renderers(Path("templates"))
+    >>> renderer = get_language_renderer(Language.ENGLISH, renderers)
+    >>> # renderer is now the render_notice function from en_template
     """
-    # Language is already validated upstream (CLI choices + Language.from_string())
-    # Direct lookup; safe because only valid Language enums reach this function
-    return _LANGUAGE_RENDERERS[language.value]
+    if language.value not in renderers:
+        available = ", ".join(sorted(renderers.keys())) if renderers else "none"
+        raise FileNotFoundError(
+            f"Template not available for language: {language.value}\n"
+            f"Available languages: {available}\n"
+            f"Ensure your template directory contains {language.value}_template.py"
+        )
+    return renderers[language.value]
 
 
 def read_artifact(path: Path) -> ArtifactPayload:
@@ -368,7 +494,7 @@ def to_root_relative(path: Path) -> str:
 
     Module-internal helper for template rendering. Converts absolute file paths
     to paths relative to the project root, formatted for Typst's import resolution.
-    Required because Typst subprocess needs paths resolvable from the project directory.
+    If path is outside project root (e.g., custom assets), returns absolute path.
 
     Parameters
     ----------
@@ -378,21 +504,22 @@ def to_root_relative(path: Path) -> str:
     Returns
     -------
     str
-        Path string like "/artifacts/qr_codes/code.png" (relative to project root).
+        Path string like "/artifacts/qr_codes/code.png" (relative to project root)
+        or absolute path if outside project root.
 
     Raises
     ------
     ValueError
-        If path is outside the project root.
+        If path cannot be resolved (defensive guard, should not occur in practice).
     """
     absolute = path.resolve()
     try:
         relative = absolute.relative_to(ROOT_DIR)
-    except ValueError as exc:  # pragma: no cover - defensive guard
-        raise ValueError(
-            f"Path {absolute} is outside of project root {ROOT_DIR}"
-        ) from exc
-    return "/" + relative.as_posix()
+        return "/" + relative.as_posix()
+    except ValueError:
+        # Path is outside project root (e.g., custom template assets)
+        # Return as absolute path string for Typst
+        return str(absolute)
 
 
 def render_notice(
@@ -401,10 +528,33 @@ def render_notice(
     output_dir: Path,
     logo: Path,
     signature: Path,
+    renderers: dict,
     qr_output_dir: Path | None = None,
 ) -> str:
+    """Render a Typst notice for a single client using provided renderers.
+
+    Parameters
+    ----------
+    client : ClientRecord
+        Client record with all required fields
+    output_dir : Path
+        Output directory (used for path resolution)
+    logo : Path
+        Path to logo image file
+    signature : Path
+        Path to signature image file
+    renderers : dict
+        Language code to render_notice function mapping from build_language_renderers()
+    qr_output_dir : Path, optional
+        Directory containing QR code PNG files
+
+    Returns
+    -------
+    str
+        Rendered Typst template content
+    """
     language = Language.from_string(client.language)
-    renderer = get_language_renderer(language)
+    renderer = get_language_renderer(language, renderers)
     context = build_template_context(client, qr_output_dir)
     return renderer(
         context,
@@ -418,7 +568,31 @@ def generate_typst_files(
     output_dir: Path,
     logo_path: Path,
     signature_path: Path,
+    template_dir: Path,
 ) -> List[Path]:
+    """Generate Typst template files for all clients in payload.
+
+    Parameters
+    ----------
+    payload : ArtifactPayload
+        Preprocessed client data with metadata
+    output_dir : Path
+        Directory to write Typst files
+    logo_path : Path
+        Path to logo image
+    signature_path : Path
+        Path to signature image
+    template_dir : Path
+        Directory containing language template modules
+
+    Returns
+    -------
+    List[Path]
+        List of generated .typ file paths
+    """
+    # Build renderers from specified template directory
+    renderers = build_language_renderers(template_dir)
+
     output_dir.mkdir(parents=True, exist_ok=True)
     qr_output_dir = output_dir / "qr_codes"
     typst_output_dir = output_dir / "typst"
@@ -435,6 +609,7 @@ def generate_typst_files(
             output_dir=output_dir,
             logo=logo_path,
             signature=signature_path,
+            renderers=renderers,
             qr_output_dir=qr_output_dir,
         )
         filename = f"{language}_notice_{client.sequence}_{client.client_id}.typ"
@@ -450,6 +625,7 @@ def main(
     output_dir: Path,
     logo_path: Path,
     signature_path: Path,
+    template_dir: Path,
 ) -> List[Path]:
     """Main entry point for Typst notice generation.
 
@@ -463,6 +639,8 @@ def main(
         Path to the logo image.
     signature_path : Path
         Path to the signature image.
+    template_dir : Path
+        Directory containing language template modules.
 
     Returns
     -------
@@ -475,6 +653,7 @@ def main(
         output_dir,
         logo_path,
         signature_path,
+        template_dir,
     )
     print(
         f"Generated {len(generated)} Typst files in {output_dir} for language {payload.language}"

@@ -56,7 +56,7 @@ class TestParseArgs:
             assert args.language == "fr"
 
     def test_parse_args_optional_directories(self) -> None:
-        """Verify optional --input-dir, --output-dir, --config-dir arguments.
+        """Verify optional --input, --output, --config arguments.
 
         Real-world significance:
         - User can override default directories
@@ -68,11 +68,11 @@ class TestParseArgs:
                 "viper",
                 "test.xlsx",
                 "en",
-                "--input-dir",
+                "--input",
                 "/tmp/input",
-                "--output-dir",
+                "--output",
                 "/tmp/output",
-                "--config-dir",
+                "--config",
                 "/etc/config",
             ],
         ):
@@ -126,6 +126,7 @@ class TestValidateArgs:
         args = MagicMock()
         args.input_file = "students.xlsx"
         args.input_dir = tmp_test_dir
+        args.template_dir = None  # Use default templates
 
         # Should not raise
         orchestrator.validate_args(args)

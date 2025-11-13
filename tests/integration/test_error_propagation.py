@@ -69,6 +69,8 @@ class TestCriticalStepErrorPropagation:
         if not logo.exists() or not signature.exists():
             pytest.skip("Logo or signature assets not found")
 
+        template_dir = Path(__file__).parent.parent.parent / "templates"
+
         # Should raise ValueError due to language mismatch
         with pytest.raises(ValueError, match="language.*does not match"):
             generate_notices.generate_typst_files(
@@ -76,6 +78,7 @@ class TestCriticalStepErrorPropagation:
                 tmp_path,
                 logo,
                 signature,
+                template_dir,
             )
 
     def test_notice_generation_returns_all_or_nothing(self, tmp_path):
@@ -142,12 +145,15 @@ class TestCriticalStepErrorPropagation:
         if not logo.exists() or not signature.exists():
             pytest.skip("Logo or signature assets not found")
 
+        template_dir = Path(__file__).parent.parent.parent / "templates"
+
         # Should generate files for both clients
         generated = generate_notices.generate_typst_files(
             artifact,
             tmp_path,
             logo,
             signature,
+            template_dir,
         )
 
         # All-or-nothing: either 2 files or exception
