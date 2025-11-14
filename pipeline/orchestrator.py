@@ -227,6 +227,9 @@ def run_step_2_preprocess(
     df_filtered = preprocess.filter_columns(mapped_df)
     df = preprocess.ensure_required_columns(df_filtered)
 
+    # Check that addresses are complete, return only complete rows
+    df = preprocess.check_addresses_complete(df)
+
     # Load configuration
     vaccine_reference_path = preprocess.VACCINE_REFERENCE_PATH
     vaccine_reference = json.loads(vaccine_reference_path.read_text(encoding="utf-8"))
