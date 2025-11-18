@@ -70,7 +70,7 @@ LOG = logging.getLogger(__name__)
 
 _FORMATTER = Formatter()
 
-IGNORE_AGENTS = [
+REPLACE_UNSPECIFIED = [
     "-unspecified",
     "unspecified",
     "Not Specified",
@@ -613,7 +613,7 @@ def process_vaccines_due(vaccines_due: Any, language: str) -> str:
 
 
 def process_received_agents(
-    received_agents: Any, ignore_agents: List[str]
+    received_agents: Any, replace_unspecified: List[str]
 ) -> List[Dict[str, Any]]:
     """Extract and normalize vaccination history from received_agents string."""
     if not isinstance(received_agents, str) or not received_agents.strip():
@@ -626,7 +626,7 @@ def process_received_agents(
     for match in matches:
         date_str, vaccine = match.split(" - ", maxsplit=1)
         vaccine = vaccine.strip()
-        if vaccine in ignore_agents:
+        if vaccine in replace_unspecified:
             continue
         date_iso = convert_date_iso(date_str.strip())
         rows.append({"date_given": date_iso, "vaccine": vaccine})
@@ -716,7 +716,7 @@ def build_preprocess_result(
     df: pd.DataFrame,
     language: str,
     vaccine_reference: Dict[str, Any],
-    ignore_agents: List[str],
+    replace_unspecified: List[str],
 ) -> PreprocessResult:
     """Process and normalize client data into structured artifact.
 
@@ -788,7 +788,7 @@ def build_preprocess_result(
         vaccines_due_list = [
             item.strip() for item in vaccines_due.split(",") if item.strip()
         ]
-        received_grouped = process_received_agents(row.IMMS_GIVEN, ignore_agents)  # type: ignore[attr-defined]
+        received_grouped = process_received_agents(row.IMMS_GIVEN, replace_unspecified)  # type: ignore[attr-defined]
         received = enrich_grouped_records(
             received_grouped, vaccine_reference, language, chart_diseases_header
         )
