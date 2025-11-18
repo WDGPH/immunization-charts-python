@@ -238,18 +238,26 @@ def run_step_2_preprocess(
     vaccine_reference_path = preprocess.VACCINE_REFERENCE_PATH
     vaccine_reference = json.loads(vaccine_reference_path.read_text(encoding="utf-8"))
 
-    # Filter out vaccines that include any ignored disease
     if ignore_diseases:
         ignore_set = set(ignore_diseases)
 
-        filtered_reference = {
-            vaccine: agents
-            for vaccine, agents in vaccine_reference.items()
-            if ignore_set.isdisjoint(agents)
-        }
+        filtered_reference = {}
+
+        for vaccine, agents in vaccine_reference.items():
+
+            # Remove ignored diseases from agent list
+            cleaned_agents = [a for a in agents if a not in ignore_set]
+
+            # Keep only if something remains
+            if cleaned_agents:
+                filtered_reference[vaccine] = cleaned_agents
+
         print(f"Ignored diseases: {', '.join(sorted(ignore_set))}")
-        print(f"Filtered vaccine reference to {len(filtered_reference)} vaccines "
-              f"from {len(vaccine_reference)} total.")
+        print(
+            f"Filtered vaccine reference to {len(filtered_reference)} vaccines "
+            f"from {len(vaccine_reference)} total."
+        )
+
     else:
         filtered_reference = vaccine_reference
 
