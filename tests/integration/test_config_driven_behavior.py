@@ -106,15 +106,15 @@ class TestConfigDrivenBehavior:
         assert isinstance(default_config["chart_diseases_header"], list)
         assert len(default_config["chart_diseases_header"]) > 0
 
-    def test_ignore_agents_configuration(self, default_config: Dict[str, Any]) -> None:
-        """Verify ignore_agents list is configurable.
+    def test_replace_unspecified_configuration(self, default_config: Dict[str, Any]) -> None:
+        """Verify replace_unspecified list is configurable.
 
         Real-world significance:
         - Some agents (staff) should not receive notices
         - Config allows filtering out specific agent types
         """
-        assert "ignore_agents" in default_config
-        assert isinstance(default_config["ignore_agents"], list)
+        assert "replace_unspecified" in default_config
+        assert isinstance(default_config["replace_unspecified"], list)
 
 
 @pytest.mark.integration

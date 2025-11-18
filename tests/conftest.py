@@ -148,7 +148,7 @@ def default_config(tmp_output_structure: Dict[str, Path]) -> Dict[str, Any]:
             "Mumps",
             "Rubella",
         ],
-        "ignore_agents": [],
+        "replace_unspecified": [],
         "typst": {
             "bin": "typst",
         },
