@@ -236,7 +236,7 @@ def run_step_2_preprocess(
 
     # Build preprocessing result
     result = preprocess.build_preprocess_result(
-        df, language, vaccine_reference, preprocess.IGNORE_AGENTS
+        df, language, vaccine_reference, preprocess.REPLACE_UNSPECIFIED
     )
 
     # Write artifact
