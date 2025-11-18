@@ -684,17 +684,18 @@ def enrich_grouped_records(
                 grouped.remove(item)
                 break
 
-            ref = vaccine_reference.get(vaccine, vaccine)
-            if isinstance(ref, list):
-                diseases.extend(ref)
+            else:
+                ref = vaccine_reference.get(vaccine, vaccine)
+                if isinstance(ref, list):
+                    diseases.extend(ref)
 
 
-        enriched.append(
-            {
-                "date_given": item["date_given"],
-                "vaccine": vaccines,
-                "diseases": diseases,
-            }
+                enriched.append(
+                    {
+                        "date_given": item["date_given"],
+                        "vaccine": vaccines,
+                        "diseases": diseases,
+                    }
         )
 
     return enriched
