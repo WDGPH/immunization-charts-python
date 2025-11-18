@@ -192,7 +192,6 @@
   data, 
   diseases,
   font_size,
-  at_age_col: true
 ) = {
 
   let num_padded = min_rows - num_rows
