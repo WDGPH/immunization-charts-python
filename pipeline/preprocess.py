@@ -652,55 +652,42 @@ def enrich_grouped_records(
     vaccine_reference: Dict[str, Any],
     language: str,
     chart_diseases_header: List[str] | None = None,
+    ignore_diseases: List[str] | None = None,
 ) -> List[Dict[str, Any]]:
     """Enrich grouped vaccine records with disease information.
 
     If chart_diseases_header is provided, diseases not in the list are
-    collapsed into the "Other" category.
-
-    Parameters
-    ----------
-    grouped : List[Dict[str, Any]]
-        Grouped vaccine records with date_given and vaccine list.
-    vaccine_reference : Dict[str, Any]
-        Map of vaccine codes to disease names.
-    language : str
-        Language code for logging.
-    chart_diseases_header : List[str], optional
-        List of diseases to include in chart. Diseases not in this list
-        are mapped to "Other".
-
-    Returns
-    -------
-    List[Dict[str, Any]]
-        Enriched records with date_given, vaccine, and diseases fields.
+    collapsed into the "Other" category. Diseases in ignore_diseases
+    are always removed.
     """
+
+    print(grouped)
+
     enriched: List[Dict[str, Any]] = []
+
     for item in grouped:
+        # Normalize vaccine names
         vaccines = [
             v.replace("-unspecified", "*").replace(" unspecified", "*")
             for v in item["vaccine"]
         ]
+
+        # Lookup diseases
         diseases: List[str] = []
         for vaccine in vaccines:
+            # See if the vaccine has a mapping to diseases
+            has_mapping = vaccine in vaccine_reference
+            if not has_mapping:
+                # Do not add to list
+                # Remove from vaccines list
+                # Remove whole item from grouped if no vaccines left
+                grouped.remove(item)
+                break
+
             ref = vaccine_reference.get(vaccine, vaccine)
             if isinstance(ref, list):
                 diseases.extend(ref)
-            else:
-                diseases.append(ref)
 
-        # Collapse diseases not in chart to "Other"
-        if chart_diseases_header:
-            filtered_diseases: List[str] = []
-            has_unmapped = False
-            for disease in diseases:
-                if disease in chart_diseases_header:
-                    filtered_diseases.append(disease)
-                else:
-                    has_unmapped = True
-            if has_unmapped and "Other" not in filtered_diseases:
-                filtered_diseases.append("Other")
-            diseases = filtered_diseases
 
         enriched.append(
             {
@@ -709,6 +696,7 @@ def enrich_grouped_records(
                 "diseases": diseases,
             }
         )
+
     return enriched
 
 
@@ -717,6 +705,7 @@ def build_preprocess_result(
     language: str,
     vaccine_reference: Dict[str, Any],
     replace_unspecified: List[str],
+    ignore_diseases
 ) -> PreprocessResult:
     """Process and normalize client data into structured artifact.
 
@@ -790,7 +779,7 @@ def build_preprocess_result(
         ]
         received_grouped = process_received_agents(row.IMMS_GIVEN, replace_unspecified)  # type: ignore[attr-defined]
         received = enrich_grouped_records(
-            received_grouped, vaccine_reference, language, chart_diseases_header
+            received_grouped, vaccine_reference, language, chart_diseases_header, ignore_diseases=None
         )
 
         postal_code = row.POSTAL_CODE if row.POSTAL_CODE else "Not provided"  # type: ignore[attr-defined]
