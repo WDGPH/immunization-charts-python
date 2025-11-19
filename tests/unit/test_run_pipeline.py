@@ -236,6 +236,7 @@ class TestPipelineSteps:
                 output_dir=tmp_output_structure["root"],
                 language="en",
                 run_id="test_20250101_120000",
+                config_dir=tmp_test_dir,
             )
 
         assert total == 2
