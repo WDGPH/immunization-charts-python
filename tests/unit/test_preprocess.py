@@ -483,7 +483,7 @@ class TestBuildPreprocessResult:
             normalized,
             language="en",
             vaccine_reference=default_vaccine_reference,
-            ignore_agents=[],
+            ignore_diseases=[],
         )
 
         assert len(result.clients) == 3
@@ -508,14 +508,14 @@ class TestBuildPreprocessResult:
             normalized,
             language="en",
             vaccine_reference=default_vaccine_reference,
-            ignore_agents=[],
+            ignore_diseases=[],
         )
 
         result2 = preprocess.build_preprocess_result(
             normalized,
             language="en",
             vaccine_reference=default_vaccine_reference,
-            ignore_agents=[],
+            ignore_diseases=[],
         )
 
         ids1 = [c.client_id for c in result1.clients]
@@ -569,7 +569,7 @@ class TestBuildPreprocessResult:
             normalized,
             language="en",
             vaccine_reference=default_vaccine_reference,
-            ignore_agents=[],
+            ignore_diseases=[],
         )
 
         # Expected order: Apple/Chloe/Jones, Apple/Diana/Jones, Zebra/Alice/Smith, Zebra/Bob/Smith
@@ -637,7 +637,7 @@ class TestBuildPreprocessResult:
             normalized,
             language="en",
             vaccine_reference=default_vaccine_reference,
-            ignore_agents=[],
+            ignore_diseases=[],
         )
 
         # Should still process - at least one client
@@ -660,7 +660,7 @@ class TestBuildPreprocessResult:
             normalized,
             language="fr",
             vaccine_reference=default_vaccine_reference,
-            ignore_agents=[],
+            ignore_diseases=[],
         )
 
         assert len(result.clients) == 1
@@ -669,7 +669,7 @@ class TestBuildPreprocessResult:
     def test_build_result_handles_ignore_agents(
         self, default_vaccine_reference
     ) -> None:
-        """Verify ignore_agents filters out unspecified vaccines.
+        """Verify ignore_diseases filters out unspecified vaccines.
 
         Real-world significance:
         - Input may contain "Not Specified" vaccine agents
@@ -682,7 +682,7 @@ class TestBuildPreprocessResult:
             normalized,
             language="en",
             vaccine_reference=default_vaccine_reference,
-            ignore_agents=["Not Specified", "unspecified"],
+            ignore_diseases=["Not Specified", "unspecified"],
         )
 
         assert len(result.clients) == 1
@@ -708,7 +708,7 @@ class TestBuildPreprocessResult:
             normalized,
             language="en",
             vaccine_reference=default_vaccine_reference,
-            ignore_agents=[],
+            ignore_diseases=[],
         )
 
         # Should have 2 clients (no deduplication)
@@ -744,7 +744,7 @@ class TestBuildPreprocessResult:
             normalized,
             language="en",
             vaccine_reference=default_vaccine_reference,
-            ignore_agents=[],
+            ignore_diseases=[],
         )
 
         # Should have 5 clients (no deduplication)
@@ -776,7 +776,7 @@ class TestBuildPreprocessResult:
             normalized,
             language="en",
             vaccine_reference=default_vaccine_reference,
-            ignore_agents=[],
+            ignore_diseases=[],
         )
 
         # Should have 3 unique clients
