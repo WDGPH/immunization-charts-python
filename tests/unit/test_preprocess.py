@@ -483,6 +483,7 @@ class TestBuildPreprocessResult:
             normalized,
             language="en",
             vaccine_reference=default_vaccine_reference,
+            replace_unspecified=[],
             ignore_diseases=[],
         )
 
@@ -508,6 +509,7 @@ class TestBuildPreprocessResult:
             normalized,
             language="en",
             vaccine_reference=default_vaccine_reference,
+            replace_unspecified=[],
             ignore_diseases=[],
         )
 
@@ -569,6 +571,7 @@ class TestBuildPreprocessResult:
             normalized,
             language="en",
             vaccine_reference=default_vaccine_reference,
+            replace_unspecified=[],
             ignore_diseases=[],
         )
 
@@ -595,6 +598,7 @@ class TestBuildPreprocessResult:
             normalized,
             language="en",
             vaccine_reference=default_vaccine_reference,
+            replace_unspecified=[],
             ignore_diseases=[],
         )
 
@@ -637,6 +641,7 @@ class TestBuildPreprocessResult:
             normalized,
             language="en",
             vaccine_reference=default_vaccine_reference,
+            replace_unspecified=[],
             ignore_diseases=[],
         )
 
@@ -660,6 +665,7 @@ class TestBuildPreprocessResult:
             normalized,
             language="fr",
             vaccine_reference=default_vaccine_reference,
+            replace_unspecified=[],
             ignore_diseases=[],
         )
 
@@ -682,6 +688,7 @@ class TestBuildPreprocessResult:
             normalized,
             language="en",
             vaccine_reference=default_vaccine_reference,
+            replce_unspecified=[],
             ignore_diseases=["Not Specified", "unspecified"],
         )
 
@@ -708,6 +715,7 @@ class TestBuildPreprocessResult:
             normalized,
             language="en",
             vaccine_reference=default_vaccine_reference,
+            replace_unspecified=[],
             ignore_diseases=[],
         )
 
@@ -744,6 +752,7 @@ class TestBuildPreprocessResult:
             normalized,
             language="en",
             vaccine_reference=default_vaccine_reference,
+            replace_unspecified=[],
             ignore_diseases=[],
         )
 
@@ -776,6 +785,7 @@ class TestBuildPreprocessResult:
             normalized,
             language="en",
             vaccine_reference=default_vaccine_reference,
+            replace_unspecified=[],
             ignore_diseases=[],
         )
 
