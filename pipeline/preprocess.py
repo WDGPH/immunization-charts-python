@@ -661,7 +661,6 @@ def enrich_grouped_records(
     are always removed.
     """
 
-    print(grouped)
 
     enriched: List[Dict[str, Any]] = []
 
@@ -689,6 +688,10 @@ def enrich_grouped_records(
                 if isinstance(ref, list):
                     diseases.extend(ref)
 
+                if "Hepatitis B" in diseases or "HPV" in diseases:
+                    print("Found Hepatitis B or HPV in diseases")
+                    print(ref)
+                    diseases.extend(["Other"])
 
                 enriched.append(
                     {
