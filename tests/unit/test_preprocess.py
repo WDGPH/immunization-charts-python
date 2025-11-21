@@ -484,6 +484,7 @@ class TestBuildPreprocessResult:
             language="en",
             vaccine_reference=default_vaccine_reference,
             replace_unspecified=[],
+            ignore_diseases=[],
         )
 
         assert len(result.clients) == 3
@@ -509,6 +510,7 @@ class TestBuildPreprocessResult:
             language="en",
             vaccine_reference=default_vaccine_reference,
             replace_unspecified=[],
+            ignore_diseases=[],
         )
 
         result2 = preprocess.build_preprocess_result(
@@ -516,6 +518,7 @@ class TestBuildPreprocessResult:
             language="en",
             vaccine_reference=default_vaccine_reference,
             replace_unspecified=[],
+            ignore_diseases=[],
         )
 
         ids1 = [c.client_id for c in result1.clients]
@@ -570,6 +573,7 @@ class TestBuildPreprocessResult:
             language="en",
             vaccine_reference=default_vaccine_reference,
             replace_unspecified=[],
+            ignore_diseases=[],
         )
 
         # Expected order: Apple/Chloe/Jones, Apple/Diana/Jones, Zebra/Alice/Smith, Zebra/Bob/Smith
@@ -596,6 +600,7 @@ class TestBuildPreprocessResult:
             language="en",
             vaccine_reference=default_vaccine_reference,
             replace_unspecified=[],
+            ignore_diseases=[],
         )
 
         # Should have DTaP expanded to component diseases
@@ -638,6 +643,7 @@ class TestBuildPreprocessResult:
             language="en",
             vaccine_reference=default_vaccine_reference,
             replace_unspecified=[],
+            ignore_diseases=[],
         )
 
         # Should still process - at least one client
@@ -661,15 +667,16 @@ class TestBuildPreprocessResult:
             language="fr",
             vaccine_reference=default_vaccine_reference,
             replace_unspecified=[],
+            ignore_diseases=[],
         )
 
         assert len(result.clients) == 1
         assert result.clients[0].language == "fr"
 
-    def test_build_result_handles_replace_unspecified(
+    def test_build_result_handles_ignore_agents(
         self, default_vaccine_reference
     ) -> None:
-        """Verify replace_unspecified filters out unspecified vaccines.
+        """Verify ignore_diseases filters out unspecified vaccines.
 
         Real-world significance:
         - Input may contain "Not Specified" vaccine agents
@@ -682,7 +689,8 @@ class TestBuildPreprocessResult:
             normalized,
             language="en",
             vaccine_reference=default_vaccine_reference,
-            replace_unspecified=["Not Specified", "unspecified"],
+            replace_unspecified=[],
+            ignore_diseases=["Not Specified", "unspecified"],
         )
 
         assert len(result.clients) == 1
@@ -709,6 +717,7 @@ class TestBuildPreprocessResult:
             language="en",
             vaccine_reference=default_vaccine_reference,
             replace_unspecified=[],
+            ignore_diseases=[],
         )
 
         # Should have 2 clients (no deduplication)
@@ -745,6 +754,7 @@ class TestBuildPreprocessResult:
             language="en",
             vaccine_reference=default_vaccine_reference,
             replace_unspecified=[],
+            ignore_diseases=[],
         )
 
         # Should have 5 clients (no deduplication)
@@ -777,6 +787,7 @@ class TestBuildPreprocessResult:
             language="en",
             vaccine_reference=default_vaccine_reference,
             replace_unspecified=[],
+            ignore_diseases=[],
         )
 
         # Should have 3 unique clients
