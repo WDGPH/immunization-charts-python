@@ -456,23 +456,41 @@ name = "git-changelog"
 version = "2.6.3"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
-    "python_full_version >= '3.12'",
-    "python_full_version == '3.11.*'",
-    "python_full_version == '3.10.*'",
     "python_full_version == '3.9.*'",
 ]
 dependencies = [
-    { name = "jinja2", marker = "python_full_version >= '3.9'" },
-    { name = "packaging", marker = "python_full_version >= '3.9'" },
+    { name = "jinja2", marker = "python_full_version == '3.9.*'" },
+    { name = "packaging", marker = "python_full_version == '3.9.*'" },
     { name = "platformdirs", version = "4.4.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.9.*'" },
-    { name = "platformdirs", version = "4.5.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
-    { name = "semver", marker = "python_full_version >= '3.9'" },
-    { name = "tomli", marker = "python_full_version >= '3.9' and python_full_version < '3.11'" },
-    { name = "typing-extensions", version = "4.15.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.9' and python_full_version < '3.13'" },
+    { name = "semver", marker = "python_full_version == '3.9.*'" },
+    { name = "tomli", marker = "python_full_version == '3.9.*'" },
+    { name = "typing-extensions", version = "4.15.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.9.*'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/6e/88/e38f434e41c520ea14feb58bee94dd14f785de5f72ab3d3a21a7fcc192ff/git_changelog-2.6.3.tar.gz", hash = "sha256:d9a5cd7bd8c7dd3eb903c9de93ea5c24b0099ba6e56937f1d9406f7d09034d96", size = 81476, upload-time = "2025-09-18T12:35:36.618Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/a5/35/44a2f7f7cfb321d7efcf49a366d3e58b44c960cc3d0279dfa6ef7b787b54/git_changelog-2.6.3-py3-none-any.whl", hash = "sha256:733d0416e5635902ad30d050b3089cb00e49034399e00fba003a63b1c975bfa3", size = 37283, upload-time = "2025-09-18T12:35:35.192Z" },
+]
+
+[[package]]
+name = "git-changelog"
+version = "2.7.0"
+source = { registry = "https://pypi.org/simple" }
+resolution-markers = [
+    "python_full_version >= '3.12'",
+    "python_full_version == '3.11.*'",
+    "python_full_version == '3.10.*'",
+]
+dependencies = [
+    { name = "jinja2", marker = "python_full_version >= '3.10'" },
+    { name = "packaging", marker = "python_full_version >= '3.10'" },
+    { name = "platformdirs", version = "4.5.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
+    { name = "semver", marker = "python_full_version >= '3.10'" },
+    { name = "tomli", marker = "python_full_version == '3.10.*'" },
+    { name = "typing-extensions", version = "4.15.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10' and python_full_version < '3.13'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/cc/66/918cce4e4946645d212bbe9a50d490761f62c5745118fdb132c35143d4ed/git_changelog-2.7.0.tar.gz", hash = "sha256:bab8ecfe63e3ade284e1281e331240c09c37278a8f9ff54bf7f83d543ad9142f", size = 83835, upload-time = "2025-11-21T11:48:34.99Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/56/d1/a9baeae74278da6fcbb578147c45b602b719c6fa98bb8b6bca66c1601638/git_changelog-2.7.0-py3-none-any.whl", hash = "sha256:739b760149977729a293203aed0a85c35592637eec63b3bc739d3897c15984d7", size = 37600, upload-time = "2025-11-21T11:48:33.733Z" },
 ]
 
 [[package]]
@@ -527,7 +545,8 @@ dependencies = [
 [package.dev-dependencies]
 dev = [
     { name = "git-changelog", version = "2.5.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.9'" },
-    { name = "git-changelog", version = "2.6.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.9'" },
+    { name = "git-changelog", version = "2.6.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.9.*'" },
+    { name = "git-changelog", version = "2.7.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
     { name = "pre-commit", version = "3.5.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.9'" },
     { name = "pre-commit", version = "4.3.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.9.*'" },
     { name = "pre-commit", version = "4.4.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
@@ -1599,10 +1618,11 @@ wheels = [
 
 [[package]]
 name = "pypandoc"
-version = "1.16"
+version = "1.16.2"
 source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/0b/18/9f5f70567b97758625335209b98d5cb857e19aa1a9306e9749567a240634/pypandoc-1.16.2.tar.gz", hash = "sha256:7a72a9fbf4a5dc700465e384c3bb333d22220efc4e972cb98cf6fc723cdca86b", size = 31477, upload-time = "2025-11-13T16:30:29.608Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/24/77/af1fc54740a0712988f9518e629d38edc7b8ffccd7549203f19c3d8a2db6/pypandoc-1.16-py3-none-any.whl", hash = "sha256:868f390d48388743e7a5885915cbbaa005dea36a825ecdfd571f8c523416c822", size = 19425, upload-time = "2025-11-08T15:44:38.429Z" },
+    { url = "https://files.pythonhosted.org/packages/bb/e9/b145683854189bba84437ea569bfa786f408c8dc5bc16d8eb0753f5583bf/pypandoc-1.16.2-py3-none-any.whl", hash = "sha256:c200c1139c8e3247baf38d1e9279e85d9f162499d1999c6aa8418596558fe79b", size = 19451, upload-time = "2025-11-13T16:30:07.66Z" },
 ]
 
 [[package]]
