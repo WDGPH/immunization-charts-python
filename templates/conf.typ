@@ -42,7 +42,7 @@
 
   let vline_stroke = if vline { 1pt + black } else { none }
 
-  let address_to = if client.over_16 {
+  let address_to = if client_data.over_16 {
     "To:"
   } else {
     "To Parent/Guardian of:"
@@ -50,7 +50,7 @@
 
   // Content for the first column
   let col1_content = align(left)[
-    #address_to: #linebreak()
+    #address_to #linebreak()
     *#client_data.name* #linebreak()
     *#client_data.address* #linebreak()
     *#client_data.city*, *Ontario* *#client_data.postal_code*
@@ -106,7 +106,7 @@
   }
 
   let vline_stroke = if vline { 1pt + black } else { none }
-  let address_to = if client.over_16 {
+  let address_to = if client_data.over_16 {
     "Au:"
   } else {
     "Au parent ou tuteur de:"
@@ -114,7 +114,7 @@
 
   // Content for the first column
   let col1_content = align(left)[
-    #address_to: #linebreak()
+    #address_to #linebreak()
     *#client_data.name* #linebreak()
     *#client_data.address* #linebreak()
     *#client_data.city*, *Ontario* *#client_data.postal_code*
