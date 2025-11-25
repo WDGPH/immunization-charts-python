@@ -423,6 +423,7 @@ def build_template_context(
         "date_of_birth": client.person["date_of_birth_display"],
         "school": client.school["name"],
         "date_data_cutoff": date_data_cutoff_formatted,
+        "over_16": client.person["over_16"]
     }
 
     # Check if QR code PNG exists from prior generation step
