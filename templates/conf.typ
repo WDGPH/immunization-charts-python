@@ -269,7 +269,7 @@
           ..dynamic_headers
         ),
       stroke: 1pt,
-      inset: 5pt,
+      inset: 4pt,
       align: (
         left,
         center,
