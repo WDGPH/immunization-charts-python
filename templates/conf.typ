@@ -203,12 +203,16 @@
   data, 
   diseases,
   font_size,
+  lang
 ) = {
 
   let num_padded = min_rows - num_rows
   let table_rows = ()
   let empty_rows_content = ()
   let dynamic_headers = ()
+  let date_given = if lang == "en" { "Date Given" } else { "Date de l'administration" }
+  let vaccine_s = if lang == "en" { "Vaccine(s)" } else { "Vaccin(s)" }
+  let end_msg = if lang == "en" { "*indicates unspecified vaccine agent" } else { "*indique un agent vaccinal non spécifié" }
 
   if num_rows > 0 {
       for record in data {
@@ -248,24 +252,24 @@
   table_rows.push(("", "", "", "", "", "", "", "", "", "", "", "", "", ""," "))
   } 
   }
-  
-  dynamic_headers.push([#align(bottom + left)[#text(size: font_size)[Date Given]]])
+
+  dynamic_headers.push([#align(bottom + left)[#text(size: font_size)[#date_given]]])
 
   for disease in diseases {
     dynamic_headers.push([#align(bottom)[#text(size: font_size)[#rotate(-90deg, reflow: true)[#disease]]]])
   }
 
-  dynamic_headers.push([#align(bottom + left)[#text(size: font_size)[Vaccine(s)]]])
+  dynamic_headers.push([#align(bottom + left)[#text(size: font_size)[#vaccine_s]]])
   
   // --- Create the table ---
   align(center)[
     #table(
-        columns: (67pt, 16pt, 16pt, 16pt, 16pt, 16pt, 16pt, 16pt, 16pt, 16pt, 16pt, 16pt, 16pt, 16pt, 236pt),
+        columns: (75pt, 16pt, 16pt, 16pt, 16pt, 16pt, 16pt, 16pt, 16pt, 16pt, 16pt, 16pt, 16pt, 16pt, 236pt),
         table.header(
           ..dynamic_headers
         ),
       stroke: 1pt,
-      inset: 5pt,
+      inset: 4pt,
       align: (
         left,
         center,
@@ -283,7 +287,7 @@
         left
       ), 
       ..table_rows.flatten(), 
-      table.cell(stroke:none, align: right, colspan: 15)[#text(size: 1em)[\*\indicates unspecified vaccine agent]]
+      table.cell(stroke:none, align: right, colspan: 15)[#text(size: font_size)[#end_msg]]
     )
   ]
 
