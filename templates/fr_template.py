@@ -143,7 +143,7 @@ DYNAMIC_BLOCK = """
 #immunization_notice(data, client_row, vaccines_due_array, date, 11pt)
 #pagebreak()
 #vaccine_table_page(client_row.at(0))
-#conf.immunization-table(5, num_rows, received, diseases, 11pt)
+#conf.immunization-table(5, num_rows, received, diseases, 10.6pt, "fr")
 #end_of_immunization_notice()
 """
 
