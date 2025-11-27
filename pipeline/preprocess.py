@@ -654,51 +654,65 @@ def enrich_grouped_records(
     chart_diseases_header: List[str] | None = None,
     ignore_diseases: List[str] | None = None,
 ) -> List[Dict[str, Any]]:
-    """Enrich grouped vaccine records with disease information.
 
-    If chart_diseases_header is provided, diseases not in the list are
-    collapsed into the "Other" category. Diseases in ignore_diseases
-    are always removed.
-    """
-
-
-    enriched: List[Dict[str, Any]] = []
+    enriched = []
+    ignore_set = set(ignore_diseases or [])
 
     for item in grouped:
-        # Normalize vaccine names
-        vaccines = [
-            v.replace("-unspecified", "*").replace(" unspecified", "*")
-            for v in item["vaccine"]
+
+        # Rule 1 — If ANY vaccine does not exist, drop entire row
+        if any(v not in vaccine_reference for v in item["vaccine"]):
+            continue
+
+        final_vaccines = []
+        final_diseases = []
+
+        for vaccine in item["vaccine"]:
+
+            disease_mapping = vaccine_reference.get(vaccine)
+
+            # Rule 2 — If mapping is "Other", skip this vaccine entirely
+            if disease_mapping == ["Other"] or disease_mapping == "Other":
+                continue
+
+            # Add vaccine to valid list
+            final_vaccines.append(vaccine)
+
+            # Add disease mapping
+            if isinstance(disease_mapping, list):
+                final_diseases.extend(disease_mapping)
+
+                # Rule 3 — HepB or HPV → also append "Other"
+                if any(d in ["Hepatitis B", "HPV"] for d in disease_mapping):
+                    final_diseases.append("Other")
+
+        # If no vaccines remain, drop entire row
+        if not final_vaccines:
+            continue
+
+        # Rule 4 — Remove ignored diseases
+        final_diseases = [d for d in final_diseases if d not in ignore_set]
+
+        # Rule 5 — Collapse diseases not in header → "Other"
+        if chart_diseases_header:
+            allowed = set(chart_diseases_header)
+            final_diseases = [
+                d if d in allowed else "Other"
+                for d in final_diseases
+            ]
+        
+        vaccines_normalized = [
+        v.replace("-unspecified", "*").replace(" unspecified", "*")
+        for v in final_vaccines
         ]
 
-        # Lookup diseases
-        diseases: List[str] = []
-        for vaccine in vaccines:
-            # See if the vaccine has a mapping to diseases
-            has_mapping = vaccine in vaccine_reference
-            if not has_mapping:
-                # Do not add to list
-                # Remove from vaccines list
-                # Remove whole item from grouped if no vaccines left
-                grouped.remove(item)
-                break
 
-            else:
-                ref = vaccine_reference.get(vaccine, vaccine)
-                if isinstance(ref, list):
-                    diseases.extend(ref)
-
-                if "Hepatitis B" in diseases or "HPV" in diseases:
-                    print("Found Hepatitis B or HPV in diseases")
-                    print(ref)
-                    diseases.extend(["Other"])
-
-                enriched.append(
-                    {
-                        "date_given": item["date_given"],
-                        "vaccine": vaccines,
-                        "diseases": diseases,
-                    }
+        enriched.append(
+            {
+                "date_given": item["date_given"],
+                "vaccine": vaccines_normalized,
+                "diseases": final_diseases,
+            }
         )
 
     return enriched

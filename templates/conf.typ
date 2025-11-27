@@ -61,7 +61,7 @@
   let table_content = align(center)[
     #table(
       columns: columns,
-      rows: (envelope_window_height),
+      rows: auto,
       inset: font_size,
       col1_content,
       table.vline(stroke: vline_stroke),
