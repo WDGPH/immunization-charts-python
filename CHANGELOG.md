@@ -6,9 +6,9 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 <!-- insertion marker -->
-## Unreleased
+## [v0.3.0](https://github.com/WDGPH/immunization-charts-python/releases/tag/v0.3.0) - 2026-01-09
 
-<small>[Compare with latest](https://github.com/WDGPH/immunization-charts-python/compare/03e764568766269de71e0fef45cf0f390295cef3...HEAD)</small>
+<small>[Compare with first commit](https://github.com/WDGPH/immunization-charts-python/compare/03e764568766269de71e0fef45cf0f390295cef3...v0.3.0)</small>
 
 ### Added
 
@@ -40,4 +40,3 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 - Changes to size so that french translation is formatted more nicely in header ([89db891](https://github.com/WDGPH/immunization-charts-python/commit/89db8915cf1cf1db2e5737c04ce573cd19c69986) by kassyray).
 
-<!-- insertion marker -->
