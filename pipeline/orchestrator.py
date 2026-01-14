@@ -41,7 +41,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 # Import pipeline steps
-from . import bundle_pdfs, cleanup, compile_notices, validate_pdfs
+from . import bundle_pdfs, cleanup, compile_notices, validate_pdfs, validate_phix
 from . import (
     encrypt_notice,
     generate_notices,
@@ -50,6 +50,7 @@ from . import (
     preprocess,
 )
 from .config_loader import load_config
+from .data_models import PreprocessResult
 from .enums import Language
 
 SCRIPT_DIR = Path(__file__).resolve().parent
@@ -220,6 +221,9 @@ def run_step_2_preprocess(
     # Configure logging
     log_path = preprocess.configure_logging(output_dir, run_id)
 
+    # Load configuration for PHIX validation
+    config = load_config(DEFAULT_CONFIG_DIR / "parameters.yaml")
+
     # Load and process input data
     input_path = input_dir / input_file
     df_raw = preprocess.read_input(input_path)
@@ -230,6 +234,31 @@ def run_step_2_preprocess(
     # Check that addresses are complete, return only complete rows
     df = preprocess.check_addresses_complete(df)
 
+    # Validate schools/daycares against PHIX reference list
+    phix_config = config.get("phix_validation", {})
+    phix_warnings: list[str] = []
+    if phix_config.get("enabled", False):
+        reference_file = phix_config.get("reference_file", "")
+        if reference_file:
+            reference_path = Path(reference_file)
+            # If relative path, resolve from project root
+            if not reference_path.is_absolute():
+                reference_path = input_dir.parent / reference_file
+            if reference_path.exists():
+                df, phix_warnings = validate_phix.validate_facilities(
+                    df=df,
+                    reference_path=reference_path,
+                    output_dir=output_dir,
+                    threshold=phix_config.get("match_threshold", 85),
+                    unmatched_behavior=phix_config.get("unmatched_behavior", "warn"),
+                    strategy=phix_config.get("match_strategy", "fuzzy"),
+                )
+                print(f"🏫 PHIX validation complete: {len(df)} records validated")
+            else:
+                print(f"⚠️  PHIX reference file not found: {reference_path}")
+        else:
+            print("⚠️  PHIX validation enabled but no reference_file configured")
+
     # Load configuration
     vaccine_reference_path = preprocess.VACCINE_REFERENCE_PATH
     vaccine_reference = json.loads(vaccine_reference_path.read_text(encoding="utf-8"))
@@ -238,6 +267,14 @@ def run_step_2_preprocess(
     result = preprocess.build_preprocess_result(
         df, language, vaccine_reference, preprocess.REPLACE_UNSPECIFIED
     )
+
+    # Merge PHIX validation warnings into result
+    if phix_warnings:
+        combined_warnings = list(result.warnings) + phix_warnings
+        result = PreprocessResult(
+            clients=result.clients,
+            warnings=combined_warnings,
+        )
 
     # Write artifact
     artifact_path = preprocess.write_artifact(
