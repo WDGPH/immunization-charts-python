@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import shutil
 import subprocess
+from collections.abc import Generator
 from pathlib import Path
 
 import pytest
@@ -44,7 +45,7 @@ class TestFullPipelineExecution:
     @pytest.fixture
     def e2e_workdir(
         self, project_root: Path, tmp_path_factory: pytest.TempPathFactory
-    ) -> Path:
+    ) -> Generator[Path, None, None]:
         """Create a temporary working directory within the project root.
 
         Typst requires absolute paths relative to the project root for asset

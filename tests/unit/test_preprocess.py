@@ -144,13 +144,13 @@ class TestFilterColumns:
 
     def test_handles_empty_dataframe(self):
         """Verify that an empty DataFrame is returned unchanged."""
-        df = pd.DataFrame(columns=["child_first_name", "child_last_name"])
+        df = pd.DataFrame(columns=["child_first_name", "child_last_name"])  # type: ignore[arg-type]
         result = preprocess.filter_columns(df, ["child_first_name"])
         assert result.empty
 
     def test_handles_none_input(self):
         """Verify that None input returns None safely."""
-        result = preprocess.filter_columns(None, ["child_first_name"])
+        result = preprocess.filter_columns(None, ["child_first_name"])  # type: ignore[arg-type]
         assert result is None
 
     def test_order_of_columns_is_preserved(self):
@@ -468,6 +468,8 @@ class TestDateFormatting:
         result_en = preprocess.convert_date_string("2025-08-31", locale="en")
         result_fr = preprocess.convert_date_string("2025-08-31", locale="fr")
 
+        assert result_en is not None
+        assert result_fr is not None
         assert "August" in result_en
         assert "31" in result_en
         assert "2025" in result_en
