@@ -112,6 +112,7 @@ class TestNormalize:
         """Verify that non-letter characters are preserved."""
         assert preprocess.normalize("123 Name!") == "123 name!"
 
+
 @pytest.mark.unit
 class TestFilterColumns:
     """Unit tests for filter_columns() column filtering utility."""
@@ -164,7 +165,10 @@ class TestFilterColumns:
         required = ["dob", "child_first_name"]
         result = preprocess.filter_columns(df, required)
 
-        assert list(result.columns) == ["child_first_name", "dob"] or list(result.columns) == required
+        assert (
+            list(result.columns) == ["child_first_name", "dob"]
+            or list(result.columns) == required
+        )
         # Either column order can appear depending on implementation; both are acceptable
 
     def test_ignores_required_columns_not_in_df(self):
@@ -175,6 +179,7 @@ class TestFilterColumns:
 
         assert "child_first_name" in result.columns
         assert "missing_column" not in result.columns
+
 
 @pytest.mark.unit
 class TestReadInput:
@@ -785,5 +790,21 @@ class TestBuildPreprocessResult:
         # Should have NO warnings about duplicates
         duplicate_warnings = [w for w in result.warnings if "Duplicate client ID" in w]
         assert len(duplicate_warnings) == 0
-    
 
+
+@pytest.mark.unit
+class TestVaccineProcessingDue:
+    """Unit tests for process_vaccines_due function."""
+
+    def test_process_vaccines_due_normalization(self) -> None:
+        """Verify process_vaccines_due normalizes and formats disease names."""
+        from pipeline import translation_helpers
+
+        translation_helpers.clear_caches()
+
+        # Test with variant input - should normalize correctly
+        result = preprocess.process_vaccines_due("Poliomyelitis, Measles", "en")
+
+        # Should normalize Poliomyelitis to Polio (canonical form)
+        assert "Polio" in result
+        assert "Measles" in result

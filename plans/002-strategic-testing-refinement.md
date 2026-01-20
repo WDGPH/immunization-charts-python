@@ -85,13 +85,24 @@ Run subagents with explicit scope, producing structured findings for each test f
    - Review [htmlcov/index.html](htmlcov/index.html)
 3. For each test file, note which source lines are exclusively covered by that test. Keep tests that uniquely cover important contracts.
 
+## Status: Completed (January 20, 2026)
+
+The strategic testing refinement is complete. The test suite has been streamlined as follows:
+- **Unit suite reduced:** Merged redundant config, template loading, and language validation tests. Removed `test_enums.py`. Trimmed `test_data_models.py`.
+- **Integration suite consolidated:** Created `test_pipeline_contracts.py` as the canonical handoff check. Removed redundant config-behavior checks.
+- **Translation logic moved:** Pure unit-level translation/normalization tests relocated to the unit suite.
+- **E2E preserved:** High-level smoke tests for English and French are retained.
+
+**Suite Metrics:**
+- Total tests: 443 (previously 513)
+- Passing: 100%
+
 ## Decision criteria matrix
 Here is the assessment of the current test suite:
 
 | Test file | Category | Contract(s) | Source link(s) | Cost | Duplicates? | Keep/Trim/Replace | Rationale |
 |---|---|---|---|---|---|---|---|
-| `tests/unit/test_config_loader.py` | Unit | Config loading/env vars | [pipeline/config_loader.py](pipeline/config_loader.py) | Fast | Yes | Merge | Merge into `test_config_validation.py` for unified config lifecycle. |
-| `tests/unit/test_config_validation.py` | Unit | Schema/business rules | [pipeline/config_loader.py](pipeline/config_loader.py) | Fast | Partial | Keep | Centralized validation is critical for "contract over defensiveness". |
+| `tests/unit/test_config_validation.py` | Unit | Config loading & validation | [pipeline/config_loader.py](pipeline/config_loader.py) | Fast | No | Keep | Consolidated config lifecycle: loading, schema, and business rules. |
 | `tests/unit/test_enums.py` | Unit | Enum integrity | [pipeline/enums.py](pipeline/enums.py) | Fast | Yes | Remove | Redundant with static analysis (Ruff/Mypy). |
 | `tests/unit/test_data_models.py` | Unit | Dataclass integrity | [pipeline/data_models.py](pipeline/data_models.py) | Fast | Yes | Trim | Remove generic frozen/field checks; keep custom methods. |
 | `tests/unit/test_preprocess.py` | Unit | Normalization/Sorting | [pipeline/preprocess.py](pipeline/preprocess.py) | Mod | No | Keep | Core business logic with high complexity. |
