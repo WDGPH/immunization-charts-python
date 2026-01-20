@@ -86,10 +86,22 @@ Run subagents with explicit scope, producing structured findings for each test f
 3. For each test file, note which source lines are exclusively covered by that test. Keep tests that uniquely cover important contracts.
 
 ## Decision criteria matrix
-Use this matrix for each test file:
+Here is the assessment of the current test suite:
 
 | Test file | Category | Contract(s) | Source link(s) | Cost | Duplicates? | Keep/Trim/Replace | Rationale |
 |---|---|---|---|---|---|---|---|
+| `tests/unit/test_config_loader.py` | Unit | Config loading/env vars | [pipeline/config_loader.py](pipeline/config_loader.py) | Fast | Yes | Merge | Merge into `test_config_validation.py` for unified config lifecycle. |
+| `tests/unit/test_config_validation.py` | Unit | Schema/business rules | [pipeline/config_loader.py](pipeline/config_loader.py) | Fast | Partial | Keep | Centralized validation is critical for "contract over defensiveness". |
+| `tests/unit/test_enums.py` | Unit | Enum integrity | [pipeline/enums.py](pipeline/enums.py) | Fast | Yes | Remove | Redundant with static analysis (Ruff/Mypy). |
+| `tests/unit/test_data_models.py` | Unit | Dataclass integrity | [pipeline/data_models.py](pipeline/data_models.py) | Fast | Yes | Trim | Remove generic frozen/field checks; keep custom methods. |
+| `tests/unit/test_preprocess.py` | Unit | Normalization/Sorting | [pipeline/preprocess.py](pipeline/preprocess.py) | Mod | No | Keep | Core business logic with high complexity. |
+| `tests/unit/test_dynamic_template_loading.py` | Unit | Template discovery | [pipeline/generate_notices.py](pipeline/generate_notices.py) | Fast | Yes | Merge | Merge into `test_generate_notices.py`. |
+| `tests/unit/test_unsupported_language_failure_paths.py` | Unit | Lang validation | [pipeline/orchestrator.py](pipeline/orchestrator.py) | Fast | Yes | Merge | Merge into `test_orchestrator.py`. |
+| `tests/integration/test_artifact_schema.py` | Integration | Step IO schema | [pipeline/data_models.py](pipeline/data_models.py) | Fast | Yes | Merge | Consolidation into `test_pipeline_contracts.py`. |
+| `tests/integration/test_artifact_schema_flow.py` | Integration | Data flow | [pipeline/orchestrator.py](pipeline/orchestrator.py) | Mod | Yes | Merge | Consolidation into `test_pipeline_contracts.py`. |
+| `tests/integration/test_config_driven_behavior.py` | Integration | Config toggle logic | [pipeline/config_loader.py](pipeline/config_loader.py) | Mod | Yes | Remove | Overlap with `test_config_validation.py` unit tests. |
+| `tests/integration/test_pipeline_stages.py` | Integration | Handoff contracts | [pipeline/orchestrator.py](pipeline/orchestrator.py) | Slow | No | Keep | Vital for verifying that steps talk to each other correctly. |
+| `tests/e2e/test_full_pipeline.py` | E2E | Full pipeline (EN/FR) | [pipeline/orchestrator.py](pipeline/orchestrator.py) | Slow | No | Keep | Essential smoke tests for both languages. |
 
 ### Contract priority (high → low)
 1. Orchestrator step ordering & CLI validation.
@@ -112,6 +124,32 @@ Use this matrix for each test file:
 2. Marked keep/trim/replace list per file.
 3. Coverage summary (unit/integration/e2e).
 4. Final trimmed test plan with the minimal E2E (EN + FR) and reduced integration suite.
+
+## Audit Findings
+
+### Subagent B — Integration tests audit (Findings)
+The audit of [tests/integration](tests/integration) is complete.
+
+#### 1. Covered Contracts & Modules
+Integration tests cover the following multi-step handoffs:
+- **Preprocess -> QR Gen -> Notice Gen:** Covered by [tests/integration/test_pipeline_stages.py](tests/integration/test_pipeline_stages.py) and [tests/integration/test_artifact_schema_flow.py](tests/integration/test_artifact_schema_flow.py). Verifies field availability in the intermediate JSON artifact used across steps 2, 3, and 4.
+- **Notice Gen -> Compilation:** Covered by [tests/integration/test_custom_templates.py](tests/integration/test_custom_templates.py). Verifies dynamic module loading and asset resolution during steps 4 and 5.
+- **Compilation -> Validation -> Encryption -> Bundling:** Covered by [tests/integration/test_pipeline_stages.py](tests/integration/test_pipeline_stages.py). Verifies metadata preservation and file presence for steps 6, 7, and 8.
+- **Fail-Fast vs Recovery Philosophy:** Covered by [tests/integration/test_error_propagation.py](tests/integration/test_error_propagation.py). Verifies orchestrator contracts for critical vs optional steps.
+- **Translation-Normalization Chain:** Covered by [tests/integration/test_translation_integration.py](tests/integration/test_translation_integration.py). Verifies the flow from raw data to translated template context.
+
+#### 2. Overlap & Redundancy
+- **Brittle Data Assertions:** [tests/integration/test_artifact_schema.py](tests/integration/test_artifact_schema.py) and [tests/integration/test_artifact_schema_flow.py](tests/integration/test_artifact_schema_flow.py) are largely redundant with each other and with unit tests for [pipeline/data_models.py](pipeline/data_models.py).
+- **Low-Value Config Checks:** [tests/integration/test_config_driven_behavior.py](tests/integration/test_config_driven_behavior.py) asserts key presence in dictionaries, which is a unit-level concern for [pipeline/config_loader.py](pipeline/config_loader.py) and provides little integration signal.
+- **Pure Unit Logic:** [tests/integration/test_translation_integration.py](tests/integration/test_translation_integration.py) contains several tests for disease normalization that should be pure unit tests for [pipeline/translation_helpers.py](pipeline/translation_helpers.py).
+
+#### 3. Recommended Minimal Set
+To maintain confidence while reducing maintenance, the following changes are proposed:
+- **Keep** [tests/integration/test_error_propagation.py](tests/integration/test_error_propagation.py) (Philosophy/Orchestration contract).
+- **Keep** [tests/integration/test_custom_templates.py](tests/integration/test_custom_templates.py) (Dynamic loading/PHU customization contract).
+- **Consolidate** [tests/integration/test_pipeline_stages.py](tests/integration/test_pipeline_stages.py), [tests/integration/test_artifact_schema.py](tests/integration/test_artifact_schema.py), and [tests/integration/test_artifact_schema_flow.py](tests/integration/test_artifact_schema_flow.py) into a single `test_pipeline_contracts.py` that focuses on disk-based handoffs.
+- **Simplify** [tests/integration/test_translation_integration.py](tests/integration/test_translation_integration.py) to focus on the `preprocess` -> `context` boundary, moving pure string logic to unit tests.
+- **Delete** [tests/integration/test_config_driven_behavior.py](tests/integration/test_config_driven_behavior.py).
 
 ## Notes and decisions
 - Keep one E2E pipeline run per language as requested (English + French).
