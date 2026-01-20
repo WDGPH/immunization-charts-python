@@ -26,7 +26,7 @@ As part of the pre-1.0 release strategy, the following principles guide the test
 ```
 tests/
 ├── unit/                          # Unit tests (one per module/contract)
-│   ├── test_config_validation.py  # Merged loader + validation
+│   ├── test_config_loader.py      # Merged loader + validation
 │   ├── test_preprocess.py
 │   ├── test_generate_notices.py   # Merged template loading
 │   ├── test_generate_qr_codes.py
@@ -38,7 +38,7 @@ tests/
 │   ├── test_prepare_output.py
 │   ├── test_data_models.py        # Trimmed to custom logic
 │   ├── test_utils.py
-│   └── test_run_pipeline.py       # Merged lang failure paths
+│   └── test_orchestrator.py       # Merged lang failure paths
 │
 ├── integration/                   # Integration tests (step interactions)
 │   ├── test_pipeline_contracts.py # Merged artifact/schema/handoffs

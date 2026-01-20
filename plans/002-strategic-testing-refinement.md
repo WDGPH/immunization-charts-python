@@ -98,20 +98,19 @@ The strategic testing refinement is complete. The test suite has been streamline
 - Passing: 100%
 
 ## Decision criteria matrix
-Here is the assessment of the current test suite:
+Here is the assessment of the refined test suite:
 
-| Test file | Category | Contract(s) | Source link(s) | Cost | Duplicates? | Keep/Trim/Replace | Rationale |
+| Test file | Category | Contract(s) | Source link(s) | Cost | Duplicates? | Keep/Trim/Refine | Rationale |
 |---|---|---|---|---|---|---|---|
-| `tests/unit/test_config_validation.py` | Unit | Config loading & validation | [pipeline/config_loader.py](pipeline/config_loader.py) | Fast | No | Keep | Consolidated config lifecycle: loading, schema, and business rules. |
-| `tests/unit/test_enums.py` | Unit | Enum integrity | [pipeline/enums.py](pipeline/enums.py) | Fast | Yes | Remove | Redundant with static analysis (Ruff/Mypy). |
-| `tests/unit/test_data_models.py` | Unit | Dataclass integrity | [pipeline/data_models.py](pipeline/data_models.py) | Fast | Yes | Trim | Remove generic frozen/field checks; keep custom methods. |
+| `tests/unit/test_config_loader.py` | Unit | Config loading & validation | [pipeline/config_loader.py](pipeline/config_loader.py) | Fast | No | Keep | Consolidated config lifecycle (from `test_config_validation.py`). |
+| `tests/unit/test_data_models.py` | Unit | Dataclass integrity | [pipeline/data_models.py](pipeline/data_models.py) | Fast | Yes | Trimmed | Removed generic property checks. |
 | `tests/unit/test_preprocess.py` | Unit | Normalization/Sorting | [pipeline/preprocess.py](pipeline/preprocess.py) | Mod | No | Keep | Core business logic with high complexity. |
-| `tests/unit/test_dynamic_template_loading.py` | Unit | Template discovery | [pipeline/generate_notices.py](pipeline/generate_notices.py) | Fast | Yes | Merge | Merge into `test_generate_notices.py`. |
-| `tests/unit/test_unsupported_language_failure_paths.py` | Unit | Lang validation | [pipeline/orchestrator.py](pipeline/orchestrator.py) | Fast | Yes | Merge | Merge into `test_orchestrator.py`. |
-| `tests/integration/test_artifact_schema.py` | Integration | Step IO schema | [pipeline/data_models.py](pipeline/data_models.py) | Fast | Yes | Merge | Consolidation into `test_pipeline_contracts.py`. |
-| `tests/integration/test_artifact_schema_flow.py` | Integration | Data flow | [pipeline/orchestrator.py](pipeline/orchestrator.py) | Mod | Yes | Merge | Consolidation into `test_pipeline_contracts.py`. |
-| `tests/integration/test_config_driven_behavior.py` | Integration | Config toggle logic | [pipeline/config_loader.py](pipeline/config_loader.py) | Mod | Yes | Remove | Overlap with `test_config_validation.py` unit tests. |
-| `tests/integration/test_pipeline_stages.py` | Integration | Handoff contracts | [pipeline/orchestrator.py](pipeline/orchestrator.py) | Slow | No | Keep | Vital for verifying that steps talk to each other correctly. |
+| `tests/unit/test_generate_notices.py` | Unit | Notice Generation | [pipeline/generate_notices.py](pipeline/generate_notices.py) | Fast | No | Keep | Consolidated with template discovery. |
+| `tests/unit/test_orchestrator.py` | Unit | Pipeline Orchestration | [pipeline/orchestrator.py](pipeline/orchestrator.py) | Fast | Yes | Keep | Unified orchestration testing (from `test_run_pipeline.py`). |
+| `tests/integration/test_pipeline_contracts.py` | Integration | Step IO schema & flow | [pipeline/orchestrator.py](pipeline/orchestrator.py) | Mod | No | Keep | Canonical handoff check. |
+| `tests/integration/test_error_propagation.py` | Integration | Philosophy | [pipeline/orchestrator.py](pipeline/orchestrator.py) | Mod | No | Keep | Fail-fast vs recovery contract. |
+| `tests/integration/test_custom_templates.py` | Integration | Dynamic loading | [pipeline/generate_notices.py](pipeline/generate_notices.py) | Mod | No | Keep | PHU customization contract. |
+| `tests/integration/test_translation_integration.py` | Integration | Translation flow | [pipeline/translation_helpers.py](pipeline/translation_helpers.py) | Mod | No | Keep | Core localized data flow. |
 | `tests/e2e/test_full_pipeline.py` | E2E | Full pipeline (EN/FR) | [pipeline/orchestrator.py](pipeline/orchestrator.py) | Slow | No | Keep | Essential smoke tests for both languages. |
 
 ### Contract priority (high → low)
