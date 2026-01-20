@@ -41,9 +41,8 @@ tests/
 │   └── test_orchestrator.py       # Merged lang failure paths
 │
 ├── integration/                   # Integration tests (step interactions)
-│   ├── test_pipeline_contracts.py # Merged artifact/schema/handoffs
 │   ├── test_custom_templates.py
-│   ├── test_error_propagation.py
+│   ├── test_error_propagation.py  # Philosophy/Fail-fast contract
 │   └── test_translation_integration.py
 │
 ├── e2e/                           # End-to-end tests (full pipeline)

@@ -209,59 +209,6 @@ class TestPipelineSteps:
             )
             assert result is False
 
-    def test_run_step_2_preprocess(
-        self, tmp_test_dir: Path, tmp_output_structure: dict
-    ) -> None:
-        """Verify Step 2: preprocess returns client count."""
-        mock_df = MagicMock()
-        mock_mapped_df = MagicMock()
-        mock_filtered_df = MagicMock()
-        mock_final_df = MagicMock()
-        mock_result = MagicMock()
-        client1 = MagicMock(sequence=1, client_id="1")
-        client2 = MagicMock(sequence=2, client_id="2")
-        mock_result.clients = [client1, client2]
-        mock_result.warnings = []
-
-        with (
-            patch("pipeline.orchestrator.preprocess.read_input", return_value=mock_df),
-            patch(
-                "pipeline.orchestrator.preprocess.map_columns",
-                return_value=(mock_mapped_df, {}),
-            ),
-            patch(
-                "pipeline.orchestrator.preprocess.filter_columns",
-                return_value=mock_filtered_df,
-            ),
-            patch(
-                "pipeline.orchestrator.preprocess.ensure_required_columns",
-                return_value=mock_final_df,
-            ),
-            patch(
-                "pipeline.orchestrator.preprocess.build_preprocess_result",
-                return_value=mock_result,
-            ),
-            patch(
-                "pipeline.orchestrator.preprocess.configure_logging",
-                return_value=tmp_test_dir / "log.txt",
-            ),
-            patch(
-                "pipeline.orchestrator.preprocess.write_artifact",
-                return_value="artifact.json",
-            ),
-            patch("pipeline.orchestrator.json.loads", return_value={"vaccine": "MMR"}),
-            patch("builtins.print"),
-        ):
-            total = orchestrator.run_step_2_preprocess(
-                input_dir=tmp_test_dir,
-                input_file="test.xlsx",
-                output_dir=tmp_output_structure["root"],
-                language="en",
-                run_id="test_20250101_120000",
-            )
-
-        assert total == 2
-
     def test_run_step_3_generate_qr_codes_disabled(
         self, tmp_output_structure: dict, config_file: Path
     ) -> None:
@@ -285,36 +232,6 @@ class TestPipelineSteps:
                 )
 
         assert result == 0
-
-
-@pytest.mark.unit
-class TestPipelineOrchestration:
-    """Unit tests for pipeline orchestration logic."""
-
-    def test_pipeline_steps_ordered_correctly(self) -> None:
-        """Verify steps are called in correct order.
-
-        Real-world significance:
-        - Step N output must feed into Step N+1
-        - Wrong order causes data flow errors
-        - Order: prepare → preprocess → qr → notices → compile → count → encrypt → batch → cleanup
-        """
-        # This is a higher-level test that would verify call order
-        # In practice, integration tests verify this
-        assert True  # Placeholder for call order verification
-
-    def test_pipeline_main_returns_zero_on_success(
-        self, tmp_test_dir: Path, tmp_output_structure: dict
-    ) -> None:
-        """Verify main() returns 0 on successful pipeline run.
-
-        Real-world significance:
-        - Exit code 0 indicates success for shell scripts
-        - CI/CD systems rely on exit codes
-        """
-        # This would require extensive mocking
-        # Typically tested at integration/e2e level
-        assert True  # Placeholder
 
 
 @pytest.mark.unit
@@ -365,27 +282,70 @@ class TestRunIdGeneration:
 
 @pytest.mark.unit
 class TestErrorHandling:
-    """Unit tests for pipeline error handling."""
+    """Unit tests for pipeline error handling and failure propagation."""
 
-    def test_pipeline_catches_preprocessing_errors(self) -> None:
-        """Verify preprocessing errors are caught.
-
-        Real-world significance:
-        - Bad input data should fail gracefully
-        - Pipeline should report error and exit
-        """
-        # Error handling tested at integration level
-        assert True  # Placeholder
-
-    def test_pipeline_catches_compilation_errors(self) -> None:
-        """Verify compilation errors are caught.
+    def test_pipeline_failure_returns_exit_code_1(self, tmp_path: Path) -> None:
+        """Verify that any exception in a pipeline step returns exit code 1.
 
         Real-world significance:
-        - Typst compilation might fail
-        - Should report which PDF failed to compile
+        - Critical step failures must stop the pipeline
+        - CI/CD and shell scripts rely on non-zero exit codes for failure
         """
-        # Error handling tested at integration level
-        assert True  # Placeholder
+        # Mock dependencies to reach the step execution
+        input_file = tmp_path / "test.xlsx"
+        input_file.write_text("dummy")
+
+        with (
+            patch("pipeline.orchestrator.parse_args") as mock_args,
+            patch("pipeline.orchestrator.load_config", return_value={}),
+            patch(
+                "pipeline.orchestrator.run_step_1_prepare_output",
+                side_effect=Exception("Test execution failure"),
+            ),
+            patch("builtins.print"),
+        ):
+            mock_args.return_value = MagicMock(
+                input_file="test.xlsx",
+                language="en",
+                input_dir=tmp_path,
+                output_dir=tmp_path / "output",
+                config_dir=tmp_path / "config",
+                template_dir=None,
+            )
+
+            # main() catches all exceptions and returns 1
+            exit_code = orchestrator.main()
+            assert exit_code == 1
+
+    def test_user_cancel_returns_exit_code_2(self, tmp_path: Path) -> None:
+        """Verify that user cancellation in Step 1 returns exit code 2.
+
+        Real-world significance:
+        - Distinguishes between technical failure (1) and user choice (2)
+        - Matches shell script behavior for pipeline cancellation
+        """
+        input_file = tmp_path / "test.xlsx"
+        input_file.write_text("dummy")
+
+        with (
+            patch("pipeline.orchestrator.parse_args") as mock_args,
+            patch("pipeline.orchestrator.load_config", return_value={}),
+            patch(
+                "pipeline.orchestrator.run_step_1_prepare_output", return_value=False
+            ),
+            patch("builtins.print"),
+        ):
+            mock_args.return_value = MagicMock(
+                input_file="test.xlsx",
+                language="en",
+                input_dir=tmp_path,
+                output_dir=tmp_path / "output",
+                config_dir=tmp_path / "config",
+                template_dir=None,
+            )
+
+            exit_code = orchestrator.main()
+            assert exit_code == 2
 
 
 @pytest.mark.unit

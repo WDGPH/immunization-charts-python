@@ -1,5 +1,14 @@
 # Focused testing optimization plan (pre-1.0, Round 2)
 
+## Status: Completed (January 20, 2026)
+
+The focused testing optimization is complete. The test suite has been further refined:
+- **Contract-driven pruning:** Removed `tests/integration/test_pipeline_contracts.py` as it was largely redundant with Step 2 unit tests and the "contract over defensiveness" principle.
+- **Orchestrator slimming:** Reduced `tests/unit/test_orchestrator.py` by 12% by removing implementing-mirroring mocks and focusing on CLI plumbing and failure propagation.
+- **Suite Metrics:**
+  - Total tests: 426 (previously 443, and 513 at start of Round 1).
+  - Passing: 100%.
+
 ## Goals
 - Further reduce low-signal tests while safeguarding pipeline contracts.
 - Prioritize failures that impact users (pipeline stops, incorrect PDFs, invalid configs).
