@@ -95,6 +95,7 @@ REQUIRED_COLUMNS = [
 
 THRESHOLD = 80
 
+
 def convert_date_string(
     date_str: str | datetime | pd.Timestamp, locale: str = "en"
 ) -> str | None:
@@ -172,6 +173,7 @@ def format_iso_date_for_language(iso_date: str, language: str) -> str:
 
     return format_date(date_obj, format="long", locale=locale)
 
+
 def check_addresses_complete(df: pd.DataFrame) -> pd.DataFrame:
     """
     Check if address fields are complete in the DataFrame.
@@ -192,17 +194,13 @@ def check_addresses_complete(df: pd.DataFrame) -> pd.DataFrame:
     ]
 
     for col in address_cols:
-        df[col] = (
-            df[col]
-            .astype(str)
-            .str.strip()
-            .replace({"": pd.NA, "nan": pd.NA})
-        )
+        df[col] = df[col].astype(str).str.strip().replace({"": pd.NA, "nan": pd.NA})
 
     # Build combined address line
     df["ADDRESS"] = (
-        df["STREET_ADDRESS_LINE_1"].fillna("") + " " +
-        df["STREET_ADDRESS_LINE_2"].fillna("")
+        df["STREET_ADDRESS_LINE_1"].fillna("")
+        + " "
+        + df["STREET_ADDRESS_LINE_2"].fillna("")
     ).str.strip()
 
     df["ADDRESS"] = df["ADDRESS"].replace({"": pd.NA})
@@ -281,6 +279,7 @@ def over_16_check(date_of_birth, date_notice_delivery):
         age -= 1
 
     return age >= 16
+
 
 def configure_logging(output_dir: Path, run_id: str) -> Path:
     """Configure file logging for the preprocessing step.
@@ -387,6 +386,7 @@ def read_input(file_path: Path) -> pd.DataFrame:
         LOG.error("Failed to read %s: %s", file_path, exc)
         raise
 
+
 def normalize(col: str) -> str:
     """Normalize formatting prior to matching."""
 
@@ -443,11 +443,10 @@ def map_columns(df: pd.DataFrame, required_columns=REQUIRED_COLUMNS):
 
     # Check each input column against required columns
     for input_col in normalized_input_cols:
-        
         col_name, score, index = process.extractOne(
             query=input_col,
             choices=[normalize(req) for req in required_columns],
-            scorer=fuzz.partial_ratio
+            scorer=fuzz.partial_ratio,
         )
 
         # Remove column if it has a score of 0
@@ -460,8 +459,9 @@ def map_columns(df: pd.DataFrame, required_columns=REQUIRED_COLUMNS):
 
             # print colname and score for debugging
             print(f"Matching '{input_col}' to '{best_match}' with score {score}")
-        
+
     return df.rename(columns=col_map), col_map
+
 
 def filter_columns(
     df: pd.DataFrame, required_columns: list[str] = REQUIRED_COLUMNS
@@ -471,6 +471,7 @@ def filter_columns(
         return df
 
     return df[[col for col in df.columns if col in required_columns]]
+
 
 def ensure_required_columns(df: pd.DataFrame) -> pd.DataFrame:
     """Normalize column names and validate that all required columns are present.
@@ -767,7 +768,7 @@ def build_preprocess_result(
     sorted_df["SEQUENCE"] = [f"{idx + 1:05d}" for idx in range(len(sorted_df))]
 
     clients: List[ClientRecord] = []
-    for row in sorted_df.itertuples(index=False):  # type: ignore[attr-defined]
+    for row in sorted_df.itertuples(index=False):
         client_id = str(row.CLIENT_ID)  # type: ignore[attr-defined]
         sequence = row.SEQUENCE  # type: ignore[attr-defined]
         dob_iso = (
