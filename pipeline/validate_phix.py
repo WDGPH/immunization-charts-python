@@ -1,8 +1,8 @@
 """Validate schools and daycares against PHIX Reference List.
 
 This module provides validation of school/daycare names against a canonical
-PHIX reference list. It supports exact matching, alias matching, and fuzzy
-matching using rapidfuzz.
+PHIX reference list. It supports strict exact matching plus PHU alias
+scoping to prevent cross-jurisdiction matches.
 
 **Input Contract:**
 - PHIX reference Excel file must exist at configured path
@@ -24,15 +24,16 @@ import logging
 import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, Iterable, List, Optional, Set, Tuple
 
 import pandas as pd
-from rapidfuzz import fuzz, process
+import yaml
 
 LOG = logging.getLogger(__name__)
 
-# Cache for loaded PHIX reference data
+# Cache for loaded PHIX reference data and PHU alias mappings
 _PHIX_REFERENCE_CACHE: Optional[Dict[str, Any]] = None
+_PHU_MAPPING_CACHE: Optional[Dict[str, Any]] = None
 
 
 @dataclass
@@ -55,8 +56,10 @@ class PHIXMatchResult:
     matched: bool
     phix_id: Optional[str] = None
     phix_name: Optional[str] = None
+    phu_name: Optional[str] = None
+    phu_code: Optional[str] = None
     confidence: int = 0
-    match_type: str = "none"  # exact, fuzzy, or none
+    match_type: str = "none"  # exact or none
 
 
 def parse_facility_entry(entry: str, phu: str) -> Optional[PHIXFacility]:
@@ -115,7 +118,7 @@ def load_phix_reference(
     Dict with keys:
         - facilities: List[PHIXFacility] - all parsed facilities
         - by_name: Dict[str, PHIXFacility] - lookup by normalized name
-        - name_list: List[str] - list of all normalized names for fuzzy matching
+        - by_name_phu: Dict[str, Dict[str, PHIXFacility]] - lookup by PHU column
         - phus: List[str] - list of PHU column names
     """
     global _PHIX_REFERENCE_CACHE
@@ -134,6 +137,7 @@ def load_phix_reference(
 
     facilities: List[PHIXFacility] = []
     by_name: Dict[str, PHIXFacility] = {}
+    by_name_phu: Dict[str, Dict[str, PHIXFacility]] = {}
     seen_names: Set[str] = set()
 
     for phu_column in df.columns:
@@ -143,11 +147,11 @@ def load_phix_reference(
                 facilities.append(facility)
                 # Use normalized name as key for exact matching
                 normalized = normalize_facility_name(facility.name)
+                by_name_phu.setdefault(normalized, {})[phu_column] = facility
                 if normalized not in seen_names:
                     by_name[normalized] = facility
                     seen_names.add(normalized)
 
-    name_list = list(by_name.keys())
     LOG.info(
         "Loaded %d facilities from %d PHUs", len(facilities), len(df.columns)
     )
@@ -156,10 +160,90 @@ def load_phix_reference(
         "_cache_path": cache_key,
         "facilities": facilities,
         "by_name": by_name,
-        "name_list": name_list,
+        "by_name_phu": by_name_phu,
         "phus": list(df.columns),
     }
     return _PHIX_REFERENCE_CACHE
+
+
+def normalize_phu_code(code: str) -> str:
+    """Normalize a PHU acronym/template key for comparison."""
+    if not code:
+        return ""
+    normalized = re.sub(r"[^a-z0-9]+", "_", code.strip().lower())
+    return normalized.strip("_")
+
+
+def normalize_phu_label(label: str) -> str:
+    """Normalize PHU names/aliases for lookup."""
+    if not label:
+        return ""
+    return re.sub(r"\s+", " ", str(label).strip().upper())
+
+
+def load_phu_aliases(mapping_path: Path) -> Dict[str, Any]:
+    """Load canonical PHU aliases from YAML mapping file."""
+    global _PHU_MAPPING_CACHE
+
+    cache_key = str(mapping_path.resolve())
+    if _PHU_MAPPING_CACHE is not None:
+        cached_path = _PHU_MAPPING_CACHE.get("_cache_path")
+        if cached_path == cache_key:
+            return _PHU_MAPPING_CACHE
+
+    if not mapping_path.exists():
+        raise FileNotFoundError(f"PHU alias mapping file not found: {mapping_path}")
+
+    raw = yaml.safe_load(mapping_path.read_text(encoding="utf-8")) or {}
+    entries = raw.get("phu_aliases")
+    if not isinstance(entries, dict):
+        raise ValueError(
+            f"Invalid PHU alias mapping format in {mapping_path}. "
+            "Expected top-level 'phu_aliases' dictionary."
+        )
+
+    alias_to_code: Dict[str, str] = {}
+    code_to_display: Dict[str, str] = {}
+    code_to_aliases: Dict[str, Set[str]] = {}
+
+    for code, meta in entries.items():
+        normalized_code = normalize_phu_code(code)
+        if not normalized_code:
+            continue
+
+        meta = meta or {}
+        display_name = str(meta.get("display_name") or code).strip()
+        code_to_display[normalized_code] = display_name
+
+        aliases = meta.get("aliases", [])
+        if isinstance(aliases, str):
+            aliases = [aliases]
+
+        alias_candidates = set(
+            filter(
+                None,
+                [
+                    *[str(alias) for alias in aliases],
+                    code,
+                    display_name,
+                ],
+            )
+        )
+
+        for alias in alias_candidates:
+            normalized_alias = normalize_phu_label(alias)
+            if not normalized_alias:
+                continue
+            alias_to_code[normalized_alias] = normalized_code
+            code_to_aliases.setdefault(normalized_code, set()).add(str(alias).strip())
+
+    _PHU_MAPPING_CACHE = {
+        "_cache_path": cache_key,
+        "alias_to_code": alias_to_code,
+        "code_to_display": code_to_display,
+        "code_to_aliases": code_to_aliases,
+    }
+    return _PHU_MAPPING_CACHE
 
 
 def normalize_facility_name(name: str) -> str:
@@ -193,27 +277,9 @@ def normalize_facility_name(name: str) -> str:
 def match_facility(
     input_name: str,
     reference: Dict[str, Any],
-    threshold: int = 85,
-    strategy: str = "fuzzy",
+    facility_phu_codes: Optional[Dict[str, Optional[str]]] = None,
 ) -> PHIXMatchResult:
-    """Match a single facility name against PHIX reference.
-
-    Parameters
-    ----------
-    input_name : str
-        Facility name from input data
-    reference : Dict[str, Any]
-        Loaded PHIX reference data from load_phix_reference()
-    threshold : int
-        Minimum fuzzy match score (0-100) to consider a match
-    strategy : str
-        Match strategy: 'exact' (exact only), 'fuzzy' (exact then fuzzy)
-
-    Returns
-    -------
-    PHIXMatchResult
-        Match result with PHIX ID and confidence if matched
-    """
+    """Match a single facility name against PHIX reference using exact match."""
     if not input_name or not input_name.strip():
         return PHIXMatchResult(
             input_name=input_name or "",
@@ -223,47 +289,21 @@ def match_facility(
 
     normalized_input = normalize_facility_name(input_name)
     by_name = reference["by_name"]
-    name_list = reference["name_list"]
 
     # Try exact match first
     if normalized_input in by_name:
         facility = by_name[normalized_input]
+        phu_code = facility_phu_codes.get(normalized_input) if facility_phu_codes else None
         return PHIXMatchResult(
             input_name=input_name,
             matched=True,
             phix_id=facility.phix_id,
             phix_name=facility.name,
+            phu_name=facility.phu,
+            phu_code=phu_code,
             confidence=100,
             match_type="exact",
         )
-
-    # If exact-only strategy, stop here
-    if strategy == "exact":
-        return PHIXMatchResult(
-            input_name=input_name,
-            matched=False,
-            match_type="none",
-        )
-
-    # Try fuzzy match
-    if name_list:
-        result = process.extractOne(
-            query=normalized_input,
-            choices=name_list,
-            scorer=fuzz.ratio,
-            score_cutoff=threshold,
-        )
-        if result:
-            matched_name, score, _ = result
-            facility = by_name[matched_name]
-            return PHIXMatchResult(
-                input_name=input_name,
-                matched=True,
-                phix_id=facility.phix_id,
-                phix_name=facility.name,
-                confidence=int(score),
-                match_type="fuzzy",
-            )
 
     return PHIXMatchResult(
         input_name=input_name,
@@ -276,10 +316,10 @@ def validate_facilities(
     df: pd.DataFrame,
     reference_path: Path,
     output_dir: Path,
-    threshold: int = 85,
     unmatched_behavior: str = "warn",
-    strategy: str = "fuzzy",
     school_column: str = "SCHOOL_NAME",
+    target_phu_codes: Optional[Iterable[str]] = None,
+    phu_mapping_path: Optional[Path] = None,
 ) -> Tuple[pd.DataFrame, List[str]]:
     """Validate all facilities in DataFrame against PHIX reference.
 
@@ -291,17 +331,19 @@ def validate_facilities(
         Path to PHIX reference Excel file
     output_dir : Path
         Directory to write unmatched facilities CSV
-    threshold : int
-        Minimum fuzzy match score (0-100)
     unmatched_behavior : str
         How to handle unmatched facilities:
         - 'warn': Log warning, continue processing all records
         - 'error': Raise ValueError if any unmatched
         - 'skip': Filter out unmatched records
-    strategy : str
-        Match strategy: 'exact' or 'fuzzy'
     school_column : str
         Name of column containing facility names
+    target_phu_codes : Iterable[str], optional
+        Canonical PHU codes (matching template folders) to restrict validation.
+        When provided, only facilities that belong to these PHUs are considered.
+    phu_mapping_path : Path, optional
+        Path to YAML mapping file that links PHIX column names to canonical PHU
+        codes. Required when target_phu_codes are provided.
 
     Returns
     -------
@@ -323,13 +365,113 @@ def validate_facilities(
     # Load reference
     reference = load_phix_reference(reference_path)
 
+    phu_mapping_data: Optional[Dict[str, Any]] = None
+    alias_lookup: Dict[str, str] = {}
+    if phu_mapping_path:
+        phu_mapping_data = load_phu_aliases(phu_mapping_path)
+        alias_lookup = phu_mapping_data.get("alias_to_code", {})
+
+    normalized_target_codes: Set[str] = set()
+    if target_phu_codes:
+        for code in target_phu_codes:
+            normalized = normalize_phu_code(code)
+            if normalized:
+                normalized_target_codes.add(normalized)
+        if normalized_target_codes and not phu_mapping_data:
+            raise ValueError(
+                "Target PHU codes provided but phu_mapping_file is not configured. "
+                "Update phix_validation.phu_mapping_file to scope validation."
+            )
+
+    if normalized_target_codes and phu_mapping_data:
+        code_to_display = phu_mapping_data.get("code_to_display", {})
+        missing_codes = sorted(
+            code for code in normalized_target_codes if code not in code_to_display
+        )
+        if missing_codes:
+            raise ValueError(
+                f"Template PHU codes not defined in {phu_mapping_path}: "
+                f"{', '.join(missing_codes)}. Update config/phu_aliases.yaml."
+            )
+
+    phu_column_codes: Dict[str, str] = {}
+    if alias_lookup:
+        for phu_column in reference["phus"]:
+            canonical_code = alias_lookup.get(normalize_phu_label(phu_column))
+            if canonical_code:
+                phu_column_codes[phu_column] = canonical_code
+
+    reference_for_matching = reference
+    target_display: Optional[str] = None
+    target_codes_str: Optional[str] = None
+
+    if normalized_target_codes:
+        allowed_phu_columns = [
+            column
+            for column, code in phu_column_codes.items()
+            if code in normalized_target_codes
+        ]
+        if not allowed_phu_columns:
+            raise ValueError(
+                "No PHIX columns mapped to the requested PHU codes. "
+                f"Template codes: {', '.join(sorted(normalized_target_codes))}. "
+                "Confirm config/phu_aliases.yaml contains the PHIX column names."
+            )
+
+        by_name_phu: Dict[str, Dict[str, PHIXFacility]] = reference.get(
+            "by_name_phu", {}
+        )
+        filtered_by_name: Dict[str, PHIXFacility] = {}
+        filtered_name_list: List[str] = []
+        for normalized_name, facilities_by_phu in by_name_phu.items():
+            for phu_label in allowed_phu_columns:
+                facility = facilities_by_phu.get(phu_label)
+                if facility:
+                    filtered_by_name[normalized_name] = facility
+                    filtered_name_list.append(normalized_name)
+                    break
+
+        if not filtered_by_name:
+            raise ValueError(
+                "No PHIX reference entries found for the requested PHU columns. "
+                f"Columns: {', '.join(sorted(allowed_phu_columns))}. "
+                "Verify the mapping file includes every PHIX alias."
+            )
+
+        reference_for_matching = dict(reference)
+        reference_for_matching["by_name"] = filtered_by_name
+        reference_for_matching["name_list"] = filtered_name_list
+
+        code_to_display = phu_mapping_data.get("code_to_display", {}) if phu_mapping_data else {}
+        target_display = ", ".join(
+            code_to_display.get(code, code).strip() for code in sorted(normalized_target_codes)
+        )
+        target_codes_str = ",".join(sorted(normalized_target_codes))
+        LOG.info(
+            "Restricting PHIX validation to PHU(s): %s",
+            target_display or target_codes_str,
+        )
+
+    facility_phu_codes_for_matching: Dict[str, Optional[str]] = {}
+    if alias_lookup:
+        for normalized_name, facility in reference_for_matching["by_name"].items():
+            canonical_code = alias_lookup.get(normalize_phu_label(facility.phu))
+            if canonical_code:
+                facility_phu_codes_for_matching[normalized_name] = canonical_code
+
     # Match each unique facility
     unique_facilities = df[school_column].dropna().unique()
     match_results: Dict[str, PHIXMatchResult] = {}
 
     for facility_name in unique_facilities:
         result = match_facility(
-            str(facility_name), reference, threshold=threshold, strategy=strategy
+            str(facility_name),
+            reference_for_matching,
+            facility_phu_codes=(
+                facility_phu_codes_for_matching
+                if facility_phu_codes_for_matching
+                else None
+            ),
         )
         match_results[str(facility_name)] = result
 
@@ -352,6 +494,22 @@ def validate_facilities(
         if pd.notna(x)
         else "none"
     )
+    df["PHIX_MATCHED_PHU"] = df[school_column].apply(
+        lambda x: match_results.get(
+            str(x), PHIXMatchResult(str(x), False)
+        ).phu_name
+        if pd.notna(x)
+        else None
+    )
+    df["PHIX_MATCHED_PHU_CODE"] = df[school_column].apply(
+        lambda x: match_results.get(
+            str(x), PHIXMatchResult(str(x), False)
+        ).phu_code
+        if pd.notna(x)
+        else None
+    )
+    df["PHIX_TARGET_PHU_CODE"] = target_codes_str
+    df["PHIX_TARGET_PHU_LABEL"] = target_display
 
     # Identify unmatched facilities
     unmatched = [r for r in match_results.values() if not r.matched]
@@ -373,6 +531,8 @@ def validate_facilities(
                     "facility_name": r.input_name,
                     "match_type": r.match_type,
                     "confidence": r.confidence,
+                    "target_phu_code": target_codes_str or "",
+                    "target_phu_label": target_display or "",
                 }
                 for r in unmatched
             ]
@@ -407,17 +567,9 @@ def validate_facilities(
 
     # Log summary
     matched_count = sum(1 for r in match_results.values() if r.matched)
-    exact_count = sum(
-        1 for r in match_results.values() if r.matched and r.match_type == "exact"
-    )
-    fuzzy_count = sum(
-        1 for r in match_results.values() if r.matched and r.match_type == "fuzzy"
-    )
     LOG.info(
-        "PHIX validation complete: %d matched (%d exact, %d fuzzy), %d unmatched",
+        "PHIX validation complete: %d matched, %d unmatched",
         matched_count,
-        exact_count,
-        fuzzy_count,
         len(unmatched),
     )
 
@@ -426,5 +578,6 @@ def validate_facilities(
 
 def clear_cache() -> None:
     """Clear the PHIX reference cache. Useful for testing."""
-    global _PHIX_REFERENCE_CACHE
+    global _PHIX_REFERENCE_CACHE, _PHU_MAPPING_CACHE
     _PHIX_REFERENCE_CACHE = None
+    _PHU_MAPPING_CACHE = None

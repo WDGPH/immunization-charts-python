@@ -2,8 +2,7 @@
 
 Tests cover:
 - Loading and parsing PHIX reference Excel files
-- Exact matching against reference list
-- Fuzzy matching with configurable thresholds
+- Exact matching against reference list (no fuzzy fallback)
 - Different unmatched_behavior modes (warn, error, skip)
 - Edge cases (empty data, missing columns)
 """
@@ -58,6 +57,27 @@ def sample_phix_excel(tmp_path: Path) -> Path:
     excel_path = tmp_path / "test_phix_reference.xlsx"
     df.to_excel(excel_path, sheet_name="Schools & Day Cares", index=False)
     return excel_path
+
+
+@pytest.fixture
+def sample_phu_mapping(tmp_path: Path) -> Path:
+    """Create a sample PHU alias mapping file."""
+    mapping_path = tmp_path / "phu_aliases.yaml"
+    mapping_path.write_text(
+        """
+phu_aliases:
+  test_phu_1:
+    display_name: Test PHU 1
+    aliases:
+      - Test PHU 1
+  test_phu_2:
+    display_name: Test PHU 2
+    aliases:
+      - Test PHU 2
+        """.strip(),
+        encoding="utf-8",
+    )
+    return mapping_path
 
 
 class TestParseFacilityEntry:
@@ -127,8 +147,8 @@ class TestLoadPhixReference:
 
         assert "facilities" in ref
         assert "by_name" in ref
-        assert "name_list" in ref
         assert "phus" in ref
+        assert "by_name_phu" in ref
 
         # Should have 5 facilities (excluding None rows)
         assert len(ref["facilities"]) == 5
@@ -160,6 +180,7 @@ class TestMatchFacility:
         assert result.phix_id == "SCH001"
         assert result.confidence == 100
         assert result.match_type == "exact"
+        assert result.phu_name == "Test PHU 1"
 
     def test_exact_match_case_insensitive(self, sample_phix_excel: Path):
         """Exact match is case-insensitive."""
@@ -169,32 +190,12 @@ class TestMatchFacility:
         assert result.matched is True
         assert result.confidence == 100
 
-    def test_fuzzy_match_high_confidence(self, sample_phix_excel: Path):
-        """Fuzzy match with slight typo succeeds."""
-        ref = load_phix_reference(sample_phix_excel)
-
-        # Slight typo: "Elementry" instead of "Elementary"
-        result = match_facility("Lincoln Elementry School", ref, threshold=80)
-        assert result.matched is True
-        assert result.match_type == "fuzzy"
-        assert result.confidence >= 80
-
-    def test_fuzzy_match_below_threshold(self, sample_phix_excel: Path):
-        """Fuzzy match below threshold returns no match."""
-        ref = load_phix_reference(sample_phix_excel)
-
-        result = match_facility("Completely Different Name", ref, threshold=85)
-        assert result.matched is False
-        assert result.match_type == "none"
-
-    def test_exact_strategy_no_fuzzy(self, sample_phix_excel: Path):
-        """Exact strategy doesn't fall back to fuzzy matching."""
+    def test_similar_name_not_matched(self, sample_phix_excel: Path):
+        """Slight typos do not match (exact-only policy)."""
         ref = load_phix_reference(sample_phix_excel)
 
         # Slight typo that would match fuzzy
-        result = match_facility(
-            "Lincoln Elementry School", ref, strategy="exact"
-        )
+        result = match_facility("Lincoln Elementry School", ref)
         assert result.matched is False
 
     def test_empty_input(self, sample_phix_excel: Path):
@@ -218,15 +219,105 @@ class TestValidateFacilities:
             "OTHER_COL": ["A", "B"],
         })
 
-        result_df, warnings = validate_facilities(
-            df, sample_phix_excel, tmp_path, threshold=85
-        )
+        result_df, warnings = validate_facilities(df, sample_phix_excel, tmp_path)
 
         assert len(result_df) == 2
         assert "PHIX_ID" in result_df.columns
         assert "PHIX_MATCH_CONFIDENCE" in result_df.columns
         assert result_df.iloc[0]["PHIX_ID"] == "SCH001"
+        assert "PHIX_MATCHED_PHU" in result_df.columns
+        assert result_df.iloc[0]["PHIX_MATCHED_PHU"] == "Test PHU 1"
+        assert "PHIX_TARGET_PHU_CODE" in result_df.columns
+        assert pd.isna(result_df["PHIX_TARGET_PHU_CODE"]).all()
         assert len(warnings) == 0
+
+    def test_validate_scoped_to_target_phu(
+        self,
+        sample_phix_excel: Path,
+        sample_phu_mapping: Path,
+        tmp_path: Path,
+    ):
+        """Facilities outside target PHU remain unmatched."""
+        df = pd.DataFrame(
+            {
+                "SCHOOL_NAME": [
+                    "Lincoln Elementary School",  # PHU 1
+                    "Oak Valley Public School",  # PHU 2
+                ],
+            }
+        )
+
+        result_df, warnings = validate_facilities(
+            df,
+            sample_phix_excel,
+            tmp_path,
+            target_phu_codes=["test_phu_2"],
+            phu_mapping_path=sample_phu_mapping,
+        )
+
+        assert result_df.iloc[0]["PHIX_MATCH_TYPE"] == "none"
+        assert result_df.iloc[0]["PHIX_ID"] is None
+        assert result_df.iloc[1]["PHIX_ID"] == "SCH003"
+        assert result_df.iloc[1]["PHIX_MATCHED_PHU_CODE"] == "test_phu_2"
+        assert result_df.iloc[1]["PHIX_TARGET_PHU_CODE"] == "test_phu_2"
+        assert len(warnings) == 1  # unmatched facility warning
+        unmatched_csv = tmp_path / "unmatched_facilities.csv"
+        assert unmatched_csv.exists()
+
+    def test_validate_missing_mapping_for_target(
+        self, sample_phix_excel: Path, tmp_path: Path
+    ):
+        """Target PHU requires mapping file."""
+        df = pd.DataFrame({"SCHOOL_NAME": ["Lincoln Elementary School"]})
+
+        with pytest.raises(ValueError, match="phu_mapping_file"):
+            validate_facilities(
+                df,
+                sample_phix_excel,
+                tmp_path,
+                target_phu_codes=["test_phu_1"],
+            )
+
+    def test_validate_unknown_template_code(
+        self, sample_phix_excel: Path, sample_phu_mapping: Path, tmp_path: Path
+    ):
+        """Unknown template code raises descriptive error."""
+        df = pd.DataFrame({"SCHOOL_NAME": ["Lincoln Elementary School"]})
+
+        with pytest.raises(ValueError, match="not defined"):
+            validate_facilities(
+                df,
+                sample_phix_excel,
+                tmp_path,
+                target_phu_codes=["unknown_code"],
+                phu_mapping_path=sample_phu_mapping,
+            )
+
+    def test_validate_missing_phu_alias(
+        self, sample_phix_excel: Path, tmp_path: Path
+    ):
+        """Missing PHU alias in mapping is surfaced."""
+        df = pd.DataFrame({"SCHOOL_NAME": ["Lincoln Elementary School"]})
+        mapping_path = tmp_path / "phu_aliases_partial.yaml"
+        mapping_path.write_text(
+            """
+phu_aliases:
+  test_phu_1:
+    display_name: Example Display
+    aliases:
+      - Unknown Alias
+            """.strip(),
+            encoding="utf-8",
+        )
+
+        with pytest.raises(ValueError, match="No PHIX columns mapped"):
+            validate_facilities(
+                df,
+                sample_phix_excel,
+                tmp_path,
+                target_phu_codes=["test_phu_1"],
+                phu_mapping_path=mapping_path,
+            )
 
     def test_validate_with_unmatched_warn(
         self, sample_phix_excel: Path, tmp_path: Path
@@ -237,8 +328,9 @@ class TestValidateFacilities:
         })
 
         result_df, warnings = validate_facilities(
-            df, sample_phix_excel, tmp_path,
-            threshold=85,
+            df,
+            sample_phix_excel,
+            tmp_path,
             unmatched_behavior="warn",
         )
 
@@ -260,8 +352,9 @@ class TestValidateFacilities:
 
         with pytest.raises(ValueError, match="not found in PHIX reference"):
             validate_facilities(
-                df, sample_phix_excel, tmp_path,
-                threshold=85,
+                df,
+                sample_phix_excel,
+                tmp_path,
                 unmatched_behavior="error",
             )
 
@@ -274,8 +367,9 @@ class TestValidateFacilities:
         })
 
         result_df, warnings = validate_facilities(
-            df, sample_phix_excel, tmp_path,
-            threshold=85,
+            df,
+            sample_phix_excel,
+            tmp_path,
             unmatched_behavior="skip",
         )
 
@@ -341,5 +435,7 @@ class TestPHIXMatchResultDataclass:
 
         assert result.phix_id is None
         assert result.phix_name is None
+        assert result.phu_name is None
+        assert result.phu_code is None
         assert result.confidence == 0
         assert result.match_type == "none"

@@ -7,16 +7,20 @@ bundling:
 phix_validation:
   enabled: true
   # Path to PHIX reference Excel file (relative to project root)
-  reference_file: PHIX Reference Lists v5.2 - 2025Jun30.xlsx
-  # Minimum fuzzy match score (0-100) to consider a match
-  match_threshold: 85
+  # IMPORTANT: We cannot redistribute the PHIX workbook. Provide your own copy
+  # and update this path (absolute path or relative to repo root).
+  reference_file: BYO_PHIX_REFERENCE.xlsx
+  # Optional mapping file that converts PHIX PHU column names to canonical
+  # template codes. Required when target_phu_code or --template is provided.
+  phu_mapping_file: config/phu_aliases.yaml
+  # Optional default PHU scope when running without --template.
+  # Accepts a single code or list of codes. Leave null to accept all PHUs.
+  target_phu_code: null
   # How to handle unmatched facilities: 'warn', 'error', or 'skip'
   # - warn: Log warning, continue processing all records
   # - error: Fail pipeline if any facilities don't match
   # - skip: Filter out records with unmatched facilities
   unmatched_behavior: warn
-  # Match strategy: 'exact' (exact match only) or 'fuzzy' (exact then fuzzy)
-  match_strategy: fuzzy
 
 chart_diseases_header:
 - Diphtheria

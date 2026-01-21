@@ -730,6 +730,16 @@ def build_preprocess_result(
     warnings: set[str] = set()
     working = normalize_dataframe(df)
 
+    def clean_optional(value: Any) -> Any:
+        """Convert pandas NA or empty values to None."""
+        if value is None:
+            return None
+        if isinstance(value, (float, int)) and pd.isna(value):
+            return None
+        if pd.isna(value):
+            return None
+        return value
+
     # Load parameters for date_notice_delivery and chart_diseases_header
     params = {}
     if PARAMETERS_PATH.exists():
@@ -832,6 +842,34 @@ def build_preprocess_result(
             "postal_code": postal_code,
         }
 
+        phix_id = clean_optional(getattr(row, "PHIX_ID", None))
+        phix_match_type = getattr(row, "PHIX_MATCH_TYPE", "none")
+        phix_match_conf = getattr(row, "PHIX_MATCH_CONFIDENCE", 0)
+        if pd.isna(phix_match_conf):
+            phix_match_conf = 0
+        phix_match_conf = int(phix_match_conf)
+        phix_phu_name = clean_optional(getattr(row, "PHIX_MATCHED_PHU", None))
+        phix_phu_code = clean_optional(getattr(row, "PHIX_MATCHED_PHU_CODE", None))
+        phix_target_code = clean_optional(getattr(row, "PHIX_TARGET_PHU_CODE", None))
+        phix_target_label = clean_optional(getattr(row, "PHIX_TARGET_PHU_LABEL", None))
+
+        metadata: Dict[str, Any] = {
+            "unique_id": row.UNIQUE_ID or None,  # type: ignore[attr-defined]
+        }
+        metadata["phix_validation"] = {
+            "id": phix_id,
+            "match_type": phix_match_type or "none",
+            "confidence": phix_match_conf,
+            "phu_name": phix_phu_name,
+            "phu_code": phix_phu_code,
+            "target_phu_code": phix_target_code,
+            "target_phu_label": phix_target_label,
+        }
+        if phix_target_code:
+            metadata["phix_target_phu_code"] = phix_target_code
+        if phix_target_label:
+            metadata["phix_target_phu_label"] = phix_target_label
+
         client = ClientRecord(
             sequence=sequence,
             client_id=client_id,
@@ -843,9 +881,7 @@ def build_preprocess_result(
             vaccines_due=vaccines_due if vaccines_due else None,
             vaccines_due_list=vaccines_due_list if vaccines_due_list else None,
             received=received if received else None,
-            metadata={
-                "unique_id": row.UNIQUE_ID or None,  # type: ignore[attr-defined]
-            },
+            metadata=metadata,
         )
 
         clients.append(client)
