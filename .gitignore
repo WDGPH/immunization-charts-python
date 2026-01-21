@@ -15,6 +15,9 @@ coverage.xml
 coverage.json
 !input/rodent_dataset.xlsx
 input/*
+PHIX Reference*.xlsx
+PHIX Reference*.xls
+*PHIX*Reference*List*.xlsx
 phu_templates/*
 !phu_templates/README.md
 !phu_templates/.gitkeep

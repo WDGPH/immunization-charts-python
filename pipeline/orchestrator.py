@@ -39,6 +39,7 @@ import time
 import traceback
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Optional
 
 # Import pipeline steps
 from . import bundle_pdfs, cleanup, compile_notices, validate_pdfs, validate_phix
@@ -124,6 +125,7 @@ def validate_args(args: argparse.Namespace) -> None:
             f"Input file not found: {args.input_dir / args.input_file}"
         )
 
+    args.template_key = None
     # Resolve template directory
     if args.template_dir is None:
         # No custom template specified; use default
@@ -137,6 +139,7 @@ def validate_args(args: argparse.Namespace) -> None:
                 f"Expected a simple name like 'wdgph' or 'my_phu', not a path."
             )
 
+        args.template_key = args.template_dir.strip()
         phu_template_path = DEFAULT_PHU_TEMPLATES_DIR / args.template_dir
         if not phu_template_path.exists():
             raise FileNotFoundError(
@@ -210,6 +213,8 @@ def run_step_2_preprocess(
     output_dir: Path,
     language: str,
     run_id: str,
+    config_dir: Path,
+    template_code: Optional[str] = None,
 ) -> int:
     """Step 2: Preprocessing.
 
@@ -222,7 +227,8 @@ def run_step_2_preprocess(
     log_path = preprocess.configure_logging(output_dir, run_id)
 
     # Load configuration for PHIX validation
-    config = load_config(DEFAULT_CONFIG_DIR / "parameters.yaml")
+    config = load_config(config_dir / "parameters.yaml")
+    project_root = config_dir.parent
 
     # Load and process input data
     input_path = input_dir / input_file
@@ -239,19 +245,39 @@ def run_step_2_preprocess(
     phix_warnings: list[str] = []
     if phix_config.get("enabled", False):
         reference_file = phix_config.get("reference_file", "")
+        mapping_file = phix_config.get("phu_mapping_file")
+        mapping_path: Optional[Path] = None
+        if mapping_file:
+            mapping_path = Path(mapping_file)
+            if not mapping_path.is_absolute():
+                mapping_path = (project_root / mapping_file).resolve()
+            if not mapping_path.exists():
+                raise FileNotFoundError(f"PHU alias mapping file not found: {mapping_path}")
+
+        target_phu_codes: set[str] = set()
+        configured_target = phix_config.get("target_phu_code")
+        if isinstance(configured_target, str):
+            configured_target = [configured_target]
+        if isinstance(configured_target, (list, tuple, set)):
+            for code in configured_target:
+                if code and str(code).strip():
+                    target_phu_codes.add(str(code))
+        if template_code:
+            target_phu_codes.add(template_code)
+
         if reference_file:
             reference_path = Path(reference_file)
             # If relative path, resolve from project root
             if not reference_path.is_absolute():
-                reference_path = input_dir.parent / reference_file
+                reference_path = (project_root / reference_file).resolve()
             if reference_path.exists():
                 df, phix_warnings = validate_phix.validate_facilities(
                     df=df,
                     reference_path=reference_path,
                     output_dir=output_dir,
-                    threshold=phix_config.get("match_threshold", 85),
                     unmatched_behavior=phix_config.get("unmatched_behavior", "warn"),
-                    strategy=phix_config.get("match_strategy", "fuzzy"),
+                    target_phu_codes=target_phu_codes or None,
+                    phu_mapping_path=mapping_path,
                 )
                 print(f"🏫 PHIX validation complete: {len(df)} records validated")
             else:
@@ -434,6 +460,7 @@ def run_step_6_validate_pdfs(
 
     # Load preprocessed clients to build client ID mapping
     client_id_map = {}
+    client_metadata_map = {}
     import json
 
     with open(preprocessed_json, "r", encoding="utf-8") as f:
@@ -443,11 +470,20 @@ def run_step_6_validate_pdfs(
         # Filename format: {language}_notice_{sequence:05d}_{client_id}.pdf
         for idx, client in enumerate(clients, start=1):
             client_id = str(client.get("client_id", ""))
+            metadata = client.get("metadata", {}) or {}
+            phix_meta = metadata.get("phix_validation", {}) or {}
+            school = client.get("school", {}) or {}
             # Try to match any expected filename format
             for ext in [".pdf"]:
                 for lang_prefix in ["en", "fr"]:
                     filename = f"{lang_prefix}_notice_{idx:05d}_{client_id}{ext}"
                     client_id_map[filename] = client_id
+                    client_metadata_map[filename] = {
+                        "phix_validation": phix_meta,
+                        "phix_target_phu_code": metadata.get("phix_target_phu_code"),
+                        "phix_target_phu_label": metadata.get("phix_target_phu_label"),
+                        "school_name": school.get("name"),
+                    }
 
     # Validate PDFs (module loads validation rules from config_dir)
     validate_pdfs.main(
@@ -456,6 +492,7 @@ def run_step_6_validate_pdfs(
         json_output=validation_json,
         client_id_map=client_id_map,
         config_dir=config_dir,
+        client_metadata_map=client_metadata_map,
     )
 
 
@@ -611,6 +648,8 @@ def main() -> int:
             output_dir,
             args.language,
             run_id,
+            config_dir,
+            args.template_key,
         )
         step_duration = time.time() - step_start
         step_times.append(("Preprocessing", step_duration))
