@@ -14,7 +14,7 @@ Input data contains school/daycare names that may not match the official PHIX (P
 
 ## Solution
 
-Add a validation step in preprocessing that matches input school/daycare names against the PHIX reference list, using fuzzy matching with configurable behavior for unmatched facilities.
+Add a validation step in preprocessing that matches input school/daycare names against the PHIX reference list using strict exact comparisons with configurable behavior for unmatched facilities.
 
 ---
 
@@ -39,10 +39,10 @@ Add a validation step in preprocessing that matches input school/daycare names a
 ```yaml
 phix_validation:
   enabled: true
-  reference_file: PHIX Reference Lists v5.2 - 2025Jun30.xlsx
-  match_threshold: 85      # Fuzzy match score (0-100)
+  reference_file: BYO_PHIX_REFERENCE.xlsx   # Placeholder; operators supply actual PHIX workbook path
+  phu_mapping_file: config/phu_aliases.yaml   # Maps PHIX column names -> template codes
+  target_phu_code: null                       # Optional default scope when no template is provided
   unmatched_behavior: warn # warn | error | skip
-  match_strategy: fuzzy    # exact | fuzzy
 ```
 
 **Behavior modes:**
@@ -66,10 +66,11 @@ Step 2: Preprocessing
 ├── validate_facilities()        ← NEW: PHIX validation
 │   ├── Load PHIX Excel reference
 │   ├── Normalize facility names
+│   ├── Map PHIX PHU columns to canonical template codes
+│   ├── Restrict matching to template/config PHU scope (if configured)
 │   ├── Try exact match (100% confidence)
-│   ├── Try fuzzy match if exact fails
 │   ├── Write unmatched to CSV
-│   └── Enrich DataFrame with PHIX_ID
+│   └── Enrich DataFrame/metadata with PHIX IDs + PHU scope
 ├── build_preprocess_result()
 └── write_artifact()
 ```
@@ -98,7 +99,10 @@ Step 2: Preprocessing
 **Enriched data (per record):**
 - `PHIX_ID` - Official facility identifier
 - `PHIX_MATCH_CONFIDENCE` - Match score (0-100)
-- `PHIX_MATCH_TYPE` - "exact", "fuzzy", or "none"
+- `PHIX_MATCH_TYPE` - "exact" or "none"
+- `PHIX_MATCHED_PHU` / `_CODE` - PHU column + canonical code for the matched facility
+- `PHIX_TARGET_PHU_CODE` / `_LABEL` - Template/config PHU scope copied to metadata
+- Artifact metadata includes `phix_validation` payload so Step 6 can log PHIX scope per PDF
 
 **Unmatched report (`output/unmatched_facilities.csv`):**
 ```csv
@@ -133,11 +137,23 @@ New Daycare Centre,none,0
 
 ### 3. Fuzzy matching algorithm
 
-**Decision:** Use `rapidfuzz.fuzz.ratio` with 85% threshold
+**Decision:** Require exact facility name matches (case-insensitive)
 
 **Rationale:**
-- Already a project dependency
-- Handles typos ("Elementry" → "Elementary")
+- Eliminates the risk of picking the wrong facility due to similar spellings
+- Aligns with Panorama usage where facility folders/templates must match canonical names
+- Encourages upstream data normalization (alias mapping now solved by PHU mapping, not name similarity)
+
+### 4. PHU alias mapping and PDF auditing
+
+**Decision:** Require a YAML mapping (`config/phu_aliases.yaml`) that links PHIX column headers
+to template acronyms; propagate PHIX scope into PDF validation logs.
+
+**Rationale:**
+- Prevents cross-PHU matches when multiple units share similarly named schools.
+- Supports PHU mergers by allowing multiple PHIX aliases to map to one template code.
+- PDF validation now records `phix_target_phu_code`/`phix_matched_phu_code` per notice and
+  emits a `phix_target_phu` warning if the PHU codes diverge, giving auditors a traceable log.
 - Threshold 85% catches minor typos without false positives
 
 ---
@@ -154,7 +170,7 @@ uv run pytest -m unit
 
 **Test coverage:**
 - Parsing PHIX entries ("NAME - ID" format)
-- Exact and fuzzy matching
+- Exact match behavior (case-insensitive, typo rejection)
 - All three `unmatched_behavior` modes
 - Edge cases (empty data, missing columns)
 - Caching behavior
@@ -167,3 +183,4 @@ uv run pytest -m unit
 2. **CLI command** - `viper convert-phix` to pre-generate JSON
 3. **PHU filtering** - Only load facilities for configured PHU
 4. **Alias support** - Allow manual alias mappings for known variations
+- BYO PHIX file: keep the licensed workbook outside git (ignored by pattern) and update `reference_file` locally before running.
