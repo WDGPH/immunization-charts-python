@@ -234,15 +234,6 @@ def check_addresses_complete(df: pd.DataFrame) -> pd.DataFrame:
     return df.loc[df["address_complete"]].drop(columns=["address_complete"])
 
 
-def recover_client_id(x):
-    # Recover Client ID if 10 digits when converted to str int
-    try:
-        y = str(int(float(x)))
-        return y if len(y) == 10 else x
-    except Exception:
-        return x
-
-
 def check_client_info_complete(df: pd.DataFrame) -> pd.DataFrame:
     """
     Check if client fields are complete in the DataFrame.
