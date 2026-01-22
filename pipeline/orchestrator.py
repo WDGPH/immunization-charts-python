@@ -327,8 +327,8 @@ def run_step_4_generate_notices(
     artifacts_dir = output_dir / "artifacts"
 
     # Assets now come from template directory (optional)
-    logo_path = template_dir / "assets" / "logo.jpg"
-    signature_path = template_dir / "assets" / "signature.jpg"
+    logo_path = template_dir / "assets" / "logo.png"
+    signature_path = template_dir / "assets" / "signature.png"
 
     # Note: Assets are NOT validated here. If a template references an asset
     # that doesn't exist, the template rendering will fail with a clear error.
