@@ -407,6 +407,29 @@ phu_aliases:
         assert len(result_df) == 0
         assert len(warnings) == 0
 
+    def test_validate_multiple_columns(self, sample_phix_excel, tmp_path):
+        """Multiple facility columns can be validated in one call."""
+        df = pd.DataFrame({
+            "SCHOOL_NAME": ["Lincoln Elementary School", "Unknown School"],
+            "DAYCARE_NAME": ["Sunshine Childcare Centre", "Unknown Daycare"],
+        })
+
+        result_df, warnings = validate_facilities(
+            df,
+            sample_phix_excel,
+            tmp_path,
+            school_column=["SCHOOL_NAME", "DAYCARE_NAME"],
+            unmatched_behavior="warn",
+        )
+
+        # Both columns should be validated
+        assert "PHIX_ID" in result_df.columns
+        # First row schools/daycare should match
+        assert result_df.loc[0, "PHIX_ID"] is not None
+        # Warnings should be generated for unmatched facilities
+        assert len(warnings) >= 2  # One for each unmatched column
+        assert all("not found in PHIX reference" in w for w in warnings)
+
 
 class TestPHIXFacilityDataclass:
     """Tests for PHIXFacility dataclass."""

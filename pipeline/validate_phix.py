@@ -24,16 +24,86 @@ import logging
 import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional, Set, Tuple
+from typing import Any, Dict, Iterable, List, Optional, Set, Tuple, Union
 
 import pandas as pd
 import yaml
 
 LOG = logging.getLogger(__name__)
 
-# Cache for loaded PHIX reference data and PHU alias mappings
-_PHIX_REFERENCE_CACHE: Optional[Dict[str, Any]] = None
-_PHU_MAPPING_CACHE: Optional[Dict[str, Any]] = None
+
+# ============================================================================
+# Output Column Definitions (1.2: Extract to Constants)
+# ============================================================================
+
+PHIX_OUTPUT_COLUMNS = {
+    "id": "PHIX_ID",
+    "confidence": "PHIX_MATCH_CONFIDENCE",
+    "match_type": "PHIX_MATCH_TYPE",
+    "phu_name": "PHIX_MATCHED_PHU",
+    "phu_code": "PHIX_MATCHED_PHU_CODE",
+    "target_phu_code": "PHIX_TARGET_PHU_CODE",
+    "target_phu_label": "PHIX_TARGET_PHU_LABEL",
+}
+
+
+# ============================================================================
+# Caching Classes (1.1: Replace Global State)
+# ============================================================================
+
+
+class PHIXReferenceCache:
+    """Thread-safe in-memory cache for PHIX reference data."""
+
+    def __init__(self, cache_enabled: bool = True) -> None:
+        """Initialize the cache.
+        
+        Parameters
+        ----------
+        cache_enabled : bool
+            If False, disables caching (useful for testing)
+        """
+        self._cache: Dict[str, Dict[str, Any]] = {}
+        self._enabled = cache_enabled
+
+    def get(self, path: str) -> Optional[Dict[str, Any]]:
+        """Retrieve cached data by path key.
+        
+        Parameters
+        ----------
+        path : str
+            Resolved path key (str of Path.resolve())
+        
+        Returns
+        -------
+        Dict or None
+            Cached data, or None if not in cache or caching disabled
+        """
+        if not self._enabled:
+            return None
+        return self._cache.get(path)
+
+    def set(self, path: str, data: Dict[str, Any]) -> None:
+        """Store data in cache.
+        
+        Parameters
+        ----------
+        path : str
+            Resolved path key (str of Path.resolve())
+        data : Dict
+            Data to cache (should include "_cache_path" key)
+        """
+        if self._enabled:
+            self._cache[path] = data
+
+    def clear(self) -> None:
+        """Clear all cached data."""
+        self._cache.clear()
+
+
+# Global instances for backward compatibility
+_PHIX_REFERENCE_LOADER = PHIXReferenceCache(cache_enabled=True)
+_PHU_MAPPING_LOADER = PHIXReferenceCache(cache_enabled=True)
 
 
 @dataclass
@@ -121,13 +191,12 @@ def load_phix_reference(
         - by_name_phu: Dict[str, Dict[str, PHIXFacility]] - lookup by PHU column
         - phus: List[str] - list of PHU column names
     """
-    global _PHIX_REFERENCE_CACHE
-
     cache_key = str(reference_path.resolve())
-    if _PHIX_REFERENCE_CACHE is not None:
-        cached_path = _PHIX_REFERENCE_CACHE.get("_cache_path")
-        if cached_path == cache_key:
-            return _PHIX_REFERENCE_CACHE
+    
+    # Check cache first
+    cached = _PHIX_REFERENCE_LOADER.get(cache_key)
+    if cached is not None:
+        return cached
 
     if not reference_path.exists():
         raise FileNotFoundError(f"PHIX reference file not found: {reference_path}")
@@ -156,14 +225,15 @@ def load_phix_reference(
         "Loaded %d facilities from %d PHUs", len(facilities), len(df.columns)
     )
 
-    _PHIX_REFERENCE_CACHE = {
+    result = {
         "_cache_path": cache_key,
         "facilities": facilities,
         "by_name": by_name,
         "by_name_phu": by_name_phu,
         "phus": list(df.columns),
     }
-    return _PHIX_REFERENCE_CACHE
+    _PHIX_REFERENCE_LOADER.set(cache_key, result)
+    return result
 
 
 def normalize_phu_code(code: str) -> str:
@@ -183,13 +253,12 @@ def normalize_phu_label(label: str) -> str:
 
 def load_phu_aliases(mapping_path: Path) -> Dict[str, Any]:
     """Load canonical PHU aliases from YAML mapping file."""
-    global _PHU_MAPPING_CACHE
-
     cache_key = str(mapping_path.resolve())
-    if _PHU_MAPPING_CACHE is not None:
-        cached_path = _PHU_MAPPING_CACHE.get("_cache_path")
-        if cached_path == cache_key:
-            return _PHU_MAPPING_CACHE
+    
+    # Check cache first
+    cached = _PHU_MAPPING_LOADER.get(cache_key)
+    if cached is not None:
+        return cached
 
     if not mapping_path.exists():
         raise FileNotFoundError(f"PHU alias mapping file not found: {mapping_path}")
@@ -237,13 +306,14 @@ def load_phu_aliases(mapping_path: Path) -> Dict[str, Any]:
             alias_to_code[normalized_alias] = normalized_code
             code_to_aliases.setdefault(normalized_code, set()).add(str(alias).strip())
 
-    _PHU_MAPPING_CACHE = {
+    result = {
         "_cache_path": cache_key,
         "alias_to_code": alias_to_code,
         "code_to_display": code_to_display,
         "code_to_aliases": code_to_aliases,
     }
-    return _PHU_MAPPING_CACHE
+    _PHU_MAPPING_LOADER.set(cache_key, result)
+    return result
 
 
 def normalize_facility_name(name: str) -> str:
@@ -312,16 +382,104 @@ def match_facility(
     )
 
 
+def _enrich_dataframe_with_phix(
+    df: pd.DataFrame,
+    school_column: str,
+    match_results: Dict[str, PHIXMatchResult],
+    target_codes_str: Optional[str],
+    target_display: Optional[str],
+    column_prefix: str = "PHIX_",
+) -> pd.DataFrame:
+    """Enrich DataFrame with PHIX validation columns.
+    
+    Consolidates all PHIX output columns in a single operation using
+    the PHIX_OUTPUT_COLUMNS constant for maintainability.
+    
+    Parameters
+    ----------
+    df : pd.DataFrame
+        DataFrame to enrich (assumed to be a copy)
+    school_column : str
+        Name of the facility name column
+    match_results : Dict[str, PHIXMatchResult]
+        Lookup of facility names to match results
+    target_codes_str : Optional[str]
+        Target PHU codes as comma-separated string
+    target_display : Optional[str]
+        Target PHU display label
+    column_prefix : str
+        Prefix for output column names (default: "PHIX_")
+    
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame with PHIX columns added
+    """
+    # Helper to get match result or default
+    def get_result(facility_name: str) -> PHIXMatchResult:
+        if pd.isna(facility_name):
+            return PHIXMatchResult(str(facility_name) if facility_name is not None else "", False)
+        return match_results.get(str(facility_name), PHIXMatchResult(str(facility_name), False))
+    
+    # Build column names with custom prefix
+    col_names = {
+        "id": f"{column_prefix}ID",
+        "confidence": f"{column_prefix}MATCH_CONFIDENCE",
+        "match_type": f"{column_prefix}MATCH_TYPE",
+        "phu_name": f"{column_prefix}MATCHED_PHU",
+        "phu_code": f"{column_prefix}MATCHED_PHU_CODE",
+        "target_phu_code": f"{column_prefix}TARGET_PHU_CODE",
+        "target_phu_label": f"{column_prefix}TARGET_PHU_LABEL",
+    }
+    
+    # Populate fields from mapping
+    for field_name, col_name in col_names.items():
+        if field_name.startswith("target_"):
+            # Target fields are constants (not from results)
+            if field_name == "target_phu_code":
+                df[col_name] = target_codes_str
+            elif field_name == "target_phu_label":
+                df[col_name] = target_display
+        else:
+            # Result fields are extracted from match results
+            if field_name == "id":
+                df[col_name] = df[school_column].apply(
+                    lambda x: get_result(x).phix_id if pd.notna(x) else None
+                )
+            elif field_name == "confidence":
+                df[col_name] = df[school_column].apply(
+                    lambda x: get_result(x).confidence if pd.notna(x) else 0
+                )
+            elif field_name == "match_type":
+                df[col_name] = df[school_column].apply(
+                    lambda x: get_result(x).match_type if pd.notna(x) else "none"
+                )
+            elif field_name == "phu_name":
+                df[col_name] = df[school_column].apply(
+                    lambda x: get_result(x).phu_name if pd.notna(x) else None
+                )
+            elif field_name == "phu_code":
+                df[col_name] = df[school_column].apply(
+                    lambda x: get_result(x).phu_code if pd.notna(x) else None
+                )
+    
+    return df
+
+
 def validate_facilities(
     df: pd.DataFrame,
     reference_path: Path,
     output_dir: Path,
     unmatched_behavior: str = "warn",
-    school_column: str = "SCHOOL_NAME",
+    school_column: Union[str, List[str]] = "SCHOOL_NAME",
     target_phu_codes: Optional[Iterable[str]] = None,
     phu_mapping_path: Optional[Path] = None,
+    reference_sheet_name: str = "Schools & Day Cares",
+    column_prefix: str = "PHIX_",
 ) -> Tuple[pd.DataFrame, List[str]]:
-    """Validate all facilities in DataFrame against PHIX reference.
+    """Validate facilities in DataFrame against PHIX reference.
+
+    Supports validation of one or more facility columns in a single pass.
 
     Parameters
     ----------
@@ -336,14 +494,20 @@ def validate_facilities(
         - 'warn': Log warning, continue processing all records
         - 'error': Raise ValueError if any unmatched
         - 'skip': Filter out unmatched records
-    school_column : str
-        Name of column containing facility names
+    school_column : str or List[str]
+        Name of column(s) containing facility names. Can be a single column name
+        or a list of column names to validate multiple facility types (e.g.,
+        ["SCHOOL_NAME", "DAYCARE_NAME"]).
     target_phu_codes : Iterable[str], optional
         Canonical PHU codes (matching template folders) to restrict validation.
         When provided, only facilities that belong to these PHUs are considered.
     phu_mapping_path : Path, optional
         Path to YAML mapping file that links PHIX column names to canonical PHU
         codes. Required when target_phu_codes are provided.
+    reference_sheet_name : str
+        Name of the Excel sheet containing facility data (default: "Schools & Day Cares")
+    column_prefix : str
+        Prefix for output column names (default: "PHIX_")
 
     Returns
     -------
@@ -356,14 +520,81 @@ def validate_facilities(
     ValueError
         If unmatched_behavior is 'error' and unmatched facilities exist
     """
+    # Normalize school_column to list for uniform processing
+    columns_to_validate: List[str] = (
+        [school_column] if isinstance(school_column, str) else list(school_column)
+    )
+    
+    warnings: List[str] = []
+    
+    # Validate and process each column
+    for column in columns_to_validate:
+        df, column_warnings = _validate_single_column(
+            df=df,
+            reference_path=reference_path,
+            output_dir=output_dir,
+            unmatched_behavior=unmatched_behavior,
+            school_column=column,
+            target_phu_codes=target_phu_codes,
+            phu_mapping_path=phu_mapping_path,
+            reference_sheet_name=reference_sheet_name,
+            column_prefix=column_prefix,
+        )
+        warnings.extend(column_warnings)
+    
+    return df, warnings
+
+
+def _validate_single_column(
+    df: pd.DataFrame,
+    reference_path: Path,
+    output_dir: Path,
+    unmatched_behavior: str = "warn",
+    school_column: str = "SCHOOL_NAME",
+    target_phu_codes: Optional[Iterable[str]] = None,
+    phu_mapping_path: Optional[Path] = None,
+    reference_sheet_name: str = "Schools & Day Cares",
+    column_prefix: str = "PHIX_",
+) -> Tuple[pd.DataFrame, List[str]]:
+    """Validate a single facility column against PHIX reference.
+    
+    This is the internal implementation called by validate_facilities().
+    Users should call validate_facilities() instead.
+    
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Input DataFrame with facility names
+    reference_path : Path
+        Path to PHIX reference Excel file
+    output_dir : Path
+        Directory to write unmatched facilities CSV
+    unmatched_behavior : str
+        How to handle unmatched facilities
+    school_column : str
+        Name of column containing facility names
+    target_phu_codes : Iterable[str], optional
+        Canonical PHU codes to restrict validation
+    phu_mapping_path : Path, optional
+        Path to YAML mapping file for PHU codes
+    reference_sheet_name : str
+        Name of Excel sheet containing facility data
+    column_prefix : str
+        Prefix for output column names
+    
+    Returns
+    -------
+    Tuple[pd.DataFrame, List[str]]
+        DataFrame with PHIX validation columns and warning messages
+    """
     warnings: List[str] = []
 
     if school_column not in df.columns:
         LOG.warning("Column '%s' not found, skipping PHIX validation", school_column)
         return df, warnings
 
-    # Load reference
-    reference = load_phix_reference(reference_path)
+    # Load reference with configurable sheet name
+    reference = load_phix_reference(reference_path, sheet_name=reference_sheet_name)
 
     phu_mapping_data: Optional[Dict[str, Any]] = None
     alias_lookup: Dict[str, str] = {}
@@ -378,6 +609,11 @@ def validate_facilities(
             if normalized:
                 normalized_target_codes.add(normalized)
         if normalized_target_codes and not phu_mapping_data:
+            LOG.error(
+                "PHU scoping requires phu_mapping_file to be configured. "
+                "Either: (1) set target_phu_code: null in phix_validation config, or "
+                "(2) ensure phix_validation.phu_mapping_file points to config/phu_aliases.yaml"
+            )
             raise ValueError(
                 "Target PHU codes provided but phu_mapping_file is not configured. "
                 "Update phix_validation.phu_mapping_file to scope validation."
@@ -389,6 +625,12 @@ def validate_facilities(
             code for code in normalized_target_codes if code not in code_to_display
         )
         if missing_codes:
+            LOG.error(
+                "The following PHU codes from target_phu_code are not defined in %s: %s. "
+                "Add these codes to phu_aliases.yaml under 'phu_aliases' section.",
+                phu_mapping_path,
+                ", ".join(missing_codes),
+            )
             raise ValueError(
                 f"Template PHU codes not defined in {phu_mapping_path}: "
                 f"{', '.join(missing_codes)}. Update config/phu_aliases.yaml."
@@ -475,41 +717,16 @@ def validate_facilities(
         )
         match_results[str(facility_name)] = result
 
-    # Add validation columns to DataFrame
+    # Add validation columns to DataFrame using consolidated logic
     df = df.copy()
-    df["PHIX_ID"] = df[school_column].apply(
-        lambda x: match_results.get(str(x), PHIXMatchResult(str(x), False)).phix_id
-        if pd.notna(x)
-        else None
+    df = _enrich_dataframe_with_phix(
+        df,
+        school_column,
+        match_results,
+        target_codes_str,
+        target_display,
+        column_prefix=column_prefix,
     )
-    df["PHIX_MATCH_CONFIDENCE"] = df[school_column].apply(
-        lambda x: match_results.get(str(x), PHIXMatchResult(str(x), False)).confidence
-        if pd.notna(x)
-        else 0
-    )
-    df["PHIX_MATCH_TYPE"] = df[school_column].apply(
-        lambda x: match_results.get(
-            str(x), PHIXMatchResult(str(x), False)
-        ).match_type
-        if pd.notna(x)
-        else "none"
-    )
-    df["PHIX_MATCHED_PHU"] = df[school_column].apply(
-        lambda x: match_results.get(
-            str(x), PHIXMatchResult(str(x), False)
-        ).phu_name
-        if pd.notna(x)
-        else None
-    )
-    df["PHIX_MATCHED_PHU_CODE"] = df[school_column].apply(
-        lambda x: match_results.get(
-            str(x), PHIXMatchResult(str(x), False)
-        ).phu_code
-        if pd.notna(x)
-        else None
-    )
-    df["PHIX_TARGET_PHU_CODE"] = target_codes_str
-    df["PHIX_TARGET_PHU_LABEL"] = target_display
 
     # Identify unmatched facilities
     unmatched = [r for r in match_results.values() if not r.matched]
@@ -578,6 +795,5 @@ def validate_facilities(
 
 def clear_cache() -> None:
     """Clear the PHIX reference cache. Useful for testing."""
-    global _PHIX_REFERENCE_CACHE, _PHU_MAPPING_CACHE
-    _PHIX_REFERENCE_CACHE = None
-    _PHU_MAPPING_CACHE = None
+    _PHIX_REFERENCE_LOADER.clear()
+    _PHU_MAPPING_LOADER.clear()
