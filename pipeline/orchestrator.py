@@ -271,6 +271,8 @@ def run_step_2_preprocess(
             if not reference_path.is_absolute():
                 reference_path = (project_root / reference_file).resolve()
             if reference_path.exists():
+                sheet_name = phix_config.get("reference_sheet_name", "Schools & Day Cares")
+                column_prefix = phix_config.get("column_prefix", "PHIX_")
                 df, phix_warnings = validate_phix.validate_facilities(
                     df=df,
                     reference_path=reference_path,
@@ -278,6 +280,8 @@ def run_step_2_preprocess(
                     unmatched_behavior=phix_config.get("unmatched_behavior", "warn"),
                     target_phu_codes=target_phu_codes or None,
                     phu_mapping_path=mapping_path,
+                    reference_sheet_name=sheet_name,
+                    column_prefix=column_prefix,
                 )
                 print(f"🏫 PHIX validation complete: {len(df)} records validated")
             else:
