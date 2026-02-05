@@ -10,6 +10,12 @@ phix_validation:
   # IMPORTANT: We cannot redistribute the PHIX workbook. Provide your own copy
   # and update this path (absolute path or relative to repo root).
   reference_file: BYO_PHIX_REFERENCE.xlsx
+  # Name of the Excel sheet containing facility data
+  # Default: "Schools & Day Cares"
+  reference_sheet_name: "Schools & Day Cares"
+  # Prefix for output column names (e.g., "PHIX_ID", "PHIX_MATCHED_PHU", etc.)
+  # Default: "PHIX_"
+  column_prefix: "PHIX_"
   # Optional mapping file that converts PHIX PHU column names to canonical
   # template codes. Required when target_phu_code or --template is provided.
   phu_mapping_file: config/phu_aliases.yaml
