@@ -441,6 +441,8 @@ def map_columns(df: pd.DataFrame, required_columns=REQUIRED_COLUMNS):
     # Normalize input columns for matching
     normalized_input_cols = [normalize(c) for c in input_cols]
 
+    best_matches = {}
+
     # Check each input column against required columns
     for input_col in normalized_input_cols:
         col_name, score, index = process.extractOne(
@@ -455,7 +457,7 @@ def map_columns(df: pd.DataFrame, required_columns=REQUIRED_COLUMNS):
         if score >= THRESHOLD:  # adjustable threshold
             # Map the original column name, not the normalized one
             actual_in_col = next(c for c in input_cols if normalize(c) == input_col)
-            col_map[actual_in_col] = best_match
+            #col_map[actual_in_col] = best_match
 
             # print colname and score for debugging
             print(f"Matching '{input_col}' to '{best_match}' with score {score}")
