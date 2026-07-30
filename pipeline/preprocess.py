@@ -48,6 +48,7 @@ from hashlib import sha1
 from pathlib import Path
 from string import Formatter
 from typing import Any, Dict, List, Optional, overload
+
 import pandas as pd
 import yaml
 from babel.dates import format_date
@@ -847,6 +848,60 @@ def build_preprocess_result(
     return PreprocessResult(
         clients=clients,
         warnings=list(warnings),
+    )
+
+
+def run_phix_validation(
+    df: pd.DataFrame,
+    output_dir: Path,
+) -> tuple[pd.DataFrame, list[str]]:
+    """Validate school names against the PHIX mapping file.
+
+    Reads ``phix_validation`` config from ``parameters.yaml``. Returns the
+    DataFrame unchanged (with no warnings) when validation is disabled or
+    ``mapping_file`` is not set.
+
+    Parameters
+    ----------
+    df:
+        Normalized DataFrame (output of ``check_addresses_complete``).
+    output_dir:
+        Directory where result CSVs (``phix_exact.csv``, etc.) are written.
+
+    Returns
+    -------
+    tuple[DataFrame, list[str]]
+        Enriched DataFrame and a (possibly empty) list of warning strings.
+    """
+    config = yaml.safe_load(PARAMETERS_PATH.read_text(encoding="utf-8")) or {}
+    phix_config = config.get("phix_validation", {})
+
+    if not phix_config.get("enabled", False):
+        return df, []
+
+    mapping_file = phix_config.get("mapping_file", "")
+    if not mapping_file:
+        LOG.warning("phix_validation.enabled is true but mapping_file is not set.")
+        return df, []
+
+    target_phu = phix_config.get("target_phu", "")
+    if not target_phu:
+        LOG.warning("phix_validation.target_phu is not set — skipping PHIX validation.")
+        return df, []
+
+    from . import validate_phix  # local import avoids circular dependency at module load
+
+    mapping_path = Path(mapping_file)
+    if not mapping_path.is_absolute():
+        mapping_path = (SCRIPT_DIR.parent / mapping_file).resolve()
+
+    return validate_phix.validate_schools(
+        df=df,
+        mapping_path=mapping_path,
+        target_phu=target_phu,
+        output_dir=output_dir,
+        unmatched_behavior=phix_config.get("unmatched_behavior", "warn"),
+        column_prefix=phix_config.get("column_prefix", "PHIX_"),
     )
 
 

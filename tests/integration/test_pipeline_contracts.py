@@ -8,6 +8,7 @@ Covered boundaries:
 - Preprocess → QR Generation (Step 2 → Step 3)
 - Notice Generation template data (Step 4 input contract)
 - Encryption / Bundling mutual exclusivity (Steps 7–8 config contract)
+- PHIX school validation (Step 2 feature toggle → artifact schema contract)
 
 Per TESTING_STANDARDS.md: integration tests should verify
 "Output from Step N is valid input to Step N+1" and
@@ -20,10 +21,13 @@ import copy
 import json
 from pathlib import Path
 from typing import Any, Dict
+from unittest.mock import patch
 
+import pandas as pd
 import pytest
+import yaml
 
-from pipeline import data_models
+from pipeline import data_models, preprocess, validate_phix
 from tests.fixtures import sample_input
 
 
@@ -230,3 +234,176 @@ class TestDownstreamWorkflowContracts:
 
         assert config["encryption"]["enabled"] is True
         assert config["bundling"]["bundle_size"] > 0
+
+
+# ---------------------------------------------------------------------------
+# PHIX school validation — Step 2 feature toggle contract
+# ---------------------------------------------------------------------------
+
+# Minimal mapping used by PHIX integration tests; school names match what
+# create_test_input_dataframe() uses so rows can be exact-matched.
+_PHIX_TEST_MAPPING = {
+    "phus": {
+        "Test PHU": {
+            "TUNNEL ACADEMY": "001",
+            "CHEESE WHEEL ACADEMY": "002",
+            "MOUNTAIN HEIGHTS PUBLIC SCHOOL": "003",
+            "RIVER VALLEY ELEMENTARY": "004",
+            "DOWNTOWN COLLEGIATE": "005",
+        }
+    }
+}
+
+
+@pytest.fixture
+def phix_mapping_file(tmp_path: Path) -> Path:
+    """Write a minimal phix_mapping.json whose schools match sample_input data."""
+    p = tmp_path / "phix_mapping.json"
+    p.write_text(json.dumps(_PHIX_TEST_MAPPING), encoding="utf-8")
+    return p
+
+
+@pytest.fixture
+def normalized_test_df() -> pd.DataFrame:
+    """Return a normalized DataFrame (post map_columns + normalize_dataframe).
+
+    This is the shape of DataFrame that run_phix_validation receives in the
+    real pipeline — after column mapping and normalization, before artifact build.
+    """
+    raw = sample_input.create_test_input_dataframe(num_clients=3)
+    mapped, _ = preprocess.map_columns(raw)
+    filtered = preprocess.filter_columns(mapped)
+    return preprocess.normalize_dataframe(filtered)
+
+
+@pytest.mark.integration
+class TestPhixStep2Contract:
+    """Step 2 PHIX feature toggle contract: enriched DataFrame → valid artifact.
+
+    Per TESTING_STANDARDS.md: feature toggles should be validated at integration
+    level. These tests verify that the PHIX enrichment step does not corrupt the
+    Step 2 → Step 3 artifact contract whether the feature is on or off.
+    """
+
+    def test_phix_enabled_does_not_break_artifact_schema(
+        self,
+        normalized_test_df: pd.DataFrame,
+        phix_mapping_file: Path,
+        tmp_path: Path,
+        default_vaccine_reference: Dict[str, Any],
+    ) -> None:
+        """PHIX-enriched DataFrame produces an artifact with the correct schema.
+
+        Real-world significance:
+        - PHIX adds four PHIX_* columns to the DataFrame before build_preprocess_result
+          runs; those columns must not appear in the artifact or break downstream steps.
+        - Step 3 (QR) and Step 4 (notices) read the artifact — an unexpected schema
+          change would cause a silent or hard crash mid-pipeline.
+
+        Assertion: artifact contains required top-level keys and per-client fields;
+        no PHIX_ keys appear in the serialized artifact.
+        """
+        enriched_df, _ = validate_phix.validate_schools(
+            df=normalized_test_df,
+            mapping_path=phix_mapping_file,
+            target_phu="Test PHU",
+            output_dir=tmp_path,
+        )
+
+        result = preprocess.build_preprocess_result(
+            enriched_df,
+            language="en",
+            vaccine_reference=default_vaccine_reference,
+            replace_unspecified=[],
+        )
+
+        artifact_path = preprocess.write_artifact(
+            tmp_path / "artifacts", "en", "integration_phix_on", result
+        )
+        artifact = json.loads(artifact_path.read_text(encoding="utf-8"))
+
+        # Top-level schema intact
+        for key in ("run_id", "language", "clients", "total_clients", "created_at"):
+            assert key in artifact, f"Missing artifact key: {key}"
+
+        # PHIX enrichment columns must not leak into the artifact
+        artifact_text = artifact_path.read_text(encoding="utf-8")
+        assert "PHIX_" not in artifact_text
+
+        # Client records retain expected fields
+        assert len(artifact["clients"]) == 3
+        for client in artifact["clients"]:
+            for field in ("sequence", "client_id", "language", "person", "school"):
+                assert field in client, f"Missing client field: {field}"
+
+    def test_phix_disabled_produces_same_artifact_schema(
+        self,
+        normalized_test_df: pd.DataFrame,
+        tmp_path: Path,
+        default_vaccine_reference: Dict[str, Any],
+    ) -> None:
+        """Artifact schema is identical whether PHIX validation ran or not.
+
+        Real-world significance:
+        - PHUs that do not use PHIX must get identical pipeline output;
+          any schema drift would break downstream consumers.
+
+        Assertion: artifact from a non-enriched DataFrame has the same required
+        keys and client count as the PHIX-enabled path.
+        """
+        result = preprocess.build_preprocess_result(
+            normalized_test_df,
+            language="en",
+            vaccine_reference=default_vaccine_reference,
+            replace_unspecified=[],
+        )
+
+        artifact_path = preprocess.write_artifact(
+            tmp_path / "artifacts", "en", "integration_phix_off", result
+        )
+        artifact = json.loads(artifact_path.read_text(encoding="utf-8"))
+
+        for key in ("run_id", "language", "clients", "total_clients", "created_at"):
+            assert key in artifact
+        assert len(artifact["clients"]) == 3
+
+    def test_phix_toggle_via_run_phix_validation(
+        self,
+        normalized_test_df: pd.DataFrame,
+        phix_mapping_file: Path,
+        tmp_path: Path,
+    ) -> None:
+        """run_phix_validation respects the enabled flag from parameters.yaml.
+
+        Real-world significance:
+        - The orchestrator calls run_phix_validation unconditionally; the function
+          itself must short-circuit correctly when the feature is disabled.
+        - Verifies the full config → function path, not just validate_schools in isolation.
+
+        Assertion: enabled=True adds PHIX_ columns; enabled=False returns df unchanged.
+        """
+        enabled_config = {
+            "phix_validation": {
+                "enabled": True,
+                "mapping_file": str(phix_mapping_file),
+                "target_phu": "Test PHU",
+            }
+        }
+        disabled_config = {"phix_validation": {"enabled": False}}
+
+        for config_dict, expect_phix_cols in [
+            (enabled_config, True),
+            (disabled_config, False),
+        ]:
+            params_file = tmp_path / f"params_{expect_phix_cols}.yaml"
+            params_file.write_text(yaml.dump(config_dict), encoding="utf-8")
+
+            with patch.object(preprocess, "PARAMETERS_PATH", params_file):
+                result_df, _ = preprocess.run_phix_validation(
+                    normalized_test_df, tmp_path
+                )
+
+            has_phix = "PHIX_MATCH_TYPE" in result_df.columns
+            assert has_phix == expect_phix_cols, (
+                f"Expected PHIX columns={expect_phix_cols}, got {has_phix}"
+            )

@@ -28,6 +28,7 @@ This directory contains all configuration files for the immunization pipeline. E
 Raw Input (from CSV/Excel)
     ↓
 [preprocess.py]
+    ├─ phix_mapping.json → validate school names against PHIX reference
     ├─ disease_normalization.json → normalize variants
     ├─ vaccine_reference.json → expand vaccines to diseases
     ├─ parameters.yaml.chart_diseases_header → filter diseases not in chart → "Other"
@@ -73,6 +74,67 @@ These are the most commonly adjusted options in `parameters.yaml`:
 - `encryption.enabled`: Enable or disable PDF encryption (true/false)
 - `bundling.bundle_size`: Enable bundling with at most N clients per bundle (0 disables bundling)
 - `bundling.group_by`: Bundle grouping strategy (null for sequential, `school`, or `board`)
+
+---
+
+## PHIX School Validation
+
+The pipeline can validate school/daycare names in the input file against the official PHIX reference list before generating notices. This catches data-quality issues (misspelled school names, wrong facility IDs) early and produces per-run audit CSVs.
+
+Configuration lives under `phix_validation` in `config/parameters.yaml`:
+
+```yaml
+phix_validation:
+  enabled: true
+  mapping_file: config/phix_mapping.json
+  target_phu: "Wellington-Dufferin-Guelph Public Health"
+  column_prefix: "PHIX_"
+  unmatched_behavior: warn
+```
+
+### Prerequisites
+
+`phix_mapping.json` is distributed with this repository. It is generated from a PHIX reference workbook and placed at `config/phix_mapping.json`.
+
+The mapping file should be re-generated whenever a new PHIX reference workbook is released.
+
+### Configuration options
+
+| Key | Type | Description |
+|---|---|---|
+| `enabled` | bool | Set to `false` to skip PHIX validation entirely (default: `true`) |
+| `mapping_file` | string | Path to `phix_mapping.json`, relative to project root or absolute |
+| `target_phu` | string | Exact PHU name as it appears as a key in the mapping file |
+| `column_prefix` | string | Prefix for DataFrame output columns (default: `"PHIX_"`) |
+| `unmatched_behavior` | string | How to handle `no_match` results: `warn`, `error`, or `skip` |
+
+### Match categories
+
+| Category | Meaning |
+|---|---|
+| `exact` | School name **and** facility ID both match the PHIX mapping |
+| `inexact` | Name matches but no ID was in the input (`name_only`), name matches but ID differs (`id_mismatch`), or ID matches under a different name (`id_only`) |
+| `no_match` | Neither name nor ID found for the target PHU |
+
+### Outputs
+
+Three CSV files are written to the run's output directory during preprocessing:
+
+| File | Contents |
+|---|---|
+| `phix_exact.csv` | Schools that matched exactly — name and ID confirmed |
+| `phix_inexact.csv` | Schools where only one of name/ID matched; review recommended |
+| `phix_no_match.csv` | Schools with no match; investigate or correct input data |
+
+Each CSV contains: `input_name`, `input_id`, `matched_name`, `matched_id`, `mismatch_reason`.
+
+### Unmatched behavior
+
+- `warn` *(default)* — logs a warning and continues; all records are processed
+- `error` — halts the pipeline if any `no_match` results are found
+- `skip` — filters out records whose school has no match before generating notices
+
+---
 
 #### Pipeline Lifecycle
 
