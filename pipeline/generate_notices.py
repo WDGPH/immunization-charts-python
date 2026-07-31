@@ -465,22 +465,20 @@ def build_template_context(
         else ""
     )
 
-    # Translate received records' diseases
+    # Translate received records' column keys
     received_translated: List[Dict[str, object]] = []
     if client.received:
         for record in client.received:
             translated_record = dict(record)
-            # Translate diseases field (not vaccine)
-            if "diseases" in translated_record and isinstance(
-                translated_record["diseases"], list
+            if "columns" in translated_record and isinstance(
+                translated_record["columns"], dict
             ):
-                translated_diseases = []
-                for disease in translated_record["diseases"]:
-                    label = display_label(
+                translated_record["columns"] = {
+                    display_label(
                         "diseases_chart", disease, client.language, strict=False
-                    )
-                    translated_diseases.append(label)
-                translated_record["diseases"] = translated_diseases
+                    ): status
+                    for disease, status in translated_record["columns"].items()
+                }
             received_translated.append(translated_record)
 
     return {

@@ -420,6 +420,24 @@ class TestBuildTemplateContext:
         client_data_str = context["client_data"]
         assert "qr_url:" not in client_data_str
 
+    def test_build_template_context_includes_show_validity_markers(self) -> None:
+        """Verify show_validity_markers is present in template context.
+
+        Real-world significance:
+        - Templates reference show_validity_markers to conditionally render
+          validity columns; an absent key causes a Typst compile error for
+          every client in the batch
+        - Added in feat/next-dose alongside the validity-marker feature
+
+        Assertion: context contains show_validity_markers as a Typst boolean literal
+        """
+        client = sample_input.create_test_client_record()
+
+        context = generate_notices.build_template_context(client)
+
+        assert "show_validity_markers" in context
+        assert context["show_validity_markers"] in ("true", "false")
+
 
 @pytest.mark.unit
 class TestLoadTemplateModule:

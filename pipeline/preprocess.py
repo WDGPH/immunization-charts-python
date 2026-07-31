@@ -769,48 +769,35 @@ def classify_dataset_validity(
     return "all_present" if has_with else "all_absent"
 
 
-def process_received_agents(
+def parse_dose_segments(
     received_agents: Any, replace_unspecified: List[str]
-) -> List[Dict[str, Any]]:
-    """Parse an IMMS_GIVEN string into a sorted, grouped list of dose records.
+) -> List[Dict[str, str]]:
+    """Parse an IMMS_GIVEN string into a flat sorted list of individual dose entries.
 
     Extracts individual dose entries from a semicolon-delimited string,
     normalizes dates to ISO format, normalizes validity to one of
-    ``"valid"`` / ``"invalid"`` / ``"unknown"``, filters unwanted vaccine
-    names, then groups doses that share the same administration date into a
-    single record. The ``"unknown"`` status is produced for any dose whose
-    IMMS_GIVEN segment lacks a ``- Valid``/``- Invalid`` suffix.
-
-    Called once per client row inside ``build_preprocess_result``. Its output
-    feeds ``enrich_grouped_records``, which maps vaccines to diseases and
-    applies validity collapsing for the chart.
+    ``"valid"`` / ``"invalid"`` / ``"unknown"``, and filters unwanted
+    vaccine names.  Unlike the former ``process_received_agents``, this
+    function does *not* group by date — grouping and disease-expansion are
+    handled by ``build_received_rows``.
 
     Parameters
     ----------
     received_agents : Any
-        Raw IMMS_GIVEN cell value. Must be a non-empty ``str`` to be parsed;
-        any other type (``float``, ``None``, NaN) returns an empty list.
+        Raw IMMS_GIVEN cell value.  Must be a non-empty ``str`` to be
+        parsed; any other type returns ``[]``.
         Expected format per segment: ``"MMM D, YYYY - VaccineName"`` or
         ``"MMM D, YYYY - VaccineName - Valid|Invalid"``.
     replace_unspecified : List[str]
-        Vaccine names to filter out before building records, e.g.
-        ``["Not Specified", "unspecified"]``. Entries whose vaccine name
-        exactly matches one of these strings are silently dropped.
+        Vaccine names to silently drop (e.g. ``["Not Specified"]``).
 
     Returns
     -------
-    List[Dict[str, Any]]
-        One entry per distinct administration date, sorted ascending. Each
-        entry has the shape::
-
-            {
-                "date_given": str,       # ISO date, e.g. "2020-05-01"
-                "vaccine":    List[str], # vaccine names given on that date
-                "valid":      List[str], # parallel validity list
-            }
-
-        Returns ``[]`` if ``received_agents`` is not a parseable string or
-        contains no recognisable dose segments after filtering.
+    List[Dict[str, str]]
+        Flat list of ``{"date_given": str, "vaccine": str, "validity": str}``
+        dicts, sorted ascending by date.  Returns ``[]`` if
+        ``received_agents`` is not a parseable string or contains no
+        recognisable dose segments after filtering.
     """
     if not isinstance(received_agents, str) or not received_agents.strip():
         return []
@@ -819,158 +806,240 @@ def process_received_agents(
         r"(\w{3} \d{1,2}, \d{4}) - (.*?)(?:\s*-\s*(Valid|Invalid))?(?=;|$)"
     )
 
-    rows = []
+    rows: List[Dict[str, str]] = []
     for date_str, vaccine, raw_valid in pattern.findall(received_agents):
         vaccine = vaccine.strip()
-
+        vaccine = vaccine.replace("-unspecified", "*").replace(" unspecified", "*")
         if vaccine in replace_unspecified:
             continue
-
-        date_iso = convert_date_iso(date_str.strip())
-
         rows.append({
-            "date_given": date_iso,
+            "date_given": convert_date_iso(date_str.strip()),
             "vaccine": vaccine,
-            "valid": normalize_validity_status(raw_valid),
+            "validity": normalize_validity_status(raw_valid),
         })
 
     rows.sort(key=lambda item: item["date_given"])
-    grouped: List[Dict[str, Any]] = []
-    for entry in rows:
-        if not grouped or grouped[-1]["date_given"] != entry["date_given"]:
-            grouped.append(
-                {
-                    "date_given": entry["date_given"],
-                    "vaccine": [entry["vaccine"]],
-                    "valid": [entry["valid"]]
-                }
-            )
-        else:
-            grouped[-1]["vaccine"].append(entry["vaccine"])
-            grouped[-1]["valid"].append(entry["valid"])
-
-    return grouped
+    return rows
 
 
-def enrich_grouped_records(
-    grouped: List[Dict[str, Any]],
+def _deduplicate_vaccines_for_date(
+    date_doses: List[Dict[str, str]],
     vaccine_reference: Dict[str, Any],
-    language: str,
-    chart_diseases_header: List[str] | None = None,
 ) -> List[Dict[str, Any]]:
-    """Map grouped dose records to diseases and collapse per-disease validity.
+    """Collapse same-vaccine doses and expand each unique vaccine to its diseases.
 
-    Expands each vaccine code to its component diseases using
-    ``vaccine_reference``. When ``chart_diseases_header`` is supplied,
-    diseases not in the header are collapsed into an ``"Other"`` column
-    using a two-level validity collapse described below.
-
-    Validity collapsing rules
-    -------------------------
-    *Named diseases* (those present in ``chart_diseases_header``):
-      ``"valid"`` if any contributing dose is valid;
-      ``"unknown"`` if no dose is valid but at least one is unknown;
-      ``"invalid"`` if all contributing doses are invalid.
-      ``"mixed"`` is never produced for named diseases.
-
-    *"Other" column* (two-level):
-      1. Per-vaccine collapse — doses of the same vaccine are first
-         collapsed using the same ``valid > unknown > invalid`` rule.
-      2. Cross-vaccine collapse — the resulting per-vaccine statuses are
-         then combined with ``collapse_validity_statuses``, which can
-         produce ``"mixed"`` when different vaccines in the "Other" group
-         have conflicting (valid vs. invalid) statuses.
+    Multiple doses of the same vaccine on one date are reduced to a single
+    entry whose validity follows ``unknown > valid > invalid`` precedence:
+    any unknown status dominates (data quality signal), then any valid,
+    then all-invalid.
 
     Parameters
     ----------
-    grouped : List[Dict[str, Any]]
-        Output of ``process_received_agents`` — one entry per
-        administration date with ``"date_given"``, ``"vaccine"`` (list),
-        and ``"valid"`` (parallel list of normalized status strings).
+    date_doses : List[Dict[str, str]]
+        Flat dose entries for a single date from ``parse_dose_segments``,
+        each with ``{"vaccine": str, "validity": str}``.
     vaccine_reference : Dict[str, Any]
-        Maps vaccine codes to a single disease name (str) or a list of
-        disease names (List[str]).
-    language : str
-        Language code used for logging (``"en"`` or ``"fr"``). Does not
-        affect disease mapping.
-    chart_diseases_header : List[str] | None, default None
-        Ordered list of disease column headers for the chart. Diseases
-        not in this list are mapped to ``"Other"``. When ``None``, all
-        diseases are returned as a flat list with no ``"Other"`` grouping.
+        Maps vaccine codes to a single disease name or list of disease names.
 
     Returns
     -------
     List[Dict[str, Any]]
-        One entry per input record with the shape::
+        One entry per unique vaccine name with
+        ``{"vaccine": str, "diseases": List[str], "validity": str}``.
+    """
+    by_vaccine: Dict[str, List[str]] = {}
+    for dose in date_doses:
+        by_vaccine.setdefault(dose["vaccine"], []).append(dose["validity"])
+
+    result: List[Dict[str, Any]] = []
+    for vaccine, statuses in by_vaccine.items():
+        if "unknown" in statuses:
+            validity = "unknown"
+        elif "valid" in statuses:
+            validity = "valid"
+        else:
+            validity = "invalid"
+
+        ref = vaccine_reference.get(vaccine, vaccine)
+        diseases: List[str] = ref if isinstance(ref, list) else [ref]
+
+        result.append({"vaccine": vaccine, "diseases": diseases, "validity": validity})
+
+    return result
+
+
+def compute_column_statuses(
+    vaccines: List[Dict[str, Any]],
+    chart_diseases_header: List[str],
+) -> Dict[str, str]:
+    """Compute per-column validity status for a set of vaccine entries.
+
+    For each named disease in the header, collects the validity of all
+    vaccines that contribute to that disease and collapses using
+    ``unknown > mixed > valid > invalid`` precedence.  The ``"Other"``
+    column captures any vaccine that contributes at least one disease
+    not found in the named-disease set.
+
+    ``"mixed"`` is produced when both ``"valid"`` and ``"invalid"``
+    contribute to a column with no ``"unknown"`` — meaning different
+    vaccines have conflicting validity for that column on this date.
+
+    Parameters
+    ----------
+    vaccines : List[Dict[str, Any]]
+        Vaccine entries from ``_deduplicate_vaccines_for_date``, each
+        with ``{"vaccine": str, "diseases": List[str], "validity": str}``.
+    chart_diseases_header : List[str]
+        Ordered disease column headers.  ``"Other"`` (if present) acts
+        as a catch-all for unmapped diseases.
+
+    Returns
+    -------
+    Dict[str, str]
+        Column name → one of ``"valid"``, ``"invalid"``, ``"unknown"``,
+        or ``"mixed"``.  Only columns with at least one contributing
+        vaccine are included.
+    """
+    named = {d for d in chart_diseases_header if d != "Other"}
+    has_other_col = "Other" in chart_diseases_header
+
+    column_statuses: Dict[str, List[str]] = {}
+
+    for vax in vaccines:
+        for disease in vax["diseases"]:
+            if disease in named:
+                column_statuses.setdefault(disease, []).append(vax["validity"])
+        if has_other_col and any(d not in named for d in vax["diseases"]):
+            column_statuses.setdefault("Other", []).append(vax["validity"])
+
+    result: Dict[str, str] = {}
+    for col, statuses in column_statuses.items():
+        has_unknown = "unknown" in statuses
+        has_valid = "valid" in statuses
+        has_invalid = "invalid" in statuses
+        if has_unknown:
+            result[col] = "unknown"
+        elif has_valid and has_invalid:
+            result[col] = "mixed"
+        elif has_valid:
+            result[col] = "valid"
+        else:
+            result[col] = "invalid"
+
+    return result
+
+
+def _split_into_rows(
+    vaccines: List[Dict[str, Any]],
+    chart_diseases_header: List[str],
+) -> List[Dict[str, Any]]:
+    """Recursively split vaccines into rows so that no column has a mixed status.
+
+    When ``compute_column_statuses`` finds a ``"mixed"`` column, the
+    vaccines are partitioned: all ``"valid"`` vaccines go to the first
+    row (guaranteed non-mixed since they share no status conflicts with
+    the remaining set), and all ``"invalid"``/``"unknown"`` vaccines
+    recurse as the second row.  Because the second row contains no
+    ``"valid"`` vaccines, it can never produce ``"mixed"``; recursion
+    always terminates within one additional level.
+
+    Parameters
+    ----------
+    vaccines : List[Dict[str, Any]]
+        Vaccine entries for a single date (same shape as
+        ``_deduplicate_vaccines_for_date`` output).
+    chart_diseases_header : List[str]
+        Header order; the first mixed column in this order triggers the
+        split.
+
+    Returns
+    -------
+    List[Dict[str, Any]]
+        One or more ``{"vaccines": List[Dict], "columns": Dict[str, str]}``
+        dicts.  All column statuses are non-mixed.
+    """
+    columns = compute_column_statuses(vaccines, chart_diseases_header)
+
+    mixed_col = next(
+        (col for col in chart_diseases_header if columns.get(col) == "mixed"),
+        None,
+    )
+
+    if mixed_col is None:
+        return [{"vaccines": vaccines, "columns": columns}]
+
+    row1_vaccines = [v for v in vaccines if v["validity"] == "valid"]
+    row2_vaccines = [v for v in vaccines if v["validity"] != "valid"]
+
+    row1_columns = compute_column_statuses(row1_vaccines, chart_diseases_header)
+    return [{"vaccines": row1_vaccines, "columns": row1_columns}] + _split_into_rows(
+        row2_vaccines, chart_diseases_header
+    )
+
+
+def build_received_rows(
+    received_agents: Any,
+    replace_unspecified: List[str],
+    vaccine_reference: Dict[str, Any],
+    chart_diseases_header: List[str],
+) -> List[Dict[str, Any]]:
+    """Parse IMMS_GIVEN into display rows with pre-computed per-column validity.
+
+    Orchestrates ``parse_dose_segments`` → ``_deduplicate_vaccines_for_date``
+    → ``_split_into_rows`` for each administration date.  Dates whose
+    vaccines would produce a ``"mixed"`` column status are split into
+    separate rows: valid vaccines on the first row, others on subsequent
+    rows.  The ``date_rowspan`` field carries the row-merge count so that
+    Typst can render a single merged date cell spanning all rows of a date.
+
+    Parameters
+    ----------
+    received_agents : Any
+        Raw IMMS_GIVEN cell value.
+    replace_unspecified : List[str]
+        Vaccine names to suppress.
+    vaccine_reference : Dict[str, Any]
+        Vaccine-to-disease mapping.
+    chart_diseases_header : List[str]
+        Ordered disease column headers (used for column assignment and
+        split ordering).
+
+    Returns
+    -------
+    List[Dict[str, Any]]
+        Flat list of display rows, each with::
 
             {
-                "date_given": str,        # ISO date, unchanged
-                "vaccine":    List[str],  # deduplicated vaccine names
-                "valid":      List[str],  # collapsed validity per disease
-                "diseases":   List[str],  # disease names (parallel to valid)
+                "date_given":   str,            # ISO date
+                "date_rowspan": int,            # N on first row, 0 on continuations
+                "vaccines":     List[str],      # display vaccine names for this row
+                "columns":      Dict[str, str], # column name → validity status
             }
     """
-    enriched: List[Dict[str, Any]] = []
-    for item in grouped:
-        vaccines = [
-            v.replace("-unspecified", "*").replace(" unspecified", "*")
-            for v in item["vaccine"]
-        ]
-        source_valid = [normalize_validity_status(v) for v in item.get("valid", [])]
+    flat = parse_dose_segments(received_agents, replace_unspecified)
+    if not flat:
+        return []
 
-        diseases: List[str] = []
-        valid: List[Any] = []
-
-        if chart_diseases_header:
-            disease_statuses: dict[str, list[str]] = {}
-            unmapped_by_vaccine: dict[str, list[str]] = {}
-
-        for i, vaccine in enumerate(vaccines):
-            vaccine_valid = source_valid[i] if i < len(source_valid) else "unknown"
-            ref = vaccine_reference.get(vaccine, vaccine)
-            mapped = ref if isinstance(ref, list) else [ref]
-            for disease in mapped:
-                if chart_diseases_header:
-                    if disease in chart_diseases_header:
-                        disease_statuses.setdefault(disease, []).append(vaccine_valid)
-                    else:
-                        unmapped_by_vaccine.setdefault(vaccine, []).append(vaccine_valid)
-                else:
-                    diseases.append(disease)
-                    valid.append(vaccine_valid)
-
-        if chart_diseases_header:
-            if unmapped_by_vaccine:
-                per_vaccine_valid = [
-                    "valid" if any(s == "valid" for s in statuses)
-                    else "unknown" if any(s == "unknown" for s in statuses)
-                    else "invalid"
-                    for statuses in unmapped_by_vaccine.values()
-                ]
-                disease_statuses.setdefault("Other", []).extend(per_vaccine_valid)
-
-            diseases = list(disease_statuses)
-            valid = []
-            for disease, statuses in disease_statuses.items():
-                if disease == "Other":
-                    valid.append(collapse_validity_statuses(statuses))
-                else:
-                    valid.append(
-                        "valid" if any(s == "valid" for s in statuses)
-                        else "unknown" if any(s == "unknown" for s in statuses)
-                        else "invalid"
-                    )
-
-        enriched.append(
-            {
-                "date_given": item["date_given"],
-                "valid": valid,
-                "vaccine": list(dict.fromkeys(vaccines)),
-                "diseases": diseases,
-            }
+    by_date: Dict[str, List[Dict[str, str]]] = {}
+    for dose in flat:
+        by_date.setdefault(dose["date_given"], []).append(
+            {"vaccine": dose["vaccine"], "validity": dose["validity"]}
         )
 
-    return enriched
+    rows: List[Dict[str, Any]] = []
+    for date, doses in by_date.items():
+        vaccines = _deduplicate_vaccines_for_date(doses, vaccine_reference)
+        date_rows = _split_into_rows(vaccines, chart_diseases_header)
+        n = len(date_rows)
+        for i, row in enumerate(date_rows):
+            rows.append({
+                "date_given": date,
+                "date_rowspan": n if i == 0 else 0,
+                "vaccines": [v["vaccine"] for v in row["vaccines"]],
+                "columns": row["columns"],
+            })
+
+    return rows
 
 
 def build_preprocess_result(
@@ -1117,9 +1186,11 @@ def build_preprocess_result(
         ]
         if include_dose:
             vaccines_due_list = format_vaccine_due_list(vaccines_due_list)
-        received_grouped = process_received_agents(row.IMMS_GIVEN, replace_unspecified)  # type: ignore[attr-defined]
-        received = enrich_grouped_records(
-            received_grouped, vaccine_reference, language, chart_diseases_header
+        received = build_received_rows(
+            row.IMMS_GIVEN,  # type: ignore[attr-defined]
+            replace_unspecified,
+            vaccine_reference,
+            chart_diseases_header,
         )
         postal_code = row.POSTAL_CODE if row.POSTAL_CODE else "Not provided"  # type: ignore[attr-defined]
         address_line = " ".join(

@@ -1,20 +1,11 @@
 #let vax_valid = ("⬤")
 #let vax_invalid = ("○")
-#let vax_mixed = ("◐")
-#let vax_other = ("①", "②", "③", "④", "⑤", "⑥", "⑦", "⑧", "⑨", "⑩")
-#let vax_other_1 = ("①")
-#let vax_other_2 = ("②")
-#let vax_other_3 = ("③")
-#let vax_other_4 = ("④")
-#let vax_other_5 = ("⑤")
 
 #let validity-dot(status, show-validity-markers: false) = {
   if not show-validity-markers {
     vax_valid
   } else if status == "invalid" or status == "Invalid" or status == false {
     vax_invalid
-  } else if "mixed" in status {
-    vax_mixed
   } else {
     vax_valid
   }
@@ -242,43 +233,41 @@
   let date_given = if lang == "en" { "Date Given" } else { "Date de l'administration" }
   let vaccine_s = if lang == "en" { "Vaccine(s)" } else { "Vaccin(s)" }
   let end_msg = if lang == "en" { "*indicates unspecified vaccine agent" } else { "*indique un agent vaccinal non spécifié" }
+  let valid_label   = if lang == "en" { "Valid dose" }                     else { "Dose valide" }
+  let invalid_label = if lang == "en" { "Invalid dose" }                   else { "Dose non valide" }
 
   if num_rows > 0 {
-      for record in data {
-    // Start row with Date Given and At Age
-    let row_cells = (
-      record.date_given,
-    )
+    for record in data {
+      let row_cells = ()
 
-    // Populate disease columns with #vax or empty
-    for disease_name in diseases {
-
-      let cell_content = ""
-      for i in range(record.diseases.len()) {
-        if record.diseases.at(i) == disease_name { 
-          let status = if "valid" in record and i < record.valid.len() {
-            record.valid.at(i)
-          } else {
-            "unknown"
-          }
-          cell_content = validity-dot(status, show-validity-markers: show_validity_markers)
-          // Found a match, no need to check other diseases for this cell
-          break 
-        }
+      // Date cell: merged across split rows for the same date
+      if record.date_rowspan > 1 {
+        row_cells.push(table.cell(rowspan: record.date_rowspan)[#record.date_given])
+      } else if record.date_rowspan == 1 {
+        row_cells.push(record.date_given)
       }
-      row_cells.push(cell_content)
-    }
-        // Add the Vaccine(s) column content
-    let vaccine_content = if type(record.vaccine) == array {
-      record.vaccine.join(", ") 
-    } else {
-      record.vaccine
-    }
-    row_cells.push(vaccine_content)
+      // date_rowspan == 0 means this is a continuation row; omit the date cell
 
-    table_rows.push(row_cells)
-  }
+      // Populate disease columns via direct dict lookup on record.columns
+      for disease_name in diseases {
+        let cell_content = ""
+        if disease_name in record.columns {
+          let status = record.columns.at(disease_name)
+          cell_content = validity-dot(status, show-validity-markers: show_validity_markers)
+        }
+        row_cells.push(cell_content)
+      }
 
+      // Vaccine(s) column
+      let vaccine_content = if type(record.vaccines) == array {
+        record.vaccines.join(", ")
+      } else {
+        record.vaccines
+      }
+      row_cells.push(vaccine_content)
+
+      table_rows.push(row_cells)
+    }
   }
 
   if num_padded > 0 {
@@ -321,7 +310,13 @@
         left
       ), 
       ..table_rows.flatten(), 
-      table.cell(stroke:none, align: right, colspan: 15)[#text(size: font_size)[#end_msg]]
+      table.cell(stroke:none, align: right, colspan: 15)[#text(size: font_size)[#end_msg]],
+      ..if show_validity_markers {
+        (
+          table.cell(stroke: none, align: left, colspan: 15)[#text(size: font_size)[#vax_valid #h(2pt) #valid_label]],
+          table.cell(stroke: none, align: left, colspan: 15)[#text(size: font_size)[#vax_invalid #h(2pt) #invalid_label]]
+        )
+      } else { () }
     )
   ]
 

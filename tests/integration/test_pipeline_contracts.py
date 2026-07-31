@@ -412,3 +412,49 @@ class TestPreprocessOutputContracts:
             if "both with and without validity indicators" in w
         ]
         assert len(mixed_warnings) == 1
+
+    def test_include_dose_formats_vaccines_due_list(
+        self, tmp_path: Path, monkeypatch, default_vaccine_reference
+    ) -> None:
+        """Verify include_dose: true causes dose-numbered entries to be formatted in vaccines_due_list.
+
+        Real-world significance:
+        - When include_dose is enabled, an OVERDUE DISEASE entry like "DTaP - 2"
+          must arrive at Step 4 (notice generation) as "DTaP (2nd dose)"
+        - If the formatting step is skipped, the raw " - 2" suffix appears
+          verbatim on the printed notice, which is confusing to recipients
+
+        Assertion: vaccines_due_list contains the formatted "DTaP (2nd dose)"
+                   form, not the raw "DTaP - 2" string
+        """
+        params_path = tmp_path / "parameters.yaml"
+        params_path.write_text(
+            "\n".join([
+                "date_notice_delivery: '2025-04-08'",
+                "chart_diseases_header:",
+                "  - Diphtheria",
+                "  - Tetanus",
+                "  - Pertussis",
+                "  - Other",
+                "preprocess:",
+                "  include_dose: true",
+                "  show_validity_markers: false",
+            ]),
+            encoding="utf-8",
+        )
+        monkeypatch.setattr(preprocess, "PARAMETERS_PATH", params_path)
+
+        df = sample_input.create_test_input_dataframe(num_clients=1)
+        df["OVERDUE DISEASE"] = ["DTaP - 2"]
+
+        result = preprocess.build_preprocess_result(
+            df,
+            language="en",
+            vaccine_reference=default_vaccine_reference,
+            replace_unspecified=[],
+        )
+
+        client = result.clients[0]
+        assert client.vaccines_due_list is not None
+        assert "DTaP (2nd dose)" in client.vaccines_due_list
+        assert "DTaP - 2" not in client.vaccines_due_list
