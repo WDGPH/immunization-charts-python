@@ -129,6 +129,11 @@ chart_diseases_header:
 - All column headers are properly localized before template rendering
 - No runtime lookups needed in Typst; translations applied in Python
 
+**Same-Date Validity Grouping:**
+- Each vaccine has one validity status, which applies to every displayed disease column populated by that vaccine.
+- Vaccines given on the same date remain in one row when their statuses populate different displayed disease columns.
+- Separate rows are created only when valid and invalid vaccines would populate the same displayed column, including vaccines grouped under "Other", so each displayed marker remains unambiguous.
+
 ---
 
 ### `vaccine_reference.json`
