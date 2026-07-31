@@ -22,6 +22,7 @@ Each test:
 
 from __future__ import annotations
 
+import json
 import shutil
 import subprocess
 from collections.abc import Generator
@@ -124,10 +125,38 @@ class TestFullPipelineExecution:
         )
         return result
 
+    def assert_pdf_validation_clean(
+        self, output_dir: Path, language: str, expected_count: int
+    ) -> None:
+        """Verify every generated notice passes layout validation.
+
+        Real-world significance:
+        - A successful pipeline can still produce an unintended extra page
+        - Signature overflow warnings identify notices that are awkward to mail
+
+        Assertion: All notices pass validation and contain exactly two pages
+        """
+        validation_files = list(
+            (output_dir / "metadata").glob(f"{language}_validation_*.json")
+        )
+        assert len(validation_files) == 1
+
+        validation = json.loads(validation_files[0].read_text(encoding="utf-8"))
+        assert validation["warning_count"] == 0
+        assert validation["passed_count"] == expected_count
+        assert validation["page_count_distribution"] == {"2": expected_count}
+
     def test_full_pipeline_english(
         self, pipeline_input_file: Path, project_root: Path, e2e_workdir: Path
     ) -> None:
-        """Test complete pipeline execution with English language."""
+        """Verify English notices complete with warning-free two-page PDFs.
+
+        Real-world significance:
+        - The English production template establishes the baseline notice layout
+        - Pipeline success alone does not detect overflow onto an extra page
+
+        Assertion: Three English notices compile and pass layout validation
+        """
         # Disable encryption for core E2E test
         config_overrides = {"encryption": {"enabled": False}}
         result = self.run_pipeline(
@@ -145,6 +174,7 @@ class TestFullPipelineExecution:
         # Verify PDFs exist
         pdfs = list((output_dir / "pdf_individual").glob("en_notice_*.pdf"))
         assert len(pdfs) == 3, f"Expected 3 PDFs but found {len(pdfs)}"
+        self.assert_pdf_validation_clean(output_dir, "en", expected_count=3)
 
         # Bundling runs by default (bundle_size: 100 in parameters.yaml)
         assert (output_dir / "pdf_combined").exists()
@@ -152,7 +182,14 @@ class TestFullPipelineExecution:
     def test_full_pipeline_french(
         self, pipeline_input_file: Path, project_root: Path, e2e_workdir: Path
     ) -> None:
-        """Test complete pipeline execution with French language."""
+        """Verify French notices complete with warning-free two-page PDFs.
+
+        Real-world significance:
+        - Longer French copy can move the signature or immunization chart
+        - Recipients should receive the intended two-page notice in either language
+
+        Assertion: Three French notices compile and pass layout validation
+        """
         # Disable encryption for core E2E test
         config_overrides = {"encryption": {"enabled": False}}
         result = self.run_pipeline(
@@ -170,6 +207,7 @@ class TestFullPipelineExecution:
         # Verify PDFs exist with French prefix
         pdfs = list((output_dir / "pdf_individual").glob("fr_notice_*.pdf"))
         assert len(pdfs) == 3, f"Expected 3 French PDFs but found {len(pdfs)}"
+        self.assert_pdf_validation_clean(output_dir, "fr", expected_count=3)
 
     def test_full_pipeline_with_encryption(
         self, pipeline_input_file: Path, project_root: Path, e2e_workdir: Path
@@ -198,4 +236,3 @@ class TestFullPipelineExecution:
         assert len(encrypted_pdfs) == 3, (
             f"Expected 3 encrypted PDFs but found {len(encrypted_pdfs)}"
         )
-
