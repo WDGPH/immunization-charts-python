@@ -409,6 +409,10 @@ def format_vaccine_due_list(vaccine_due_list: list[str]) -> list[str]:
             formatted.append(item.strip())
             continue
 
+        if not second_part.strip():
+            formatted.append(item.strip())
+            continue
+
         if second_part.strip()[-1] == '1':
             formatted.append(f"{first_part.strip()} ({second_part.strip()}st dose)")
         elif second_part.strip()[-1] == '2':

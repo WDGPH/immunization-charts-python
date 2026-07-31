@@ -114,6 +114,40 @@ class TestNormalize:
 
 
 @pytest.mark.unit
+class TestFormatVaccineDueList:
+    """Unit tests for overdue-vaccine dose formatting."""
+
+    def test_preserves_entries_with_empty_dose_suffix(self) -> None:
+        """Verify an empty dose suffix is preserved without raising an error.
+
+        Real-world significance:
+        - Source exports can contain a separator without a dose number
+        - One malformed entry must not stop preprocessing for every client
+
+        Assertion: Blank and whitespace-only suffixes remain unformatted
+        """
+        result = preprocess.format_vaccine_due_list(["Polio - ", "MMR -    "])
+
+        assert result == ["Polio -", "MMR -"]
+
+    def test_empty_suffix_preserves_later_invalid_dose_warning(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """Verify an empty suffix does not suppress later invalid-dose logging.
+
+        Real-world significance:
+        - A malformed entry can appear before other invalid values in one export
+        - Existing warnings for out-of-range dose numbers must remain available
+
+        Assertion: The empty suffix is preserved and the later warning is emitted
+        """
+        result = preprocess.format_vaccine_due_list(["Polio - ", "MMR - 10"])
+
+        assert result == ["Polio -", "MMR - 10"]
+        assert "invalid dose number: MMR - 10" in caplog.text
+
+
+@pytest.mark.unit
 class TestFilterColumns:
     """Unit tests for filter_columns() column filtering utility."""
 
