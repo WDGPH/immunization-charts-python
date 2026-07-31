@@ -18,7 +18,7 @@ chart_diseases_header:
 date_data_cutoff: '2025-08-31'
 date_notice_delivery: '2025-04-08'
 encryption:
-  enabled: true
+  enabled: false
   password:
     template: '{date_of_birth_iso_compact}'
 ignore_agents:
