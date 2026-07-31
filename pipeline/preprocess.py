@@ -746,7 +746,7 @@ def classify_dataset_validity(
       of dose segments per row; short-circuits as soon as ``"mixed"`` is
       confirmed.
     """
-    with_validity = re.compile(r" - (?:Valid|Invalid)(?=;|$)")
+    with_validity = re.compile(r" - (?:[Vv]alid|[Ii]nvalid)(?=;|$)")
     dose_entry = re.compile(r"\w{3} \d{1,2}, \d{4}")
 
     has_with = False
@@ -803,7 +803,7 @@ def parse_dose_segments(
         return []
 
     pattern = re.compile(
-        r"(\w{3} \d{1,2}, \d{4}) - (.*?)(?:\s*-\s*(Valid|Invalid))?(?=;|$)"
+        r"(\w{3} \d{1,2}, \d{4}) - (.*?)(?:\s*-\s*([Vv]alid|[Ii]nvalid))?(?=;|$)"
     )
 
     rows: List[Dict[str, str]] = []

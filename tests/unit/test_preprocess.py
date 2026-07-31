@@ -982,6 +982,32 @@ class TestClassifyDatasetValidity:
         ])
         assert preprocess.classify_dataset_validity(series) == "all_present"
 
+    @pytest.mark.parametrize("suffix", ["valid", "invalid"])
+    def test_lowercase_validity_suffix_returns_all_present(self, suffix: str) -> None:
+        """Verify each supported lowercase suffix is recognized as present.
+
+        Real-world significance:
+        - Source exports may use lowercase validity markers; misclassifying
+          them as absent can incorrectly reject a consistently marked dataset
+
+        Assertion: Each lowercase suffix classifies the dataset as all_present
+        """
+        series = pd.Series([f"May 1, 2020 - DTaP - {suffix}"])
+        assert preprocess.classify_dataset_validity(series) == "all_present"
+
+    @pytest.mark.parametrize("suffix", ["VALID", "INVALID", "vAlid", "iNvalid"])
+    def test_unsupported_validity_casing_returns_all_absent(self, suffix: str) -> None:
+        """Verify unsupported casing is not recognized as a validity suffix.
+
+        Real-world significance:
+        - Unapproved casing must not silently influence validity markers on
+          notices because its meaning has not met the source-data contract
+
+        Assertion: Each unsupported suffix classifies the dataset as all_absent
+        """
+        series = pd.Series([f"May 1, 2020 - DTaP - {suffix}"])
+        assert preprocess.classify_dataset_validity(series) == "all_absent"
+
     def test_all_doses_without_validity_suffix_returns_all_absent(self) -> None:
         """Verify a dataset where no dose has a suffix → "all_absent".
 
@@ -1084,6 +1110,41 @@ class TestParseDoseSegments:
         """Assertion: - Invalid suffix → validity == "invalid"."""
         result = preprocess.parse_dose_segments("May 1, 2020 - DTaP - Invalid", [])
         assert result[0]["validity"] == "invalid"
+
+    @pytest.mark.parametrize(
+        ("suffix", "expected_status"),
+        [("valid", "valid"), ("invalid", "invalid")],
+    )
+    def test_lowercase_validity_suffix_parsed_correctly(
+        self, suffix: str, expected_status: str
+    ) -> None:
+        """Verify lowercase suffixes are removed and normalized when parsed.
+
+        Real-world significance:
+        - Lowercase validity markers must control the notice marker instead of
+          becoming part of the displayed vaccine name
+
+        Assertion: Vaccine is DTaP and validity matches the lowercase suffix
+        """
+        result = preprocess.parse_dose_segments(f"May 1, 2020 - DTaP - {suffix}", [])
+        assert result[0]["vaccine"] == "DTaP"
+        assert result[0]["validity"] == expected_status
+
+    @pytest.mark.parametrize("suffix", ["VALID", "INVALID", "vAlid", "iNvalid"])
+    def test_unsupported_validity_casing_remains_in_vaccine_name(
+        self, suffix: str
+    ) -> None:
+        """Verify unsupported casing remains vaccine text with unknown validity.
+
+        Real-world significance:
+        - Unapproved casing must remain untrusted so a dose is not incorrectly
+          shown as counting or not counting toward immunity
+
+        Assertion: Suffix remains vaccine text and validity is unknown
+        """
+        result = preprocess.parse_dose_segments(f"May 1, 2020 - DTaP - {suffix}", [])
+        assert result[0]["vaccine"] == f"DTaP - {suffix}"
+        assert result[0]["validity"] == "unknown"
 
     def test_dose_without_suffix_yields_unknown_not_dropped(self) -> None:
         """Verify a dose lacking a suffix is captured as "unknown", not dropped.
