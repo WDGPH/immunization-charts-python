@@ -42,6 +42,7 @@ from __future__ import annotations
 import importlib.util
 import json
 import logging
+import re
 import sys
 from pathlib import Path
 from typing import Dict, List, Mapping, Sequence
@@ -61,6 +62,10 @@ ROOT_DIR = SCRIPT_DIR.parent
 
 LOG = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+
+_DOSE_LABEL_PATTERN = re.compile(
+    r"^(?P<disease>.+) \((?P<dose_label>(?P<number>\d+)(?:st|nd|rd|th) dose)\)$"
+)
 
 
 def load_template_module(template_dir: Path, language_code: str):
@@ -384,6 +389,43 @@ def load_and_translate_chart_diseases(
     return translated_diseases
 
 
+def _localize_vaccine_due_label(label: str, language: str) -> str:
+    """Localize a canonical overdue disease label and optional dose suffix.
+
+    Preprocessing stores dose-specific entries in the stable English form
+    ``<disease> (<ordinal> dose)``. Translate the disease and generated suffix
+    separately so that the composite label does not miss the exact disease
+    translation lookup.
+
+    Parameters
+    ----------
+    label : str
+        Canonical overdue disease label, optionally with a dose suffix.
+    language : str
+        Language code for the notice.
+
+    Returns
+    -------
+    str
+        Localized overdue disease and dose label.
+    """
+    match = _DOSE_LABEL_PATTERN.fullmatch(label)
+    if match is None:
+        return display_label("diseases_overdue", label, language, strict=False)
+
+    disease = display_label(
+        "diseases_overdue", match.group("disease"), language, strict=False
+    )
+    number = match.group("number")
+    if language == "fr":
+        ordinal = f"{number}{'re' if number == '1' else 'e'}"
+        return f"{disease} ({ordinal} dose)"
+
+    # Preserve the artifact's established English suffix for English and any
+    # unsupported language that reaches this already validated rendering path.
+    return f"{disease} ({match.group('dose_label')})"
+
+
 def build_template_context(
     client: ClientRecord,
     qr_output_dir: Path | None = None,
@@ -463,9 +505,7 @@ def build_template_context(
     vaccines_due_array_translated: List[str] = []
     if client.vaccines_due_list:
         for disease in client.vaccines_due_list:
-            label = display_label(
-                "diseases_overdue", disease, client.language, strict=False
-            )
+            label = _localize_vaccine_due_label(disease, client.language)
             vaccines_due_array_translated.append(label)
 
     # Translate vaccines_due string

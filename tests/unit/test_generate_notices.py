@@ -295,6 +295,44 @@ class TestBuildTemplateContext:
         assert "received" in context
         assert "num_rows" in context
 
+    def test_build_template_context_localizes_english_dose_labels(self) -> None:
+        """Verify English notices retain localized disease and dose text.
+
+        Real-world significance:
+        - Dose-specific overdue entries tell recipients which dose is required
+        - Notice localization must not alter established English wording
+
+        Assertion: Context contains English disease names and ordinal dose labels
+        """
+        client = sample_input.create_test_client_record(
+            language="en",
+            vaccines_due_list=["Polio (1st dose)", "Measles (2nd dose)"],
+        )
+
+        context = generate_notices.build_template_context(client)
+
+        assert "Polio (1st dose)" in context["vaccines_due_array"]
+        assert "Measles (2nd dose)" in context["vaccines_due_array"]
+
+    def test_build_template_context_localizes_french_dose_labels(self) -> None:
+        """Verify French notices translate both disease and dose text.
+
+        Real-world significance:
+        - French recipients need the disease and required dose in French
+        - An English dose suffix would leave the notice partially untranslated
+
+        Assertion: Context contains French disease names and ordinal dose labels
+        """
+        client = sample_input.create_test_client_record(
+            language="fr",
+            vaccines_due_list=["Polio (1st dose)", "Measles (2nd dose)"],
+        )
+
+        context = generate_notices.build_template_context(client)
+
+        assert "Poliomyélite (1re dose)" in context["vaccines_due_array"]
+        assert "Rougeole (2e dose)" in context["vaccines_due_array"]
+
     def test_build_template_context_includes_client_id(self) -> None:
         """Verify client_id is in context.
 
