@@ -1047,6 +1047,7 @@ def build_preprocess_result(
     language: str,
     vaccine_reference: Dict[str, Any],
     replace_unspecified: List[str],
+    config_path: Path | None = None,
 ) -> PreprocessResult:
     """Normalize client data and produce the structured preprocessing artifact.
 
@@ -1071,6 +1072,8 @@ def build_preprocess_result(
     replace_unspecified : List[str]
         Vaccine names to suppress from immunization history. Passed
         through to ``process_received_agents``.
+    config_path : Path, optional
+        Path to ``parameters.yaml``. Defaults to the repository configuration.
 
     Returns
     -------
@@ -1093,10 +1096,11 @@ def build_preprocess_result(
 
     Notes
     -----
-    - Reads ``PARAMETERS_PATH`` (``config/parameters.yaml``) on every
-      call to obtain ``date_notice_delivery``, ``chart_diseases_header``,
-      ``preprocess.include_dose``, and ``preprocess.show_validity_markers``.
-      Missing or absent file is treated as empty config (all defaults apply).
+    - Reads ``config_path`` on every call to obtain ``date_notice_delivery``,
+      ``chart_diseases_header``, ``preprocess.include_dose``, and
+      ``preprocess.show_validity_markers``. If no path is provided,
+      ``PARAMETERS_PATH`` (``config/parameters.yaml``) is used. A missing file
+      is treated as empty config (all defaults apply).
     - Warns (does not raise) for: missing board name, missing date of
       birth, duplicate client IDs, ``all_absent`` validity when
       ``show_validity_markers`` is ``True``, ``mixed`` validity when
@@ -1106,9 +1110,10 @@ def build_preprocess_result(
     working = normalize_dataframe(df)
 
     # Load parameters for date_notice_delivery and chart_diseases_header
+    parameters_path = config_path if config_path is not None else PARAMETERS_PATH
     params = {}
-    if PARAMETERS_PATH.exists():
-        params = yaml.safe_load(PARAMETERS_PATH.read_text(encoding="utf-8")) or {}
+    if parameters_path.exists():
+        params = yaml.safe_load(parameters_path.read_text(encoding="utf-8")) or {}
     date_notice_delivery: Optional[str] = params.get("date_notice_delivery")
     chart_diseases_header: List[str] = params.get("chart_diseases_header", [])
     preprocess_cfg: Dict[str, Any] = params.get("preprocess", {})

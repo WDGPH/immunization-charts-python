@@ -438,6 +438,33 @@ class TestBuildTemplateContext:
         assert "show_validity_markers" in context
         assert context["show_validity_markers"] in ("true", "false")
 
+    def test_build_template_context_uses_explicit_config_path(
+        self, tmp_path: Path
+    ) -> None:
+        """Verify notice flags and chart headers come from the selected config."""
+        config_path = tmp_path / "parameters.yaml"
+        config_path.write_text(
+            "\n".join(
+                [
+                    "chart_diseases_header:",
+                    "  - Custom Disease",
+                    "preprocess:",
+                    "  show_validity_markers: true",
+                    "qr:",
+                    "  enabled: false",
+                ]
+            ),
+            encoding="utf-8",
+        )
+        client = sample_input.create_test_client_record()
+
+        context = generate_notices.build_template_context(
+            client, config_path=config_path
+        )
+
+        assert context["show_validity_markers"] == "true"
+        assert "Custom Disease" in context["chart_diseases_translated"]
+
 
 @pytest.mark.unit
 class TestLoadTemplateModule:

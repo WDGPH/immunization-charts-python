@@ -351,7 +351,9 @@ def to_typ_value(value) -> str:
     raise TypeError(f"Unsupported value type for Typst conversion: {type(value)!r}")
 
 
-def load_and_translate_chart_diseases(language: str) -> List[str]:
+def load_and_translate_chart_diseases(
+    language: str, config_path: Path | None = None
+) -> List[str]:
     """Load and translate the chart disease list from configuration.
 
     Loads chart_diseases_header from config/parameters.yaml and translates each
@@ -363,13 +365,15 @@ def load_and_translate_chart_diseases(language: str) -> List[str]:
     ----------
     language : str
         Language code (e.g., "en", "fr").
+    config_path : Path, optional
+        Path to ``parameters.yaml``. Defaults to the repository configuration.
 
     Returns
     -------
     List[str]
         List of translated disease names in order.
     """
-    config = load_config()
+    config = load_config(config_path)
     chart_diseases_header = config.get("chart_diseases_header", [])
 
     translated_diseases: List[str] = []
@@ -381,7 +385,9 @@ def load_and_translate_chart_diseases(language: str) -> List[str]:
 
 
 def build_template_context(
-    client: ClientRecord, qr_output_dir: Path | None = None
+    client: ClientRecord,
+    qr_output_dir: Path | None = None,
+    config_path: Path | None = None,
 ) -> Dict[str, str]:
     """Build template context from client data.
 
@@ -396,13 +402,15 @@ def build_template_context(
         Client record with all required fields.
     qr_output_dir : Path, optional
         Directory containing QR code PNG files.
+    config_path : Path, optional
+        Path to ``parameters.yaml``. Defaults to the repository configuration.
 
     Returns
     -------
     Dict[str, str]
         Template context with translated disease names and formatted date.
     """
-    config = load_config()
+    config = load_config(config_path)
     preprocess_cfg: Dict[str, object] = config.get("preprocess", {})
     show_validity_markers = bool(
         preprocess_cfg.get("show_validity_markers", False)
@@ -447,7 +455,9 @@ def build_template_context(
         client_data["qr_url"] = client.qr["payload"]
 
     # Load and translate chart disease header
-    chart_diseases_translated = load_and_translate_chart_diseases(client.language)
+    chart_diseases_translated = load_and_translate_chart_diseases(
+        client.language, config_path
+    )
 
     # Translate vaccines_due_list to display labels
     vaccines_due_array_translated: List[str] = []
@@ -534,6 +544,7 @@ def render_notice(
     signature: Path,
     renderers: dict,
     qr_output_dir: Path | None = None,
+    config_path: Path | None = None,
 ) -> str:
     """Render a Typst notice for a single client using provided renderers.
 
@@ -551,6 +562,8 @@ def render_notice(
         Language code to render_notice function mapping from build_language_renderers()
     qr_output_dir : Path, optional
         Directory containing QR code PNG files
+    config_path : Path, optional
+        Path to ``parameters.yaml``. Defaults to the repository configuration.
 
     Returns
     -------
@@ -559,7 +572,7 @@ def render_notice(
     """
     language = Language.from_string(client.language)
     renderer = get_language_renderer(language, renderers)
-    context = build_template_context(client, qr_output_dir)
+    context = build_template_context(client, qr_output_dir, config_path)
     return renderer(
         context,
         logo_path=to_root_relative(logo),
@@ -573,6 +586,7 @@ def generate_typst_files(
     logo_path: Path,
     signature_path: Path,
     template_dir: Path,
+    config_path: Path | None = None,
 ) -> List[Path]:
     """Generate Typst template files for all clients in payload.
 
@@ -588,6 +602,8 @@ def generate_typst_files(
         Path to signature image
     template_dir : Path
         Directory containing language template modules
+    config_path : Path, optional
+        Path to ``parameters.yaml``. Defaults to the repository configuration.
 
     Returns
     -------
@@ -615,6 +631,7 @@ def generate_typst_files(
             signature=signature_path,
             renderers=renderers,
             qr_output_dir=qr_output_dir,
+            config_path=config_path,
         )
         filename = f"{language}_notice_{client.sequence}_{client.client_id}.typ"
         file_path = typst_output_dir / filename
@@ -630,6 +647,7 @@ def main(
     logo_path: Path,
     signature_path: Path,
     template_dir: Path,
+    config_path: Path | None = None,
 ) -> List[Path]:
     """Main entry point for Typst notice generation.
 
@@ -645,6 +663,8 @@ def main(
         Path to the signature image.
     template_dir : Path
         Directory containing language template modules.
+    config_path : Path, optional
+        Path to ``parameters.yaml``. Defaults to the repository configuration.
 
     Returns
     -------
@@ -658,6 +678,7 @@ def main(
         logo_path,
         signature_path,
         template_dir,
+        config_path,
     )
     print(
         f"Generated {len(generated)} Typst files in {output_dir} for language {payload.language}"

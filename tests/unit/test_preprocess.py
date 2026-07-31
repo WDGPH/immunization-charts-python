@@ -610,6 +610,39 @@ class TestBuildPreprocessResult:
         columns = client.received[0].get("columns")
         assert isinstance(columns, dict) and "Diphtheria" in columns
 
+    def test_build_result_uses_explicit_config_path(
+        self, tmp_path: Path, default_vaccine_reference
+    ) -> None:
+        """Verify an explicit config controls dose formatting and validity markers."""
+        config_path = tmp_path / "parameters.yaml"
+        config_path.write_text(
+            "\n".join(
+                [
+                    "preprocess:",
+                    "  include_dose: false",
+                    "  show_validity_markers: true",
+                ]
+            ),
+            encoding="utf-8",
+        )
+        df = sample_input.create_test_input_dataframe(num_clients=1)
+        df["OVERDUE DISEASE"] = ["DTaP - 2"]
+        df["IMMS GIVEN"] = ["May 1, 2020 - DTaP"]
+
+        result = preprocess.build_preprocess_result(
+            df,
+            language="en",
+            vaccine_reference=default_vaccine_reference,
+            replace_unspecified=[],
+            config_path=config_path,
+        )
+
+        assert result.clients[0].vaccines_due_list == ["DTaP - 2"]
+        assert any(
+            "no validity data was detected in the dataset" in warning
+            for warning in result.warnings
+        )
+
     def test_build_result_handles_missing_board_name_with_warning(
         self, default_vaccine_reference
     ) -> None:
