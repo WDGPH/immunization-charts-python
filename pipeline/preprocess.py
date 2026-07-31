@@ -399,37 +399,54 @@ def normalize(col: str) -> str:
     return col_normalized
 
 
+def split_vaccine_due_entry(item: str) -> tuple[str, str | None]:
+    """Separate a disease name from its optional dose field."""
+
+    disease, separator, dose = item.strip().rpartition(" -")
+    if not separator:
+        return item.strip(), None
+    return disease.strip(), dose.strip()
+
+
+def hide_vaccine_due_doses(vaccine_due_list: list[str]) -> list[str]:
+    """Remove supplied dose fields while preserving ordinary disease labels."""
+
+    return [split_vaccine_due_entry(item)[0] for item in vaccine_due_list]
+
+
 def format_vaccine_due_list(vaccine_due_list: list[str]) -> list[str]:
-    """Format vaccine due entries as '<name> (dose #<dose>)'."""
+    """Format dose-bearing overdue entries for display."""
 
     formatted: list[str] = []
     for item in vaccine_due_list:
-        first_part, sep, second_part = item.rpartition(" - ")
-        if not sep:
-            formatted.append(item.strip())
+        disease, dose = split_vaccine_due_entry(item)
+        if dose is None:
+            raise ValueError(
+                "preprocess.include_dose requires overdue entries using the "
+                "'<disease> - <dose>' schema"
+            )
+
+        if not dose:
+            formatted.append(disease)
             continue
 
-        if not second_part.strip():
-            formatted.append(item.strip())
-            continue
-
-        if second_part.strip()[-1] == '1':
-            formatted.append(f"{first_part.strip()} ({second_part.strip()}st dose)")
-        elif second_part.strip()[-1] == '2':
-            formatted.append(f"{first_part.strip()} ({second_part.strip()}nd dose)")
-        elif second_part.strip()[-1] == '3':
-            formatted.append(f"{first_part.strip()} ({second_part.strip()}rd dose)")
+        if dose[-1] == "1":
+            formatted.append(f"{disease} ({dose}st dose)")
+        elif dose[-1] == "2":
+            formatted.append(f"{disease} ({dose}nd dose)")
+        elif dose[-1] == "3":
+            formatted.append(f"{disease} ({dose}rd dose)")
         else:
             # Ensure separated section is an integer within vaccine series range
             try:
-                if int(second_part.strip()) < 10:
-                    formatted.append(f"{first_part.strip()} ({second_part.strip()}th dose)")
+                if int(dose) < 10:
+                    formatted.append(f"{disease} ({dose}th dose)")
                 else:
                     LOG.warning(
                         f"Vaccine with ' - ' separator but invalid dose number: {item}"
                     )
                     formatted.append(item.strip())
-                
+
             except (ValueError, TypeError):
                 formatted.append(item.strip())
 
@@ -1121,7 +1138,7 @@ def build_preprocess_result(
     date_notice_delivery: Optional[str] = params.get("date_notice_delivery")
     chart_diseases_header: List[str] = params.get("chart_diseases_header", [])
     preprocess_cfg: Dict[str, Any] = params.get("preprocess", {})
-    include_dose: bool = preprocess_cfg.get("include_dose", True)
+    include_dose: bool = preprocess_cfg.get("include_dose", False)
     show_validity_markers: bool = preprocess_cfg.get("show_validity_markers", False)
 
     working["SCHOOL_ID"] = working.apply(
@@ -1193,8 +1210,17 @@ def build_preprocess_result(
         vaccines_due_list = [
             item.strip() for item in vaccines_due.split(",") if item.strip()
         ]
+        for item in vaccines_due_list:
+            disease, dose = split_vaccine_due_entry(item)
+            if dose == "":
+                warnings.add(
+                    f"Blank overdue dose number for client {client_id}: {disease}. "
+                    "Displaying disease without a dose number."
+                )
         if include_dose:
             vaccines_due_list = format_vaccine_due_list(vaccines_due_list)
+        else:
+            vaccines_due_list = hide_vaccine_due_doses(vaccines_due_list)
         received = build_received_rows(
             row.IMMS_GIVEN,  # type: ignore[attr-defined]
             replace_unspecified,

@@ -117,18 +117,18 @@ class TestNormalize:
 class TestFormatVaccineDueList:
     """Unit tests for overdue-vaccine dose formatting."""
 
-    def test_preserves_entries_with_empty_dose_suffix(self) -> None:
-        """Verify an empty dose suffix is preserved without raising an error.
+    def test_empty_dose_suffix_displays_only_disease(self) -> None:
+        """Verify an empty dose suffix displays only the disease name.
 
         Real-world significance:
         - Source exports can contain a separator without a dose number
         - One malformed entry must not stop preprocessing for every client
 
-        Assertion: Blank and whitespace-only suffixes remain unformatted
+        Assertion: Blank and whitespace-only suffixes are removed from display
         """
         result = preprocess.format_vaccine_due_list(["Polio - ", "MMR -    "])
 
-        assert result == ["Polio -", "MMR -"]
+        assert result == ["Polio", "MMR"]
 
     def test_empty_suffix_preserves_later_invalid_dose_warning(
         self, caplog: pytest.LogCaptureFixture
@@ -139,12 +139,37 @@ class TestFormatVaccineDueList:
         - A malformed entry can appear before other invalid values in one export
         - Existing warnings for out-of-range dose numbers must remain available
 
-        Assertion: The empty suffix is preserved and the later warning is emitted
+        Assertion: The empty suffix is hidden and the later warning is emitted
         """
         result = preprocess.format_vaccine_due_list(["Polio - ", "MMR - 10"])
 
-        assert result == ["Polio -", "MMR - 10"]
+        assert result == ["Polio", "MMR - 10"]
         assert "invalid dose number: MMR - 10" in caplog.text
+
+    def test_requires_dose_bearing_schema(self) -> None:
+        """Reject dose display when the input has no dose-bearing schema.
+
+        Real-world significance:
+        - Enabling dose display promises recipients a specific overdue dose
+        - Ordinary disease-only input cannot fulfill that configuration
+
+        Assertion: Formatting a disease-only entry raises a configuration error
+        """
+        with pytest.raises(ValueError, match="include_dose requires overdue entries"):
+            preprocess.format_vaccine_due_list(["Polio"])
+
+    def test_hides_supplied_doses_and_preserves_ordinary_entries(self) -> None:
+        """Hide dose fields while preserving ordinary overdue entries.
+
+        Real-world significance:
+        - Sites that disable dose display may use either supported input schema
+        - Recipients should see the same disease list without supplied dose numbers
+
+        Assertion: Dose fields are removed and disease-only entries are unchanged
+        """
+        result = preprocess.hide_vaccine_due_doses(["Polio - 2", "MMR"])
+
+        assert result == ["Polio", "MMR"]
 
 
 @pytest.mark.unit
@@ -647,7 +672,14 @@ class TestBuildPreprocessResult:
     def test_build_result_uses_explicit_config_path(
         self, tmp_path: Path, default_vaccine_reference
     ) -> None:
-        """Verify an explicit config controls dose formatting and validity markers."""
+        """Verify an explicit config controls dose display and validity markers.
+
+        Real-world significance:
+        - A selected site configuration must override repository defaults
+        - Disabling dose display must remove supplied dose numbers from notices
+
+        Assertion: The dose is hidden and the selected marker warning is emitted
+        """
         config_path = tmp_path / "parameters.yaml"
         config_path.write_text(
             "\n".join(
@@ -671,7 +703,7 @@ class TestBuildPreprocessResult:
             config_path=config_path,
         )
 
-        assert result.clients[0].vaccines_due_list == ["DTaP - 2"]
+        assert result.clients[0].vaccines_due_list == ["DTaP"]
         assert any(
             "no validity data was detected in the dataset" in warning
             for warning in result.warnings

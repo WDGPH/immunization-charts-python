@@ -288,7 +288,7 @@ class TestPreprocessOutputContracts:
                     "  - Pertussis",
                     "  - Other",
                     "preprocess:",
-                    "  include_dose: true",
+                    "  include_dose: false",
                     "  show_validity_markers: true",
                 ]
             ),
@@ -340,7 +340,7 @@ class TestPreprocessOutputContracts:
                 "  - Pertussis",
                 "  - Other",
                 "preprocess:",
-                "  include_dose: true",
+                "  include_dose: false",
                 "  show_validity_markers: true",
             ]),
             encoding="utf-8",
@@ -386,7 +386,7 @@ class TestPreprocessOutputContracts:
                 "  - Pertussis",
                 "  - Other",
                 "preprocess:",
-                "  include_dose: true",
+                "  include_dose: false",
                 "  show_validity_markers: false",
             ]),
             encoding="utf-8",
@@ -458,3 +458,63 @@ class TestPreprocessOutputContracts:
         assert client.vaccines_due_list is not None
         assert "DTaP (2nd dose)" in client.vaccines_due_list
         assert "DTaP - 2" not in client.vaccines_due_list
+
+    def test_include_dose_requires_dose_bearing_schema(
+        self, tmp_path: Path, default_vaccine_reference
+    ) -> None:
+        """Verify dose display rejects disease-only overdue input.
+
+        Real-world significance:
+        - A site enabling dose display promises a dose number on each notice
+        - Disease-only exports cannot safely satisfy that promise
+
+        Assertion: Preprocessing raises a clear error for the schema mismatch
+        """
+        params_path = tmp_path / "parameters.yaml"
+        params_path.write_text(
+            "preprocess:\n  include_dose: true\n",
+            encoding="utf-8",
+        )
+        df = sample_input.create_test_input_dataframe(num_clients=1)
+        df["OVERDUE DISEASE"] = ["Polio"]
+
+        with pytest.raises(ValueError, match="include_dose requires overdue entries"):
+            preprocess.build_preprocess_result(
+                df,
+                language="en",
+                vaccine_reference=default_vaccine_reference,
+                replace_unspecified=[],
+                config_path=params_path,
+            )
+
+    def test_blank_dose_warns_and_displays_only_disease(
+        self, tmp_path: Path, default_vaccine_reference
+    ) -> None:
+        """Verify a blank dose field warns without blocking notice generation.
+
+        Real-world significance:
+        - Dose-bearing exports may contain an incomplete row
+        - Operators need a warning while recipients still receive a usable list
+
+        Assertion: The disease remains, the empty suffix is hidden, and one warning is returned
+        """
+        params_path = tmp_path / "parameters.yaml"
+        params_path.write_text(
+            "preprocess:\n  include_dose: true\n",
+            encoding="utf-8",
+        )
+        df = sample_input.create_test_input_dataframe(num_clients=1)
+        df["OVERDUE DISEASE"] = ["Polio - "]
+
+        result = preprocess.build_preprocess_result(
+            df,
+            language="en",
+            vaccine_reference=default_vaccine_reference,
+            replace_unspecified=[],
+            config_path=params_path,
+        )
+
+        assert result.clients[0].vaccines_due_list == ["Polio"]
+        assert any(
+            "Blank overdue dose number" in warning for warning in result.warnings
+        )

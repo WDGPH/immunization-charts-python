@@ -69,6 +69,10 @@ Typst Files (with localized, filtered disease names)
 
 These are the most commonly adjusted options in `parameters.yaml`:
 
+- `preprocess.include_dose`: When `false` (the default), supplied dose numbers
+  are hidden and disease-only overdue lists continue normally. When `true`, every
+  overdue entry must use the `<disease> - <dose>` schema; blank dose numbers warn
+  and display only the disease name.
 - `qr.enabled`: Enable or disable QR code generation (true/false)
 - `encryption.enabled`: Enable or disable PDF encryption (true/false)
 - `bundling.bundle_size`: Enable bundling with at most N clients per bundle (0 disables bundling)
