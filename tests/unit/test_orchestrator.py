@@ -209,6 +209,94 @@ class TestPipelineSteps:
             )
             assert result is False
 
+    def test_run_step_2_passes_selected_config_path(self, tmp_path: Path) -> None:
+        """Verify Step 2 reads preprocessing flags from the selected config directory.
+
+        Real-world significance:
+        - The --config option must control include_dose and validity handling
+        - Step 2 remains independently rerunnable from its disk inputs
+        """
+        result = MagicMock(clients=[], warnings=[])
+        config_dir = tmp_path / "selected-config"
+
+        with (
+            patch(
+                "pipeline.orchestrator.preprocess.configure_logging",
+                return_value=tmp_path / "preprocess.log",
+            ),
+            patch(
+                "pipeline.orchestrator.preprocess.read_input",
+                return_value=MagicMock(),
+            ),
+            patch(
+                "pipeline.orchestrator.preprocess.map_columns",
+                return_value=(MagicMock(), {}),
+            ),
+            patch(
+                "pipeline.orchestrator.preprocess.filter_columns",
+                return_value=MagicMock(),
+            ),
+            patch(
+                "pipeline.orchestrator.preprocess.normalize_dataframe",
+                return_value=MagicMock(),
+            ),
+            patch(
+                "pipeline.orchestrator.preprocess.check_addresses_complete",
+                return_value=MagicMock(),
+            ) as mock_check_addresses,
+            patch(
+                "pipeline.orchestrator.preprocess.build_preprocess_result",
+                return_value=result,
+            ) as mock_build_result,
+            patch(
+                "pipeline.orchestrator.preprocess.write_artifact",
+                return_value=tmp_path / "artifact.json",
+            ),
+            patch("builtins.print"),
+        ):
+            total_clients = orchestrator.run_step_2_preprocess(
+                input_dir=tmp_path,
+                input_file="students.xlsx",
+                output_dir=tmp_path / "output",
+                language="en",
+                run_id="test_run",
+                config_dir=config_dir,
+            )
+
+        assert total_clients == 0
+        assert mock_build_result.call_args.args[0] is mock_check_addresses.return_value
+        assert mock_build_result.call_args.kwargs["config_path"] == (
+            config_dir / "parameters.yaml"
+        )
+
+    def test_run_step_4_passes_selected_config_path(self, tmp_path: Path) -> None:
+        """Verify Step 4 renders notices with the selected configuration file."""
+        output_dir = tmp_path / "output"
+        template_dir = tmp_path / "templates"
+        config_dir = tmp_path / "selected-config"
+
+        with (
+            patch(
+                "pipeline.orchestrator.generate_notices.main", return_value=[]
+            ) as mock_generate,
+            patch("builtins.print"),
+        ):
+            orchestrator.run_step_4_generate_notices(
+                output_dir=output_dir,
+                run_id="test_run",
+                template_dir=template_dir,
+                config_dir=config_dir,
+            )
+
+        mock_generate.assert_called_once_with(
+            output_dir / "artifacts" / "preprocessed_clients_test_run.json",
+            output_dir / "artifacts",
+            template_dir / "assets" / "logo.png",
+            template_dir / "assets" / "signature.png",
+            template_dir,
+            config_path=config_dir / "parameters.yaml",
+        )
+
     def test_run_step_3_generate_qr_codes_disabled(
         self, tmp_output_structure: dict, config_file: Path
     ) -> None:

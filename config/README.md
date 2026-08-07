@@ -70,6 +70,10 @@ Typst Files (with localized, filtered disease names)
 
 These are the most commonly adjusted options in `parameters.yaml`:
 
+- `preprocess.include_dose`: When `false` (the default), supplied dose numbers
+  are hidden and disease-only overdue lists continue normally. When `true`, every
+  overdue entry must use the `<disease> - <dose>` schema; blank dose numbers warn
+  and display only the disease name.
 - `qr.enabled`: Enable or disable QR code generation (true/false)
 - `encryption.enabled`: Enable or disable PDF encryption (true/false)
 - `bundling.bundle_size`: Enable bundling with at most N clients per bundle (0 disables bundling)
@@ -190,6 +194,11 @@ chart_diseases_header:
 - Unplanned/unexpected diseases are grouped under "Other"
 - All column headers are properly localized before template rendering
 - No runtime lookups needed in Typst; translations applied in Python
+
+**Same-Date Validity Grouping:**
+- Each vaccine has one validity status, which applies to every displayed disease column populated by that vaccine.
+- Vaccines given on the same date remain in one row when their statuses populate different displayed disease columns.
+- Separate rows are created only when valid and invalid vaccines would populate the same displayed column, including vaccines grouped under "Other", so each displayed marker remains unambiguous.
 
 ---
 

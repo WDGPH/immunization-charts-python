@@ -42,6 +42,7 @@ from __future__ import annotations
 import importlib.util
 import json
 import logging
+import re
 import sys
 from pathlib import Path
 from typing import Dict, List, Mapping, Sequence
@@ -61,6 +62,10 @@ ROOT_DIR = SCRIPT_DIR.parent
 
 LOG = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+
+_DOSE_LABEL_PATTERN = re.compile(
+    r"^(?P<disease>.+) \((?P<dose_label>(?P<number>\d+)(?:st|nd|rd|th) dose)\)$"
+)
 
 
 def load_template_module(template_dir: Path, language_code: str):
@@ -351,7 +356,9 @@ def to_typ_value(value) -> str:
     raise TypeError(f"Unsupported value type for Typst conversion: {type(value)!r}")
 
 
-def load_and_translate_chart_diseases(language: str) -> List[str]:
+def load_and_translate_chart_diseases(
+    language: str, config_path: Path | None = None
+) -> List[str]:
     """Load and translate the chart disease list from configuration.
 
     Loads chart_diseases_header from config/parameters.yaml and translates each
@@ -363,13 +370,15 @@ def load_and_translate_chart_diseases(language: str) -> List[str]:
     ----------
     language : str
         Language code (e.g., "en", "fr").
+    config_path : Path, optional
+        Path to ``parameters.yaml``. Defaults to the repository configuration.
 
     Returns
     -------
     List[str]
         List of translated disease names in order.
     """
-    config = load_config()
+    config = load_config(config_path)
     chart_diseases_header = config.get("chart_diseases_header", [])
 
     translated_diseases: List[str] = []
@@ -380,8 +389,47 @@ def load_and_translate_chart_diseases(language: str) -> List[str]:
     return translated_diseases
 
 
+def _localize_vaccine_due_label(label: str, language: str) -> str:
+    """Localize a canonical overdue disease label and optional dose suffix.
+
+    Preprocessing stores dose-specific entries in the stable English form
+    ``<disease> (<ordinal> dose)``. Translate the disease and generated suffix
+    separately so that the composite label does not miss the exact disease
+    translation lookup.
+
+    Parameters
+    ----------
+    label : str
+        Canonical overdue disease label, optionally with a dose suffix.
+    language : str
+        Language code for the notice.
+
+    Returns
+    -------
+    str
+        Localized overdue disease and dose label.
+    """
+    match = _DOSE_LABEL_PATTERN.fullmatch(label)
+    if match is None:
+        return display_label("diseases_overdue", label, language, strict=False)
+
+    disease = display_label(
+        "diseases_overdue", match.group("disease"), language, strict=False
+    )
+    number = match.group("number")
+    if language == "fr":
+        ordinal = f"{number}{'re' if number == '1' else 'e'}"
+        return f"{disease} ({ordinal} dose)"
+
+    # Preserve the artifact's established English suffix for English and any
+    # unsupported language that reaches this already validated rendering path.
+    return f"{disease} ({match.group('dose_label')})"
+
+
 def build_template_context(
-    client: ClientRecord, qr_output_dir: Path | None = None
+    client: ClientRecord,
+    qr_output_dir: Path | None = None,
+    config_path: Path | None = None,
 ) -> Dict[str, str]:
     """Build template context from client data.
 
@@ -396,13 +444,19 @@ def build_template_context(
         Client record with all required fields.
     qr_output_dir : Path, optional
         Directory containing QR code PNG files.
+    config_path : Path, optional
+        Path to ``parameters.yaml``. Defaults to the repository configuration.
 
     Returns
     -------
     Dict[str, str]
         Template context with translated disease names and formatted date.
     """
-    config = load_config()
+    config = load_config(config_path)
+    preprocess_cfg: Dict[str, object] = config.get("preprocess", {})
+    show_validity_markers = bool(
+        preprocess_cfg.get("show_validity_markers", False)
+    )
 
     # Load and format date_data_cutoff for the client's language
     date_data_cutoff_iso = config.get("date_data_cutoff")
@@ -443,15 +497,15 @@ def build_template_context(
         client_data["qr_url"] = client.qr["payload"]
 
     # Load and translate chart disease header
-    chart_diseases_translated = load_and_translate_chart_diseases(client.language)
+    chart_diseases_translated = load_and_translate_chart_diseases(
+        client.language, config_path
+    )
 
     # Translate vaccines_due_list to display labels
     vaccines_due_array_translated: List[str] = []
     if client.vaccines_due_list:
         for disease in client.vaccines_due_list:
-            label = display_label(
-                "diseases_overdue", disease, client.language, strict=False
-            )
+            label = _localize_vaccine_due_label(disease, client.language)
             vaccines_due_array_translated.append(label)
 
     # Translate vaccines_due string
@@ -461,22 +515,20 @@ def build_template_context(
         else ""
     )
 
-    # Translate received records' diseases
+    # Translate received records' column keys
     received_translated: List[Dict[str, object]] = []
     if client.received:
         for record in client.received:
             translated_record = dict(record)
-            # Translate diseases field (not vaccine)
-            if "diseases" in translated_record and isinstance(
-                translated_record["diseases"], list
+            if "columns" in translated_record and isinstance(
+                translated_record["columns"], dict
             ):
-                translated_diseases = []
-                for disease in translated_record["diseases"]:
-                    label = display_label(
+                translated_record["columns"] = {
+                    display_label(
                         "diseases_chart", disease, client.language, strict=False
-                    )
-                    translated_diseases.append(label)
-                translated_record["diseases"] = translated_diseases
+                    ): status
+                    for disease, status in translated_record["columns"].items()
+                }
             received_translated.append(translated_record)
 
     return {
@@ -487,6 +539,7 @@ def build_template_context(
         "received": to_typ_value(received_translated),
         "num_rows": str(len(received_translated)),
         "chart_diseases_translated": to_typ_value(chart_diseases_translated),
+        "show_validity_markers": to_typ_value(show_validity_markers),
     }
 
 
@@ -531,6 +584,7 @@ def render_notice(
     signature: Path,
     renderers: dict,
     qr_output_dir: Path | None = None,
+    config_path: Path | None = None,
 ) -> str:
     """Render a Typst notice for a single client using provided renderers.
 
@@ -548,6 +602,8 @@ def render_notice(
         Language code to render_notice function mapping from build_language_renderers()
     qr_output_dir : Path, optional
         Directory containing QR code PNG files
+    config_path : Path, optional
+        Path to ``parameters.yaml``. Defaults to the repository configuration.
 
     Returns
     -------
@@ -556,7 +612,7 @@ def render_notice(
     """
     language = Language.from_string(client.language)
     renderer = get_language_renderer(language, renderers)
-    context = build_template_context(client, qr_output_dir)
+    context = build_template_context(client, qr_output_dir, config_path)
     return renderer(
         context,
         logo_path=to_root_relative(logo),
@@ -570,6 +626,7 @@ def generate_typst_files(
     logo_path: Path,
     signature_path: Path,
     template_dir: Path,
+    config_path: Path | None = None,
 ) -> List[Path]:
     """Generate Typst template files for all clients in payload.
 
@@ -585,6 +642,8 @@ def generate_typst_files(
         Path to signature image
     template_dir : Path
         Directory containing language template modules
+    config_path : Path, optional
+        Path to ``parameters.yaml``. Defaults to the repository configuration.
 
     Returns
     -------
@@ -612,6 +671,7 @@ def generate_typst_files(
             signature=signature_path,
             renderers=renderers,
             qr_output_dir=qr_output_dir,
+            config_path=config_path,
         )
         filename = f"{language}_notice_{client.sequence}_{client.client_id}.typ"
         file_path = typst_output_dir / filename
@@ -627,6 +687,7 @@ def main(
     logo_path: Path,
     signature_path: Path,
     template_dir: Path,
+    config_path: Path | None = None,
 ) -> List[Path]:
     """Main entry point for Typst notice generation.
 
@@ -642,6 +703,8 @@ def main(
         Path to the signature image.
     template_dir : Path
         Directory containing language template modules.
+    config_path : Path, optional
+        Path to ``parameters.yaml``. Defaults to the repository configuration.
 
     Returns
     -------
@@ -655,6 +718,7 @@ def main(
         logo_path,
         signature_path,
         template_dir,
+        config_path,
     )
     print(
         f"Generated {len(generated)} Typst files in {output_dir} for language {payload.language}"

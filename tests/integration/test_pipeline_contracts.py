@@ -235,7 +235,294 @@ class TestDownstreamWorkflowContracts:
         assert config["encryption"]["enabled"] is True
         assert config["bundling"]["bundle_size"] > 0
 
+        
+@pytest.mark.integration
+class TestPreprocessOutputContracts:
+    """Step 2 preprocessing output contracts: disease normalization and validity warnings."""
 
+    def test_disease_alias_normalized_to_canonical_name(
+        self, default_vaccine_reference
+    ) -> None:
+        """Verify disease aliases in OVERDUE DISEASE are canonicalized in the artifact.
+
+        Real-world significance:
+        - Input data may contain alias names (e.g., "Poliomyelitis" instead of "Polio")
+        - Notice generation and translation both rely on canonical names for lookup;
+          an alias left in vaccines_due_list causes the wrong label on the printed notice
+
+        Assertion: vaccines_due_list contains "Polio", not the raw alias "Poliomyelitis"
+        """
+        df = sample_input.create_test_input_dataframe(num_clients=1)
+        df["OVERDUE DISEASE"] = ["Poliomyelitis"]
+
+        result = preprocess.build_preprocess_result(
+            df,
+            language="en",
+            vaccine_reference=default_vaccine_reference,
+            replace_unspecified=[],
+        )
+
+        client = result.clients[0]
+        assert client.vaccines_due_list is not None
+        assert "Polio" in client.vaccines_due_list
+        assert "Poliomyelitis" not in client.vaccines_due_list
+
+    def test_unknown_validity_warns_when_markers_enabled(
+        self, tmp_path: Path, monkeypatch, default_vaccine_reference
+    ) -> None:
+        """Verify a dataset-level warning fires when show_validity_markers is on but no validity data is present.
+
+        Real-world significance:
+        - When show_validity_markers is on but the dataset contains no validity indicators,
+          a dataset-level warning surfaces so the user knows validity cannot be displayed
+        - The warning must surface in result.warnings so the orchestrator can display
+          it to the user before the batch is finalized; doses are still captured
+
+        Assertion: result.warnings contains a dataset-level "no validity data" warning
+                   and the client's received record is still populated
+        """
+        params_path = tmp_path / "parameters.yaml"
+        params_path.write_text(
+            "\n".join(
+                [
+                    "date_notice_delivery: '2025-04-08'",
+                    "chart_diseases_header:",
+                    "  - Diphtheria",
+                    "  - Tetanus",
+                    "  - Pertussis",
+                    "  - Other",
+                    "preprocess:",
+                    "  include_dose: false",
+                    "  show_validity_markers: true",
+                ]
+            ),
+            encoding="utf-8",
+        )
+        monkeypatch.setattr(preprocess, "PARAMETERS_PATH", params_path)
+
+        df = sample_input.create_test_input_dataframe(num_clients=1)
+        df["IMMS GIVEN"] = ["May 1, 2020 - DTaP"]
+
+        result = preprocess.build_preprocess_result(
+            df,
+            language="en",
+            vaccine_reference=default_vaccine_reference,
+            replace_unspecified=[],
+        )
+
+        assert len(result.clients) == 1
+        client = result.clients[0]
+        assert client.received is not None
+        assert len(client.received) > 0
+
+        validity_warnings = [
+            w for w in result.warnings if "no validity data was detected in the dataset" in w
+        ]
+        assert len(validity_warnings) == 1
+
+    def test_mixed_validity_with_markers_enabled_raises_value_error(
+        self, tmp_path: Path, monkeypatch, default_vaccine_reference
+    ) -> None:
+        """Verify a ValueError is raised when the dataset has mixed validity and show_validity_markers is on.
+
+        Real-world significance:
+        - A dataset where some doses carry - Valid/- Invalid and others do not
+          cannot display markers reliably; the pipeline must fail loudly so
+          the user can fix the source data rather than silently produce notices
+          with inconsistent or misleading validity markers
+
+        Assertion: build_preprocess_result raises ValueError containing
+                   guidance on the mixed-data condition
+        """
+        params_path = tmp_path / "parameters.yaml"
+        params_path.write_text(
+            "\n".join([
+                "date_notice_delivery: '2025-04-08'",
+                "chart_diseases_header:",
+                "  - Diphtheria",
+                "  - Tetanus",
+                "  - Pertussis",
+                "  - Other",
+                "preprocess:",
+                "  include_dose: false",
+                "  show_validity_markers: true",
+            ]),
+            encoding="utf-8",
+        )
+        monkeypatch.setattr(preprocess, "PARAMETERS_PATH", params_path)
+
+        df = sample_input.create_test_input_dataframe(num_clients=2)
+        # First client has a suffixed dose; second has an un-suffixed dose → mixed
+        df["IMMS GIVEN"] = [
+            "May 1, 2020 - DTaP - Valid",
+            "Jun 15, 2021 - MMR",
+        ]
+
+        with pytest.raises(ValueError, match="mix of records with and without validity indicators"):
+            preprocess.build_preprocess_result(
+                df,
+                language="en",
+                vaccine_reference=default_vaccine_reference,
+                replace_unspecified=[],
+            )
+
+    def test_mixed_validity_with_markers_disabled_warns_and_succeeds(
+        self, tmp_path: Path, monkeypatch, default_vaccine_reference
+    ) -> None:
+        """Verify a dataset-level warning fires for mixed validity when show_validity_markers is off.
+
+        Real-world significance:
+        - When validity markers are disabled the mixed-data condition is not
+          fatal; a warning surfaces to prompt the user to investigate their
+          source data, but all clients are still processed and notices can
+          be generated
+
+        Assertion: result.warnings contains a "mixed" dataset warning and
+                   all clients are returned
+        """
+        params_path = tmp_path / "parameters.yaml"
+        params_path.write_text(
+            "\n".join([
+                "date_notice_delivery: '2025-04-08'",
+                "chart_diseases_header:",
+                "  - Diphtheria",
+                "  - Tetanus",
+                "  - Pertussis",
+                "  - Other",
+                "preprocess:",
+                "  include_dose: false",
+                "  show_validity_markers: false",
+            ]),
+            encoding="utf-8",
+        )
+        monkeypatch.setattr(preprocess, "PARAMETERS_PATH", params_path)
+
+        df = sample_input.create_test_input_dataframe(num_clients=2)
+        df["IMMS GIVEN"] = [
+            "May 1, 2020 - DTaP - Valid",
+            "Jun 15, 2021 - MMR",
+        ]
+
+        result = preprocess.build_preprocess_result(
+            df,
+            language="en",
+            vaccine_reference=default_vaccine_reference,
+            replace_unspecified=[],
+        )
+
+        assert len(result.clients) == 2
+        mixed_warnings = [
+            w for w in result.warnings
+            if "both with and without validity indicators" in w
+        ]
+        assert len(mixed_warnings) == 1
+
+    def test_include_dose_formats_vaccines_due_list(
+        self, tmp_path: Path, monkeypatch, default_vaccine_reference
+    ) -> None:
+        """Verify include_dose: true causes dose-numbered entries to be formatted in vaccines_due_list.
+
+        Real-world significance:
+        - When include_dose is enabled, an OVERDUE DISEASE entry like "DTaP - 2"
+          must arrive at Step 4 (notice generation) as "DTaP (2nd dose)"
+        - If the formatting step is skipped, the raw " - 2" suffix appears
+          verbatim on the printed notice, which is confusing to recipients
+
+        Assertion: vaccines_due_list contains the formatted "DTaP (2nd dose)"
+                   form, not the raw "DTaP - 2" string
+        """
+        params_path = tmp_path / "parameters.yaml"
+        params_path.write_text(
+            "\n".join([
+                "date_notice_delivery: '2025-04-08'",
+                "chart_diseases_header:",
+                "  - Diphtheria",
+                "  - Tetanus",
+                "  - Pertussis",
+                "  - Other",
+                "preprocess:",
+                "  include_dose: true",
+                "  show_validity_markers: false",
+            ]),
+            encoding="utf-8",
+        )
+        monkeypatch.setattr(preprocess, "PARAMETERS_PATH", params_path)
+
+        df = sample_input.create_test_input_dataframe(num_clients=1)
+        df["OVERDUE DISEASE"] = ["DTaP - 2"]
+
+        result = preprocess.build_preprocess_result(
+            df,
+            language="en",
+            vaccine_reference=default_vaccine_reference,
+            replace_unspecified=[],
+        )
+
+        client = result.clients[0]
+        assert client.vaccines_due_list is not None
+        assert "DTaP (2nd dose)" in client.vaccines_due_list
+        assert "DTaP - 2" not in client.vaccines_due_list
+
+    def test_include_dose_requires_dose_bearing_schema(
+        self, tmp_path: Path, default_vaccine_reference
+    ) -> None:
+        """Verify dose display rejects disease-only overdue input.
+
+        Real-world significance:
+        - A site enabling dose display promises a dose number on each notice
+        - Disease-only exports cannot safely satisfy that promise
+
+        Assertion: Preprocessing raises a clear error for the schema mismatch
+        """
+        params_path = tmp_path / "parameters.yaml"
+        params_path.write_text(
+            "preprocess:\n  include_dose: true\n",
+            encoding="utf-8",
+        )
+        df = sample_input.create_test_input_dataframe(num_clients=1)
+        df["OVERDUE DISEASE"] = ["Polio"]
+
+        with pytest.raises(ValueError, match="include_dose requires overdue entries"):
+            preprocess.build_preprocess_result(
+                df,
+                language="en",
+                vaccine_reference=default_vaccine_reference,
+                replace_unspecified=[],
+                config_path=params_path,
+            )
+
+    def test_blank_dose_warns_and_displays_only_disease(
+        self, tmp_path: Path, default_vaccine_reference
+    ) -> None:
+        """Verify a blank dose field warns without blocking notice generation.
+
+        Real-world significance:
+        - Dose-bearing exports may contain an incomplete row
+        - Operators need a warning while recipients still receive a usable list
+
+        Assertion: The disease remains, the empty suffix is hidden, and one warning is returned
+        """
+        params_path = tmp_path / "parameters.yaml"
+        params_path.write_text(
+            "preprocess:\n  include_dose: true\n",
+            encoding="utf-8",
+        )
+        df = sample_input.create_test_input_dataframe(num_clients=1)
+        df["OVERDUE DISEASE"] = ["Polio - "]
+
+        result = preprocess.build_preprocess_result(
+            df,
+            language="en",
+            vaccine_reference=default_vaccine_reference,
+            replace_unspecified=[],
+            config_path=params_path,
+        )
+
+        assert result.clients[0].vaccines_due_list == ["Polio"]
+        assert any(
+            "Blank overdue dose number" in warning for warning in result.warnings
+        )
+        
 # ---------------------------------------------------------------------------
 # PHIX school validation — Step 2 feature toggle contract
 # ---------------------------------------------------------------------------

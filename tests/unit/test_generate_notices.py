@@ -295,6 +295,44 @@ class TestBuildTemplateContext:
         assert "received" in context
         assert "num_rows" in context
 
+    def test_build_template_context_localizes_english_dose_labels(self) -> None:
+        """Verify English notices retain localized disease and dose text.
+
+        Real-world significance:
+        - Dose-specific overdue entries tell recipients which dose is required
+        - Notice localization must not alter established English wording
+
+        Assertion: Context contains English disease names and ordinal dose labels
+        """
+        client = sample_input.create_test_client_record(
+            language="en",
+            vaccines_due_list=["Polio (1st dose)", "Measles (2nd dose)"],
+        )
+
+        context = generate_notices.build_template_context(client)
+
+        assert "Polio (1st dose)" in context["vaccines_due_array"]
+        assert "Measles (2nd dose)" in context["vaccines_due_array"]
+
+    def test_build_template_context_localizes_french_dose_labels(self) -> None:
+        """Verify French notices translate both disease and dose text.
+
+        Real-world significance:
+        - French recipients need the disease and required dose in French
+        - An English dose suffix would leave the notice partially untranslated
+
+        Assertion: Context contains French disease names and ordinal dose labels
+        """
+        client = sample_input.create_test_client_record(
+            language="fr",
+            vaccines_due_list=["Polio (1st dose)", "Measles (2nd dose)"],
+        )
+
+        context = generate_notices.build_template_context(client)
+
+        assert "Poliomyélite (1re dose)" in context["vaccines_due_array"]
+        assert "Rougeole (2e dose)" in context["vaccines_due_array"]
+
     def test_build_template_context_includes_client_id(self) -> None:
         """Verify client_id is in context.
 
@@ -419,6 +457,51 @@ class TestBuildTemplateContext:
         # qr_url should not be in client_data
         client_data_str = context["client_data"]
         assert "qr_url:" not in client_data_str
+
+    def test_build_template_context_includes_show_validity_markers(self) -> None:
+        """Verify show_validity_markers is present in template context.
+
+        Real-world significance:
+        - Templates reference show_validity_markers to conditionally render
+          validity columns; an absent key causes a Typst compile error for
+          every client in the batch
+        - Added in feat/next-dose alongside the validity-marker feature
+
+        Assertion: context contains show_validity_markers as a Typst boolean literal
+        """
+        client = sample_input.create_test_client_record()
+
+        context = generate_notices.build_template_context(client)
+
+        assert "show_validity_markers" in context
+        assert context["show_validity_markers"] in ("true", "false")
+
+    def test_build_template_context_uses_explicit_config_path(
+        self, tmp_path: Path
+    ) -> None:
+        """Verify notice flags and chart headers come from the selected config."""
+        config_path = tmp_path / "parameters.yaml"
+        config_path.write_text(
+            "\n".join(
+                [
+                    "chart_diseases_header:",
+                    "  - Custom Disease",
+                    "preprocess:",
+                    "  show_validity_markers: true",
+                    "qr:",
+                    "  enabled: false",
+                ]
+            ),
+            encoding="utf-8",
+        )
+        client = sample_input.create_test_client_record()
+
+        context = generate_notices.build_template_context(
+            client, config_path=config_path
+        )
+
+        assert context["show_validity_markers"] == "true"
+        assert "Custom Disease" in context["chart_diseases_translated"]
 
 
 @pytest.mark.unit
