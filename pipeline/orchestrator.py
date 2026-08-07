@@ -209,6 +209,7 @@ def run_step_2_preprocess(
     output_dir: Path,
     language: str,
     run_id: str,
+    config_dir: Path,
 ) -> int:
     """Step 2: Preprocessing.
 
@@ -236,7 +237,11 @@ def run_step_2_preprocess(
 
     # Build preprocessing result
     result = preprocess.build_preprocess_result(
-        df, language, vaccine_reference, preprocess.REPLACE_UNSPECIFIED
+        df,
+        language,
+        vaccine_reference,
+        preprocess.REPLACE_UNSPECIFIED,
+        config_path=config_dir / "parameters.yaml",
     )
 
     # Write artifact
@@ -340,6 +345,7 @@ def run_step_4_generate_notices(
         logo_path,
         signature_path,
         template_dir,
+        config_path=config_dir / "parameters.yaml",
     )
     print(f"Generated {len(generated)} Typst files in {artifacts_dir}")
 
@@ -574,6 +580,7 @@ def main() -> int:
             output_dir,
             args.language,
             run_id,
+            config_dir,
         )
         step_duration = time.time() - step_start
         step_times.append(("Preprocessing", step_duration))
