@@ -62,7 +62,7 @@ These branches are initially created from the main branch (ensuring they start w
 
 ## PHU Naming Conventions and Branching
 
-Please name all PHU specific branches or assets according to the naming convention in the ![WDGPH Standards Registry](https://github.com/WDGPH/standards-registry).
+Please name all PHU specific branches or assets according to the naming convention in the [WDGPH Standards Registry](https://github.com/WDGPH/standards-registry).
 
 ## Integrating Changes Between Main and PHU Branches 
 
@@ -81,6 +81,7 @@ One of the most important aspects of this strategy is managing the flow of chang
 Cherry-picking means selecting specific commits from the PHU branch and applying them to main (as opposed to merging the entire branch). 
 
 **We prefer cherry-picking when the PHU branch contains other changes we don't want in main; this allows us to grab just the relevant commit(s).**
+
 *  For example, if PHU-A implemented a new data visualization feature that could be useful to everyone, we would cherry-pick the commits for that feature from phu-A branch into main. 
 * After cherry-picking, the feature would go through the normal review/testing process on main before becoming part of the next release. 
 * In cases where the PHU branch is almost identical to main except for the new feature, a direct merge or opening a pull request from the PHU branch to main is also possible. 
@@ -92,7 +93,7 @@ The decision between cherry-pick vs. merge will be made based on how isolated th
 * If the PHU branch has diverged significantly or has multiple in-progress changes, cherry-pick the specific commit(s) of the target feature. 
 * If the PHU branch is only slightly ahead of main or the feature required changes scattered across many files/commits, it might be cleaner to do a merge (after perhaps rebasing or isolating the changes). 
 
-**TLDR; In our workflow, the default approach will be to cherry-pick PHU features into main for controlled integration, unless a merge is clearly more feasible.** 
+**TLDR;** In our workflow, the default approach will be to cherry-pick PHU features into main for controlled integration, unless a merge is clearly more feasible.
 
 ## Testing and Code Review: 
 

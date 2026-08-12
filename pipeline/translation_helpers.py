@@ -135,7 +135,7 @@ def display_label(
 ) -> str:
     """Translate a canonical disease name to a localized display label.
 
-    Loads translations from config/translations/{domain}.{lang}.json.
+    Loads translations from `config/translations/{domain}.{lang}.json`.
     Falls back leniently to the canonical key if missing (unless strict=True),
     and logs a single warning per unique missing key.
 

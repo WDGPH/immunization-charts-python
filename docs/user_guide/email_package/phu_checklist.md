@@ -12,11 +12,14 @@ Please complete the following items to participate in the automation pilot.
 
 ## 2. Choose Template Option
 Documentation on template options is provided in the “Template Overview” file.  
+
 Select one option:
+
 - [ ] Base Template (faster deployment)
 - [ ] Custom Template (requires additional development time)
 
 If custom, please provide:
+
 - A description of desired customizations
 - Example document (optional)
 
@@ -26,6 +29,7 @@ If custom, please provide:
 Pull your Panorama report to obtain a list of overdue students.
 
 Ensure:
+
 - Correct file naming:
 
 `YYYYMMDD_YourPHU_EN.xlsx`
@@ -41,8 +45,9 @@ Ensure:
 
 ---
 
-## 5. Administrative Informationss
+## 5. Administrative Information
 Include in your submission:
+
 - [ ] Date Panorama was generated
 - [ ] Methods for clients to update records (e.g., website, fax, phone)
 - [ ] Client information resources (e.g., immunization webpage, nurse phone line)

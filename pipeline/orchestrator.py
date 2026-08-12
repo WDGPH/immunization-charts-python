@@ -9,22 +9,23 @@ progress information.
 The pipeline distinguishes between critical and optional steps:
 
 - **Critical Steps** (Notice generation, Compilation, PDF validation) implement fail-fast:
-  - Any error halts the pipeline immediately
-  - No partial output; users get deterministic results
-  - Pipeline exits with code 1; user must investigate and retry
+    - Any error halts the pipeline immediately
+    - No partial output; users get deterministic results
+    - Pipeline exits with code 1; user must investigate and retry
 
 - **Optional Steps** (QR codes, Encryption, Bundling) implement per-item recovery:
-  - Individual item failures (PDF, client, bundle) are logged and skipped
-  - Remaining items continue processing
-  - Pipeline completes successfully even if some items failed
-  - Users are shown summary of successes, skipped, and failed items
+    - Individual item failures (PDF, client, bundle) are logged and skipped
+    - Remaining items continue processing
+    - Pipeline completes successfully even if some items failed
+    - Users are shown summary of successes, skipped, and failed items
 
 - **Infrastructure Errors** (missing files, config errors) always fail-fast:
-  - Caught and raised immediately; no recovery attempts
-  - Prevents confusing partial output caused by misconfiguration
-  - Pipeline exits with code 1
+    - Caught and raised immediately; no recovery attempts
+    - Prevents confusing partial output caused by misconfiguration
+    - Pipeline exits with code 1
 
 **Exit Codes:**
+
 - 0: Pipeline completed successfully
 - 1: Pipeline failed (critical step error or infrastructure error)
 - 2: User cancelled (output preparation step)

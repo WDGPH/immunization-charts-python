@@ -26,43 +26,56 @@ class ClientRecord:
     ------
     sequence : str
         Zero-padded sequence number for the client (e.g., '00001').
+
     client_id : str
         Unique client identifier.
+
     language : str
         ISO 639-1 language code ('en' or 'fr'). Must be a valid Language enum value
         (see pipeline.enums.Language). Validated using Language.from_string() at entry
         points (CLI, configuration loading, preprocessing). All functions assume this
         field contains a valid language code; invalid codes should be caught before
         ClientRecord instantiation.
+
     person : Dict[str, Any]
-        Person details:
-        - full_name: Combined first and last name
-        - first_name: Given name (optional)
-        - last_name: Family name (optional)
-        - date_of_birth: Display format (e.g., "Jan 8, 2025")
-        - date_of_birth_iso: ISO format (YYYY-MM-DD)
-        - date_of_birth_display: Localized display format
-        - age: Calculated age in years
-        - over_16: Boolean flag for age >= 16
+
+        - Person details:
+            - full_name: Combined first and last name
+            - first_name: Given name (optional)
+            - last_name: Family name (optional)
+            - date_of_birth: Display format (e.g., "Jan 8, 2025")
+            - date_of_birth_iso: ISO format (YYYY-MM-DD)
+            - date_of_birth_display: Localized display format
+            - age: Calculated age in years
+            - over_16: Boolean flag for age >= 16
+
     school : Dict[str, Any]
         School information: name, id, code, type.
+
     board : Dict[str, Any]
         School board information: name, id, code.
+
     contact : Dict[str, Any]
         Contact address: street, city, province, postal_code.
+
     vaccines_due : Optional[str]
         Comma-separated string of vaccines due (display format).
+
     vaccines_due_list : Optional[List[str]]
         List of vaccine names/codes due.
+
     received : Optional[Sequence[Dict[str, object]]]
         List of vaccine records already received (structured data).
+
     metadata : Dict[str, object]
         Custom pipeline metadata (warnings, flags, etc.).
+        
     qr : Optional[Dict[str, Any]]
-        QR code information (if generated):
-        - payload: URL encoded in QR code (same string that becomes QR PNG data)
-        - filename: PNG filename (e.g., "qr_code_00001_1234567890.png")
-        - path: Relative path to PNG file
+    
+        - QR code information (if generated):
+            - payload: URL encoded in QR code (same string that becomes QR PNG data)
+            - filename: PNG filename (e.g., "qr_code_00001_1234567890.png")
+            - path: Relative path to PNG file
     """
 
     sequence: str

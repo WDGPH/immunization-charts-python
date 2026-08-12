@@ -12,6 +12,7 @@ Every `.py` file must start with a module-level docstring that explains its purp
 """Brief one-line description of module purpose.
 
 Extended description explaining:
+
 - What problem this module solves
 - Real-world usage significance (how it affects the immunization notices)
 - Key responsibilities/boundaries
@@ -149,6 +150,7 @@ Every function's docstring should explain how its output affects the final immun
 ### 3. Side Effects Are Not Hidden
 
 Document:
+
 - File I/O operations and paths
 - Configuration dependencies
 - Logging side effects

@@ -47,6 +47,7 @@ The Client Information Table can be formatted in 1 of 4 ways:
 #### Dynamic Content 
 
 The content within the box contains the following information about the child: 
+
 * Name
 * Address
 * City 

@@ -66,6 +66,7 @@ tests/
 **Pytest marker:** `@pytest.mark.unit`
 
 Tests verify:
+
 - Single function behavior with realistic inputs
 - Error handling and edge cases
 - Parameter validation
@@ -97,6 +98,7 @@ def test_config_loads_valid_yaml():
 **Pytest marker:** `@pytest.mark.integration`
 
 Tests verify:
+
 - Output from Step N is valid input to Step N+1
 - JSON artifact schema consistency across steps
 - Configuration options actually affect pipeline behavior
@@ -136,6 +138,7 @@ def test_preprocess_output_works_with_qr_generation(tmp_path: Path) -> None:
 **Pytest marker:** `@pytest.mark.e2e`
 
 Tests verify:
+
 - Full pipeline runs without error for valid input
 - Language variants (English, French)
 - Optional features (encryption, batching)

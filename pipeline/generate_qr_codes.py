@@ -8,16 +8,19 @@ The QR code generation step is optional and can be skipped via the qr.enabled
 configuration setting.
 
 **Input Contract:**
+
 - Reads preprocessed artifact JSON (created by preprocess step)
 - Assumes artifact contains valid client records with required fields
 - Assumes qr.enabled=true and qr.payload_template defined in config (if QR generation requested)
 
 **Output Contract:**
+
 - Writes QR code PNG files to output/artifacts/qr_codes/
 - Returns list of successfully generated QR file paths
 - Per-client errors are logged and skipped (optional feature; doesn't halt pipeline)
 
 **Error Handling:**
+
 - Configuration errors (missing template) raise immediately (infrastructure error)
 - Per-client failures (invalid data) log warning and continue (data error in optional feature)
 - This strategy allows partial success; some clients may not have QR codes
@@ -25,6 +28,7 @@ configuration setting.
 **Validation Contract:**
 
 What this module validates:
+
 - Artifact file exists and is valid JSON (validation in read_preprocessed_artifact())
 - QR code generation is enabled in config (qr.enabled=true)
 - Payload template is defined if QR generation is enabled
@@ -32,6 +36,7 @@ What this module validates:
 - QR code can be rendered as PNG (infrastructure check)
 
 What this module assumes (validated upstream):
+
 - Artifact JSON structure is valid (validated by preprocessing step)
 - Client records have all required fields (validated by preprocessing step)
 - Output directory can be created (general I/O)

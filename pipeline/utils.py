@@ -76,6 +76,7 @@ def validate_and_format_template(
     """Format template and validate placeholders against allowed set.
 
     Ensures that:
+    
     1. All placeholders in template exist in context
     2. All placeholders are in the allowed_fields set (if provided)
     3. Template is successfully rendered

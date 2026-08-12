@@ -5,17 +5,20 @@ pipeline steps. Handles data validation, client sorting, and vaccine processing.
 QR code generation is handled by a separate step after preprocessing.
 
 **Input Contract:**
+
 - Reads raw client data from CSV or Excel file (.xlsx, .xls, .csv)
 - Validates file type and encoding (tries multiple encodings for CSV)
 - Validates all required columns are present
 
 **Output Contract:**
+
 - Writes preprocessed artifact JSON to output/artifacts/preprocessed_clients_*.json
 - Artifact contains all valid client records with normalized data types
 - Artifact includes metadata (run_id, language, created_at, warnings)
 - Downstream steps assume artifact is valid; preprocessing is the sole validation step
 
 **Error Handling:**
+
 - File I/O errors (missing file, unsupported format) raise immediately (infrastructure)
 - Missing required columns raise immediately (data error in required step)
 - Invalid data (missing DOB, unparseable date) logged as warnings; processing continues
@@ -24,6 +27,7 @@ QR code generation is handled by a separate step after preprocessing.
 **Validation Contract:**
 
 What this module validates:
+
 - Input file exists and is readable
 - Input file is supported format (.xlsx, .xls, .csv)
 - File encoding (tries UTF-8, Latin-1, etc. for CSV)
@@ -32,6 +36,7 @@ What this module validates:
 - Language code is valid (from CLI argument)
 
 What this module assumes (validated upstream):
+
 - Language code from CLI is valid (validated by Language.from_string() at orchestrator)
 - Disease and vaccine reference data are valid JSON (validated by config loading)
 
@@ -699,6 +704,7 @@ def collapse_validity_statuses(statuses: List[Any]) -> str:
     """Collapse multiple validity statuses using strict precedence.
 
     Precedence:
+    
     1. mixed (if both valid and invalid are present and no unknown)
     2. valid (if at least one valid is present and no unknown)
     3. invalid (if invalid is present and no unknown)
@@ -752,9 +758,11 @@ def classify_dataset_validity(
         ``"all_present"``
             Every dose segment in the dataset that contains a recognisable
             date entry also carries a ``- Valid`` or ``- Invalid`` suffix.
+
         ``"all_absent"``
             No dose segment carries a validity suffix, or the series
             contains no recognisable dose entries at all.
+            
         ``"mixed"``
             At least one segment has a suffix and at least one does not.
             This state causes a ``ValueError`` when
