@@ -1,4 +1,4 @@
-# 🩺 Immunization Charts (python Version)
+# 🩺 ImmuKnow
 
 **Current version:** v0.3.0  
 
@@ -115,7 +115,7 @@ The main pipeline orchestrator (`orchestrator.py`) automates the end-to-end work
    Prepares the output directory, optionally removing existing contents while preserving logs.
 
 2. **Preprocessing** (`preprocess.py`)  
-   Cleans, validates, and structures input data into a normalized JSON artifact (`preprocessed_clients_<run_id>.json`).
+   Cleans, validates, and structures input data into a normalized JSON artifact (`preprocessed_clients_<run_id>.json`). Optionally validates school/daycare names against the PHIX reference mapping (see [PHIX School Validation](./config/README.md#phix-school-validation)).
 
 3. **Generating QR Codes** (`generate_qr_codes.py`, optional)  
    Generates QR code PNG files from templated payloads. Skipped if `qr.enabled: false` in `parameters.yaml`.
@@ -258,6 +258,7 @@ The `preprocess.py` (Step 2) module reads raw input data and produces a normaliz
 
 - **Input:** Excel file with raw client vaccination records
 - **Processing:**
+  - Validates school/daycare names against `config/phix_mapping.json` for specified PHU (when `phix_validation.enabled: true`)
   - Validates schema (required columns, data types)
   - Cleans and transforms client data (dates, addresses, vaccine history)
   - Determines over/under 16 years old for recipient determination (uses `date_notice_delivery` from `parameters.yaml`)
@@ -295,6 +296,7 @@ The preprocessed artifact contains:
 
 ## Configuration quick links
 
+- PHIX school validation: see [PHIX School Validation](./config/README.md#phix-school-validation)
 - QR Code settings: see [QR Code Configuration](./config/README.md#qr-code-configuration)
 - PDF Encryption settings: see [PDF Encryption Configuration](./config/README.md#pdf-encryption-configuration)
 ## Changelog

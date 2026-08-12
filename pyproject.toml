@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 packages = ["pipeline", "templates"]
 
 [project]
-name = "immunization-charts-python"
+name = "ImmuKnow"
 version = "0.3.0"
 requires-python = ">=3.10"
 dependencies = [

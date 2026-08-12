@@ -1,6 +1,6 @@
 [tool.git_changelog]
 provider = "github"
-repository = "WDGPH/viper-pipeline"   # update to your actual repo slug
+repository = "WDGPH/ImmuKnow"   # update to your actual repo slug
 convention = "angular"                # compatible with Conventional Commits
 output = "CHANGELOG.md"
 sections = [

@@ -231,6 +231,9 @@ def run_step_2_preprocess(
     # Check that addresses are complete, return only complete rows
     df = preprocess.check_addresses_complete(df)
 
+    # Validate schools against PHIX mapping
+    df, phix_warnings = preprocess.run_phix_validation(df, output_dir)
+
     # Load configuration
     vaccine_reference_path = preprocess.VACCINE_REFERENCE_PATH
     vaccine_reference = json.loads(vaccine_reference_path.read_text(encoding="utf-8"))
@@ -251,9 +254,10 @@ def run_step_2_preprocess(
 
     print(f"📄 Preprocessed artifact: {artifact_path}")
     print(f"Preprocess log written to {log_path}")
-    if result.warnings:
+    all_warnings = phix_warnings + result.warnings
+    if all_warnings:
         print("Warnings detected during preprocessing:")
-        for warning in result.warnings:
+        for warning in all_warnings:
             print(f" - {warning}")
 
     # Summarize the preprocessed clients
