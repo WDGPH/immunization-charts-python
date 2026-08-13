@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Added
 
-- **PHIX school validation**: new `validate_phix` module cross-references schools and daycares in the input against the PHIX facility reference list for the selected PHU. Uses the facility ID for exact matching when available, falling back to fuzzy name matching. Configurable via `parameters.yaml` ([#195](https://github.com/WDGPH/ImmuKnow/pull/195)).
+- **PHIX school validation**: new `validate_phix` module cross-references schools and daycares in the input against the PHIX facility reference list for the selected PHU. Matches are classified `exact` when the normalized name is found in the PHU mapping and the facility IDs match. Configurable via `parameters.yaml` ([#195](https://github.com/WDGPH/ImmuKnow/pull/195)).
 - Bundle PHIX facility reference mapping (`config/phix_mapping.json`) with the package ([#195](https://github.com/WDGPH/ImmuKnow/pull/195)).
 - Add next-dose information to output: dose numbers in the overdue disease list, with a config flag to toggle dose info and validity markers on/off ([#192](https://github.com/WDGPH/ImmuKnow/pull/192)).
 - Add option to remove the border around the client information box in templates ([#156](https://github.com/WDGPH/ImmuKnow/pull/156)).
