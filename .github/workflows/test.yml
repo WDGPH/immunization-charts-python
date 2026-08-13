@@ -41,4 +41,4 @@ jobs:
         uses: codecov/codecov-action@v7
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          slug: WDGPH/immunization-charts-python
+          slug: WDGPH/ImmuKnow

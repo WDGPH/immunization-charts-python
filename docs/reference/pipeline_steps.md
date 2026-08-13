@@ -38,7 +38,11 @@ Reads the raw Excel input, validates the schema, normalizes all client and vacci
 | Key | Type | Description |
 |-----|------|-------------|
 | `chart_diseases_header` | list | Diseases to include as chart columns; others collapse to "Other" |
-| `preprocess.include_dose` | bool | Whether dose numbers appear in overdue lists |
+| `preprocess.include_dose` | bool | Include dose numbers in overdue vaccine lists (default: `false`) |
+| `preprocess.show_validity_markers` | bool | Render validity markers in the immunization chart (default: `false`) |
+| `phix_validation.enabled` | bool | Validate school names against PHIX reference mapping (default: `true`) |
+| `phix_validation.target_phu` | str | Exact PHU name as it appears in `phix_mapping.json` |
+| `phix_validation.unmatched_behavior` | str | Action on unmatched schools: `warn`, `error`, or `skip` |
 | `date_notice_delivery` | ISO 8601 | Reference date for age-based eligibility (16+ threshold) |
 | `date_data_cutoff` | ISO 8601 | Date the source data was extracted from Panorama |
 
@@ -47,23 +51,26 @@ Reads the raw Excel input, validates the schema, normalizes all client and vacci
 - Excel file from `input/` (single worksheet, `.xlsx`)
 - `config/vaccine_reference.json` — maps vaccine codes to disease names
 - `config/disease_normalization.json` — normalizes raw disease name variants
+- `config/phix_mapping.json` — PHU-keyed school name → PHIX facility ID mapping (when PHIX validation enabled)
 
 **Outputs:**
 
 - `output/artifacts/preprocessed_clients_<run_id>.json` — canonical client artifact
 - `output/logs/preprocess_<run_id>.log` — processing log
+- `phix_exact.csv`, `phix_inexact.csv`, `phix_no_match.csv` — school match audit CSVs (when PHIX validation enabled)
 
 **Processing:**
 
-1. Reads and validates Excel schema (required columns, data types)
-2. Normalizes disease names using `disease_normalization.json`
-3. Expands vaccine codes to disease names using `vaccine_reference.json`
-4. Filters diseases against `chart_diseases_header`; collapses unlisted diseases to "Other"
-5. Computes client ages relative to `date_notice_delivery` (determines parent vs. student addressing)
-6. Sorts clients deterministically: school → last name → first name → client ID
-7. Assigns stable sequence numbers (`00001`, `00002`, …)
-8. Synthesizes missing school/board identifiers where needed
-9. Writes the canonical JSON artifact
+1. Validates school/daycare names against `phix_mapping.json` for the configured PHU (when `phix_validation.enabled: true`)
+2. Reads and validates Excel schema (required columns, data types)
+3. Normalizes disease names using `disease_normalization.json`
+4. Expands vaccine codes to disease names using `vaccine_reference.json`
+5. Filters diseases against `chart_diseases_header`; collapses unlisted diseases to "Other"
+6. Computes client ages relative to `date_notice_delivery` (determines parent vs. student addressing)
+7. Sorts clients deterministically: school → last name → first name → client ID
+8. Assigns stable sequence numbers (`00001`, `00002`, …)
+9. Synthesizes missing school/board identifiers where needed
+10. Writes the canonical JSON artifact
 
 ---
 

@@ -28,6 +28,7 @@ This directory contains all configuration files for the immunization pipeline. E
 Raw Input (from CSV/Excel)
     ↓
 [preprocess.py]
+    ├─ phix_mapping.json → validate school names against PHIX reference
     ├─ disease_normalization.json → normalize variants
     ├─ vaccine_reference.json → expand vaccines to diseases
     ├─ parameters.yaml.chart_diseases_header → filter diseases not in chart → "Other"
@@ -49,6 +50,7 @@ Typst Files (with localized, filtered disease names)
 [validate_pdfs.py]
   └─ Validate PDFs (page counts, layout markers) and emit validation JSON
 ```
+
 ---
 
 ## Required Configuration Files
@@ -79,6 +81,67 @@ These are the most commonly adjusted options in `parameters.yaml`:
 - `bundling.bundle_size`: Enable bundling with at most N clients per bundle (0 disables bundling)
 - `bundling.group_by`: Bundle grouping strategy (null for sequential, `school`, or `board`)
 
+---
+
+## PHIX School Validation
+
+The pipeline can validate school/daycare names in the input file against the official PHIX reference list before generating notices. This catches data-quality issues (misspelled school names, wrong facility IDs) early and produces per-run audit CSVs.
+
+Configuration lives under `phix_validation` in `config/parameters.yaml`:
+
+```yaml
+phix_validation:
+  enabled: true
+  mapping_file: config/phix_mapping.json
+  target_phu: "Wellington-Dufferin-Guelph Public Health"
+  column_prefix: "PHIX_"
+  unmatched_behavior: warn
+```
+
+### Prerequisites
+
+`phix_mapping.json` is distributed with this repository. It is generated from a PHIX reference workbook and placed at `config/phix_mapping.json`.
+
+The mapping file should be re-generated whenever a new PHIX reference workbook is released.
+
+### Configuration options
+
+| Key | Type | Description |
+|---|---|---|
+| `enabled` | bool | Set to `false` to skip PHIX validation entirely (default: `true`) |
+| `mapping_file` | string | Path to `phix_mapping.json`, relative to project root or absolute |
+| `target_phu` | string | Exact PHU name as it appears as a key in the mapping file |
+| `column_prefix` | string | Prefix for DataFrame output columns (default: `"PHIX_"`) |
+| `unmatched_behavior` | string | How to handle `no_match` results: `warn`, `error`, or `skip` |
+
+### Match categories
+
+| Category | Meaning |
+|---|---|
+| `exact` | School name **and** facility ID both match the PHIX mapping |
+| `inexact` | Name matches but no ID was in the input (`name_only`), name matches but ID differs (`id_mismatch`), or ID matches under a different name (`id_only`) |
+| `no_match` | Neither name nor ID found for the target PHU |
+
+### Outputs
+
+Three CSV files are written to the run's output directory during preprocessing:
+
+| File | Contents |
+|---|---|
+| `phix_exact.csv` | Schools that matched exactly — name and ID confirmed |
+| `phix_inexact.csv` | Schools where only one of name/ID matched; review recommended |
+| `phix_no_match.csv` | Schools with no match; investigate or correct input data |
+
+Each CSV contains: `input_name`, `input_id`, `matched_name`, `matched_id`, `mismatch_reason`.
+
+### Unmatched behavior
+
+- `warn` *(default)* — logs a warning and continues; all records are processed
+- `error` — halts the pipeline if any `no_match` results are found
+- `skip` — filters out records whose school has no match before generating notices
+
+---
+
 #### Pipeline Lifecycle
 
 The pipeline has two lifecycle phases controlled under `pipeline.*`:
@@ -96,7 +159,7 @@ The pipeline has two lifecycle phases controlled under `pipeline.*`:
 - `date_data_cutoff` (ISO 8601 string) records when the source data was extracted. It renders in notices using the client's language via Babel so that readers see a localized calendar date. Change this only when regenerating notices from a fresher extract.
 - `date_notice_delivery` (ISO 8601 string) fixes the reference point for age-based eligibility checks and QR payloads. Preprocessing uses this value to decide if a client is 16 or older, so adjust it cautiously and keep it aligned with the actual delivery or mailing date.
 
-**`chart_diseases_header` Configuration:**
+#### `chart_diseases_header` Configuration
 
 This list defines which diseases appear as columns in the immunization chart:
 
@@ -160,8 +223,8 @@ chart_diseases_header:
 
 - Loaded in `orchestrator.py` step 2 (preprocessing)
 - Used in `preprocess.py`:
-  - `enrich_grouped_records()` expands vaccine codes to disease names
-  - Maps received vaccine records to canonical disease names
+    - `enrich_grouped_records()` expands vaccine codes to disease names
+    - Maps received vaccine records to canonical disease names
 - All disease names MUST be canonical (English) forms
 
 **Example**:
@@ -247,8 +310,8 @@ translations/
 - Loaded in `pipeline/translation_helpers.py`
 - Called by `display_label()` when rendering notices
 - Two domains:
-  - **diseases_overdue**: Labels for the "vaccines due" section
-  - **diseases_chart**: Labels for the immunization history table
+    - **diseases_overdue**: Labels for the "vaccines due" section
+    - **diseases_chart**: Labels for the immunization history table
 - Different labels possible per domain (e.g., "Polio" vs "Poliomyelitis" in chart)
 
 **Example**:
@@ -289,9 +352,9 @@ Both QR code payloads and PDF password generation use **centralized template fie
 
 All template placeholders are **validated at runtime**:
 
-- ✅ Placeholders must exist in the generated context
-- ✅ Placeholders must be in the allowed field list (no typos like `{client_ID}`)
-- ✅ Invalid placeholders raise clear error messages with allowed fields listed
+- [x] Placeholders must exist in the generated context
+- [x] Placeholders must be in the allowed field list (no typos like `{client_ID}`)
+- [x] Invalid placeholders raise clear error messages with allowed fields listed
 
 This prevents silent failures from configuration typos and ensures templates are correct before processing.
 
@@ -346,7 +409,7 @@ pdf_validation:
     signature_overflow: disabled
 ```
 
-Behaviour:
+Behavior:
 
 - The validation summary is always printed to the console.
 - A JSON report is written to `output/metadata/<lang>_validation_<run_id>.json` with per-PDF results and aggregates.

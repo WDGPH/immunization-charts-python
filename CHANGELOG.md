@@ -6,6 +6,35 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 <!-- insertion marker -->
+## [v1.0.0](https://github.com/WDGPH/ImmuKnow/releases/tag/v1.0.0) - 2026-08-13
+
+<small>[Compare with v0.3.0](https://github.com/WDGPH/ImmuKnow/compare/v0.3.0...v1.0.0)</small>
+
+### Added
+
+- **PHIX school validation**: new `validate_phix` module cross-references schools and daycares in the input against the PHIX facility reference list for the selected PHU. Uses the facility ID for exact matching when available, falling back to fuzzy name matching. Configurable via `parameters.yaml` ([#195](https://github.com/WDGPH/ImmuKnow/pull/195)).
+- Bundle PHIX facility reference mapping (`config/phix_mapping.json`) with the package ([#195](https://github.com/WDGPH/ImmuKnow/pull/195)).
+- Add next-dose information to output: dose numbers in the overdue disease list, with a config flag to toggle dose info and validity markers on/off ([#192](https://github.com/WDGPH/ImmuKnow/pull/192)).
+- Add option to remove the border around the client information box in templates ([#156](https://github.com/WDGPH/ImmuKnow/pull/156)).
+- Add MkDocs documentation site with user guide, API reference, architecture overview, pipeline step reference, and developer guide, deployed via GitHub Actions.
+
+### Changed
+
+- Rename project from "Immunization Charts (python Version)" to **ImmuKnow** in README and documentation.
+- Merge `ensure_required_columns` into `normalize_dataframe` to eliminate a redundant preprocessing pass ([#190](https://github.com/WDGPH/ImmuKnow/pull/190)).
+- Expand and restructure test suite: renamed test modules, added E2E smoke test with encryption enabled, consolidated integration contract tests ([#161](https://github.com/WDGPH/ImmuKnow/pull/161)).
+- Update Typst to v0.14.2 in GitHub Actions CI.
+- Multiple dependency updates (automated via Dependabot).
+
+### Fixed
+
+- Resolve type checker errors flagged by `ty` ([#160](https://github.com/WDGPH/ImmuKnow/pull/160)).
+- Fix `over_16` logic in test suite.
+
+### Security
+
+- Remove contributor names and email addresses from committed files ([#182](https://github.com/WDGPH/ImmuKnow/pull/182)).
+
 ## [v0.3.0](https://github.com/WDGPH/immunization-charts-python/releases/tag/v0.3.0) - 2026-01-09
 
 <small>[Compare with first commit](https://github.com/WDGPH/immunization-charts-python/compare/03e764568766269de71e0fef45cf0f390295cef3...v0.3.0)</small>
@@ -39,4 +68,3 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Changed
 
 - Changes to size so that french translation is formatted more nicely in header ([89db891](https://github.com/WDGPH/immunization-charts-python/commit/89db8915cf1cf1db2e5737c04ce573cd19c69986) by kassyray).
-

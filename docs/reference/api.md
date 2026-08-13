@@ -140,3 +140,12 @@ Auto-generated from NumPy-format docstrings in the `pipeline/` package.
     options:
       show_root_heading: true
       show_root_full_path: true
+
+---
+
+## PHIX School Validation
+
+::: pipeline.validate_phix
+    options:
+      show_root_heading: true
+      show_root_full_path: true

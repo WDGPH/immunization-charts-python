@@ -1,6 +1,6 @@
 # 🩺 ImmuKnow
 
-**Current version:** v0.3.0  
+**Current version:** v1.0.0  
 
 ## 📘 Introduction
 

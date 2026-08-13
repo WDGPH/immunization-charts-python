@@ -1,6 +1,6 @@
 # Testing Standards
 
-This document defines the testing strategy and organizational standards for the immunization-charts-python project.
+This document defines the testing strategy and organizational standards for the ImmuKnow project.
 
 ## Overview
 

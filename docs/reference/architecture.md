@@ -74,6 +74,7 @@ pipeline/
 ├── data_models.py          # Dataclasses for client records and artifacts
 ├── enums.py                # Language, BundleStrategy, TemplateField enums
 ├── translation_helpers.py  # Disease name normalization and translation
+├── validate_phix.py        # PHIX school name validation (called from preprocess)
 └── utils.py                # Template rendering and context building utilities
 
 templates/                  # Built-in Typst templates (EN/FR)
