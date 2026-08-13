@@ -9,17 +9,20 @@ placeholders like {client_id}, {date_of_birth_iso}, {date_of_birth_iso_compact},
 {first_name}, {last_name}, {school}, {postal_code}, etc.
 
 **Input Contract:**
+
 - Reads PDF files from disk and client metadata from JSON
 - Assumes PDF and JSON files exist before encryption
 - Assumes JSON contains valid client metadata with required fields for password template
 
 **Output Contract:**
+
 - Writes encrypted PDFs to disk with "_encrypted" suffix
 - Unencrypted originals are preserved (deleted during cleanup step if configured)
 - Per-PDF failures are logged and skipped (optional feature; some PDFs may not be encrypted)
 - Pipeline completes even if some PDFs fail to encrypt
 
 **Error Handling:**
+
 - Infrastructure errors (missing PDF/JSON files) raise immediately (fail-fast)
 - Configuration errors (invalid password template) raise immediately (fail-fast)
 - Per-PDF failures (encryption error, invalid template data) are logged and skipped
@@ -184,17 +187,26 @@ def encrypt_notice(json_path: str | Path, pdf_path: str | Path, language: str) -
     If the encrypted version already exists and is newer than the source,
     returns the existing file without re-encrypting.
 
-    Args:
-        json_path: Path to the JSON file containing client metadata
-        pdf_path: Path to the PDF file to encrypt
-        language: ISO 639-1 language code ('en' for English, 'fr' for French)
+    Parameters
+    ----------
+    json_path : Path
+        Path to the JSON file containing client metadata
+    pdf_path : Path
+        Path to the PDF file to encrypt
+    language: str
+        ISO 639-1 language code ('en' for English, 'fr' for French)
 
-    Returns:
+    Returns
+    -------
+    path
         Path to the encrypted PDF file
 
-    Raises:
-        FileNotFoundError: If JSON or PDF file not found
-        ValueError: If JSON is invalid
+    Raises
+    ------
+    FileNotFoundError
+        If JSON or PDF file not found
+    ValueError
+        If JSON is invalid
     """
     json_path = Path(json_path)
     pdf_path = Path(pdf_path)
@@ -228,13 +240,19 @@ def encrypt_pdfs_in_directory(
 
     PDFs are encrypted in-place with the _encrypted suffix added to filename.
 
-    Args:
-        pdf_directory: Directory containing PDF files to encrypt
-        json_file: Path to the combined JSON file with all client metadata
-        language: ISO 639-1 language code ('en' for English, 'fr' for French)
+    Parameters
+    ----------
+    pdf_directory : str
+        Directory containing PDF files to encrypt
+    json_file : Path
+        Path to the combined JSON file with all client metadata
+    language :str
+        ISO 639-1 language code ('en' for English, 'fr' for French)
 
-    Raises:
-        FileNotFoundError: If PDF directory or JSON file don't exist
+    Raises
+    ------
+    FileNotFoundError
+        If PDF directory or JSON file don't exist
     """
     pdf_directory = Path(pdf_directory)
     json_file = Path(json_file)

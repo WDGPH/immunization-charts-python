@@ -55,6 +55,7 @@ class Language(Enum):
     """Supported output languages for immunization notices.
 
     Each language corresponds to:
+
     - A template renderer in templates/ (en_template.py, fr_template.py, etc.)
     - Localization of dates, disease names, and notice formatting
     - An artifact language code stored in preprocessed data
@@ -150,6 +151,7 @@ class TemplateField(Enum):
 
     These fields are dynamically generated from client data by build_client_context()
     and can be used in configuration templates for:
+
     - QR code payloads (qr.payload_template in parameters.yaml)
     - PDF password generation (encryption.password.template in parameters.yaml)
 
@@ -160,30 +162,43 @@ class TemplateField(Enum):
     ------
     CLIENT_ID : str
         Unique client identifier
+
     FIRST_NAME : str
         Client's given name.
+
     LAST_NAME : str
         Client's family name.
+
     NAME : str
         Full name (first + last combined).
+
     DATE_OF_BIRTH : str
         Display format (e.g., "Jan 8, 2025" or "8 janvier 2025").
+
     DATE_OF_BIRTH_ISO : str
         ISO 8601 format: YYYY-MM-DD (e.g., "2015-03-15").
+
     DATE_OF_BIRTH_ISO_COMPACT : str
         Compact ISO format without hyphens: YYYYMMDD (e.g., "20150315").
+
     SCHOOL : str
         School name.
+
     BOARD : str
         School board name.
+
     STREET_ADDRESS : str
         Full street address.
+
     CITY : str
         City/municipality.
+
     PROVINCE : str
         Province/territory.
+
     POSTAL_CODE : str
         Postal/ZIP code.
+        
     LANGUAGE_CODE : str
         ISO 639-1 language code: 'en' or 'fr'.
 

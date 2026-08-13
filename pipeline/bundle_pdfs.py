@@ -12,16 +12,19 @@ Each bundle produces a merged PDF inside ``output/pdf_combined`` and a manifest 
 record inside ``output/metadata`` that captures critical metadata for audits.
 
 **Input Contract:**
+
 - Reads individual PDF files from output/pdf_individual/
 - Reads client metadata from preprocessed artifact JSON
 - Assumes bundle_size > 0 in config (bundling is optional; disabled when bundle_size=0)
 
 **Output Contract:**
+
 - Writes merged PDF files to output/pdf_combined/
 - Writes bundle manifest JSON to output/metadata/
 - Returns list of created bundle files
 
 **Error Handling:**
+
 - Configuration errors (invalid bundle_size, group_by) raise immediately (infrastructure)
 - Per-bundle errors (PDF merge failure) log and continue (optional feature)
 - Pipeline completes even if some bundles fail to create (optional step)
@@ -29,12 +32,14 @@ record inside ``output/metadata`` that captures critical metadata for audits.
 **Validation Contract:**
 
 What this module validates:
+
 - Bundle size is positive (bundle_size > 0)
 - Group-by strategy is valid (size, school, board, or None)
 - PDF files can be discovered and merged
 - Manifest records have required metadata
 
 What this module assumes (validated upstream):
+
 - PDF files are valid and readable (validated by count_pdfs step)
 - Client metadata in artifact is complete (validated by preprocessing step)
 - Output directory can be created (general I/O)

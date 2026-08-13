@@ -33,6 +33,7 @@ Every contribution, whether it’s a small fix, a new feature, or an exploratory
 | Refactor | `refactor/` | Structural reorganization | Requires discussion before starting |
 
 **Branching Principles**
+
 * Keep branches small and purposeful; one concept per PR
 * Large or multi-feature PRs are discouraged; split them by concern
 * Tag experimental branches clearly (`poc/ai-generated-utility`, `poc/new-typst-flow`)
@@ -62,6 +63,7 @@ Every contribution, whether it’s a small fix, a new feature, or an exploratory
 
 ## 5. Production Freeze
 During ISPA production season:
+
 - No major refactors or architectural changes.
 - Only bug fixes, configuration updates, and content changes are allowed.
 

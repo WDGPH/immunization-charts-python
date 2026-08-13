@@ -12,15 +12,18 @@ The first phase of this collaboration is to complete a pilot. Pilots ideally occ
 If going ahead with the operational usage of the solution – as long as the data is prepared and delivered to us in the same way as during the pilot, and the notice layout is not changed, the turnaround can be quite a bit quicker. We still like to allocate a week for this, and ask again that you do your own additional QA on the notices we provide back to you.
 
 Please find attached:
+
 1. **Memorandum of Understanding (MOU)** - Roles and responsibilities for the collaboration
 2. **Template Overview (PDF)** – Customization options for the report generation
 3. **Checklist (PDF)** – Steps for onboarding
 
 **Template Options:**
+
 - **Base Template:** Quick deployment, limited customization  
 - **Custom Template:** Flexible layout and messaging (requires more time)
 
 **PHU Contacts:**
+
 - [TO BE FILLED]
 
 We look forward to connecting over Microsoft Teams to get started.

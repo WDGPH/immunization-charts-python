@@ -1,15 +1,16 @@
 """Validate school/daycare names in the input DataFrame against the PHIX mapping file.
 
-The mapping file is produced by the separate phix-processing/build_phix_mapping.py
-script and contains a PHU-keyed dict of normalized school names → PHIX facility IDs.
+The mapping file is produced by a separate script and contains a PHU-keyed dict
+of normalized school names → PHIX facility IDs.
 
 Match categories
 ----------------
-exact     -- normalized name found in the target PHU's mapping AND facility ID matches
-inexact   -- name found but no ID provided for comparison (name_only),
-             name found but provided ID differs from mapping (id_mismatch), or
-             ID found under a different name (id_only)
-no_match  -- neither name nor ID found for the target PHU
+`exact`: normalized name found in the target PHU's mapping AND facility ID matches
+
+`inexact`: name found but no ID provided for comparison (name_only), name found but provided ID differs from mapping (id_mismatch),
+or ID found under a different name (id_only)
+
+`no_match`: neither name nor ID found for the target PHU
 
 Usage (called from preprocess.run_phix_validation)
 -----
@@ -258,12 +259,12 @@ def validate_schools(
 
     Adds four columns to the DataFrame (with *column_prefix*):
 
-    =====================  ================================================
-    ``{prefix}FACILITY_ID``   Matched facility ID, or ``""``
-    ``{prefix}MATCH_TYPE``    ``"exact"`` | ``"inexact"`` | ``"no_match"``
-    ``{prefix}MATCHED_NAME``  Canonical name from mapping, or ``""``
-    ``{prefix}MATCHED_PHU``   *target_phu* for matched rows, ``""`` otherwise
-    =====================  ================================================
+    - ``{prefix}FACILITY_ID`` :   Matched facility ID, or ``""``
+    - ``{prefix}MATCH_TYPE`` :    ``"exact"`` | ``"inexact"`` | ``"no_match"``
+    - ``{prefix}MATCHED_NAME`` :  Canonical name from mapping, or ``""``
+    - ``{prefix}MATCHED_PHU`` :   *target_phu* for matched rows, ``""`` otherwise
+
+
 
     Writes three CSV files to *output_dir*:
 
@@ -284,9 +285,13 @@ def validate_schools(
     school_column:
         Column in *df* containing school/daycare names.
     unmatched_behavior:
+        
         ``"warn"``  — log warning, return all rows.
+        
         ``"error"`` — raise ``ValueError`` if any ``no_match`` results.
+        
         ``"skip"``  — filter out rows whose school has no match.
+    
     column_prefix:
         Prefix applied to all output column names.
 

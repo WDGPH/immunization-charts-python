@@ -7,27 +7,32 @@ This is distinct from Step 1 (prepare_output), which uses pipeline.before_run.cl
 to clean up old pipeline runs at startup while preserving logs.
 
 **Step 1 Configuration (pipeline.before_run in parameters.yaml):**
+
 - clear_output_directory: when true, removes all output except logs before starting a new run
 
 **Step 9 Configuration (pipeline.after_run in parameters.yaml):**
+
 - remove_artifacts: when true, removes output/artifacts directory
 - remove_unencrypted_pdfs: when true and (encryption OR batching) is enabled, removes non-encrypted PDFs
   from pdf_individual/ after encryption completes. If both encryption and batching are disabled,
   individual non-encrypted PDFs are assumed to be final output and are preserved.
 
 **Input Contract:**
+
 - Reads configuration from parameters.yaml (pipeline.after_run section)
 - Assumes output directory structure exists (may be partially populated)
 - Assumes encryption.enabled and bundling.bundle_size from parameters.yaml
 
 **Output Contract:**
+
 - Removes specified directories from output_dir
 - Removes unencrypted PDFs if conditions are met:
-  - remove_unencrypted_pdfs=true AND (encryption enabled OR batching enabled)
+    - remove_unencrypted_pdfs=true AND (encryption enabled OR batching enabled)
 - Does not modify final PDF outputs (unless configured to do so)
 - Does not halt pipeline if cleanup fails
 
 **Error Handling:**
+
 - File deletion errors are logged and continue (optional step)
 - Missing directories/files don't cause errors (idempotent)
 - Pipeline completes even if cleanup partially fails (utility step)
@@ -35,11 +40,13 @@ to clean up old pipeline runs at startup while preserving logs.
 **Validation Contract:**
 
 What this module validates:
+
 - Output directory exists and is writable
 - Directory/file paths can be safely deleted (exist check before delete)
 - Configuration values are sensible boolean types and integers
 
 What this module assumes (validated upstream):
+
 - Configuration keys are valid and well-formed
 - Output directory structure is correct (created by prior steps)
 

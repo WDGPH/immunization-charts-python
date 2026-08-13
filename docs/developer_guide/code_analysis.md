@@ -29,6 +29,7 @@ grep -A 50 "run_pipeline.main()" scripts/run_pipeline.py
 ```
 
 **Real questions to answer:**
+
 - [ ] **Where is this called?** – List all call sites
 - [ ] **What does it do with the results?** – Trace to final output
 - [ ] **What are the side effects?** – File I/O, config reads, logging?
@@ -38,6 +39,7 @@ grep -A 50 "run_pipeline.main()" scripts/run_pipeline.py
 ### 2. Dead Code Detection
 
 **Dead code indicators:**
+
 - Function is defined but never called outside of tests
 - Only called from commented-out code
 - Parameter is optional and never actually passed
@@ -57,12 +59,14 @@ grep -r "getattr.*function_name\|__dict__" scripts/*.py
 ```
 
 **Action when found:**
+
 - Remove it if clearly dead
 - Ask: "Why does this exist if it's unused?"
 
 ### 3. Duplication Analysis
 
 **Duplication indicators:**
+
 - Similar function names or signatures
 - Identical or nearly-identical logic in multiple files
 - Similar patterns (date parsing, template rendering, grouping)
@@ -85,9 +89,10 @@ grep -n "for .* in .*clients\|for .* in .*rows" scripts/*.py
 ```
 
 **Action when found:**
+
 - Extract to `utils.py` ONLY if:
-  1. Used by 2+ modules (not just one)
-  2. Doesn't introduce new dependencies
+    - Used by 2+ modules (not just one)
+    - Doesn't introduce new dependencies
 - Otherwise, colocate with the primary user
 
 ### 4. Real-World Significance Analysis

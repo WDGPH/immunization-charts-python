@@ -5,17 +5,20 @@ layout checks (signature placement), and structural integrity. Outputs validatio
 results to JSON metadata for downstream processing and optional console warnings.
 
 **Input Contract:**
+
 - Reads PDF files from output/pdf_individual/ directory
 - Assumes PDFs are valid (created by compilation step)
 - Assumes each PDF corresponds to one client notice
 
 **Output Contract:**
+
 - Writes validation results to JSON: output/metadata/{language}_validation_{run_id}.json
 - Records per-PDF validations: page counts, layout warnings, structural issues
 - Aggregate statistics: total PDFs, warnings by type, pass/fail counts
 - Optional console output (controlled by config: pdf_validation.print_warnings)
 
 **Error Handling:**
+
 - Invalid/corrupt PDFs raise immediately (fail-fast; quality validation step)
 - Missing PDF files raise immediately (infrastructure error)
 - Layout warnings are non-fatal (logged but don't halt pipeline)
@@ -24,12 +27,14 @@ results to JSON metadata for downstream processing and optional console warnings
 **Validation Contract:**
 
 What this module validates:
+
 - PDF files are readable and structurally valid (uses PdfReader)
 - Page count statistics and distribution
 - Layout markers (signature block placement using MARK_END_SIGNATURE_BLOCK)
 - Expected vs actual page counts (configurable tolerance)
 
 What this module assumes (validated upstream):
+
 - PDF files exist and are complete (created by compile step)
 - PDF filenames match expected pattern (from notice generation)
 - Output metadata directory can be created (general I/O)
@@ -65,6 +70,7 @@ class ValidationResult:
         True if no warnings, False otherwise
     measurements : dict[str, int | float | str]
         Actual measurements extracted from PDF with proper types:
+        
         - page_count (int): Number of pages
         - signature_page (int): Page where signature block ends
         - contact_height_inches (float): Contact table height in inches
