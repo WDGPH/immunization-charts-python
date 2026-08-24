@@ -83,7 +83,7 @@ REPLACE_UNSPECIFIED = [
     "Not Specified-unspecified",
 ]
 
-INPUT_SCHEMA_PATH = CONFIG_DIR / "input_schema.yaml"
+INPUT_SCHEMA_PATH = CONFIG_DIR / "input_schema.json"
 
 REQUIRED_COLUMN_MAP: dict[str, str] = {
     "School Type":            "SCHOOL_TYPE",
@@ -415,9 +415,9 @@ def validate_input(file_path: Path) -> None:
     ------
     ValueError
         If the file does not conform to the schema defined in
-        ``config/input_schema.yaml``.
+        ``config/input_schema.json``.
     """
-    descriptor = yaml.safe_load(INPUT_SCHEMA_PATH.read_text(encoding="utf-8"))
+    descriptor = json.loads(INPUT_SCHEMA_PATH.read_text(encoding="utf-8"))
     schema = Schema.from_descriptor(descriptor)
     report = fl_validate(
         file_path.name,
