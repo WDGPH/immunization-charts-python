@@ -1,33 +1,27 @@
 version: 2
 
+multi-ecosystem-groups:
+  dependencies:
+    schedule:
+      interval: "weekly"
+
 updates:
+  - package-ecosystem: "uv"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7
+    patterns:
+      - "*"
+    multi-ecosystem-group: "dependencies"
 
-# uv lockfile
-- package-ecosystem: "uv"
-  directory: "/"
-  schedule:
-    interval: "weekly"
-  cooldown:
-    default-days: 7
-  groups:
-    # Group all minor and patch updates for GitHub Actions
-    # Keep individual updates for major updates
-    minor-and-patch:
-      update-types:
-        - "minor"
-        - "patch"
-
-# GitHub Actions
-- package-ecosystem: "github-actions"
-  directory: "/.github/workflows"
-  schedule:
-    interval: "weekly"
-  cooldown:
-    default-days: 7
-  groups:
-    # Group all minor and patch updates for GitHub Actions
-    # Keep individual updates for major updates
-    minor-and-patch:
-      update-types:
-        - "minor"
-        - "patch"
+  - package-ecosystem: "github-actions"
+    directory: "/.github/workflows"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7
+    patterns:
+      - "*"
+    multi-ecosystem-group: "dependencies"
