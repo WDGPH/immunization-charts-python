@@ -7,6 +7,8 @@ updates:
   directory: "/"
   schedule:
     interval: "weekly"
+  cooldown:
+    default-days: 7
   groups:
     # Group all minor and patch updates for GitHub Actions
     # Keep individual updates for major updates
@@ -19,7 +21,9 @@ updates:
 - package-ecosystem: "github-actions"
   directory: "/.github/workflows"
   schedule:
-    interval: "daily"
+    interval: "weekly"
+  cooldown:
+    default-days: 7
   groups:
     # Group all minor and patch updates for GitHub Actions
     # Keep individual updates for major updates
