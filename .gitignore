@@ -10,6 +10,7 @@ __pycache__/
 build/
 dist/
 site/
+docs/user_guide/input_schema.md
 .coverage
 htmlcov/
 coverage.xml

@@ -65,7 +65,7 @@ class TestMapColumns:
     def test_province_territory_maps_to_province(self):
         df = _make_conforming_df()
         result = preprocess.map_columns(df)
-        assert "PROVINCE" in result.columns
+        assert "province" in result.columns
         assert "Province/Territory" not in result.columns
 
     def test_drops_unknown_columns(self):
@@ -73,18 +73,18 @@ class TestMapColumns:
         df["Extra Column"] = ["surprise"]
         result = preprocess.map_columns(df)
         assert "Extra Column" not in result.columns
-        assert "EXTRA_COLUMN" not in result.columns
+        assert "extra_column" not in result.columns
 
     def test_includes_optional_column_when_present(self):
         df = _make_conforming_df()
         df["Board Name"] = ["District Board"]
         result = preprocess.map_columns(df)
-        assert "BOARD_NAME" in result.columns
+        assert "board_name" in result.columns
 
     def test_omits_optional_column_when_absent(self):
         df = _make_conforming_df()
         result = preprocess.map_columns(df)
-        assert "BOARD_NAME" not in result.columns
+        assert "board_name" not in result.columns
 
     def test_raises_on_missing_required_column(self):
         df = _make_conforming_df()
@@ -221,33 +221,33 @@ class TestNormalizeDataFrame:
     def test_normalize_dataframe_handles_missing_values(self) -> None:
         """Verify NaN/None values in string columns are filled."""
         df = preprocess.map_columns(sample_input.create_test_input_dataframe(num_clients=3))
-        df.loc[0, "STREET_ADDRESS_LINE_2"] = None
-        df.loc[1, "POSTAL_CODE"] = float("nan")
+        df.loc[0, "street_address_line_2"] = None
+        df.loc[1, "postal_code"] = float("nan")
 
         result = preprocess.normalize_dataframe(df)
 
-        assert result["STREET_ADDRESS_LINE_2"].iloc[0] == ""
-        assert result["POSTAL_CODE"].iloc[1] == ""
+        assert result["street_address_line_2"].iloc[0] == ""
+        assert result["postal_code"].iloc[1] == ""
 
     def test_normalize_dataframe_converts_dates(self) -> None:
-        """Verify DATE_OF_BIRTH is parsed to datetime."""
+        """Verify date_of_birth is parsed to datetime."""
         df = preprocess.map_columns(sample_input.create_test_input_dataframe(num_clients=2))
-        df["DATE_OF_BIRTH"] = ["2015-01-02", "2014-05-06"]
+        df["date_of_birth"] = ["2015-01-02", "2014-05-06"]
 
         result = preprocess.normalize_dataframe(df)
 
-        assert pd.api.types.is_datetime64_any_dtype(result["DATE_OF_BIRTH"])
+        assert pd.api.types.is_datetime64_any_dtype(result["date_of_birth"])
 
     def test_normalize_dataframe_trims_whitespace(self) -> None:
         """Verify string columns have leading/trailing whitespace stripped."""
         df = preprocess.map_columns(sample_input.create_test_input_dataframe(num_clients=1))
-        df["FIRST_NAME"] = ["  Alice  "]
-        df["LAST_NAME"] = ["  Zephyr  "]
+        df["first_name"] = ["  Alice  "]
+        df["last_name"] = ["  Zephyr  "]
 
         result = preprocess.normalize_dataframe(df)
 
-        assert result["FIRST_NAME"].iloc[0] == "Alice"
-        assert result["LAST_NAME"].iloc[0] == "Zephyr"
+        assert result["first_name"].iloc[0] == "Alice"
+        assert result["last_name"].iloc[0] == "Zephyr"
 
 
 @pytest.mark.unit
@@ -261,7 +261,8 @@ class TestAgeCalculation:
         - Notices sent to student (not parent) if over 16
         - Must correctly classify students by age
         """
-        result = preprocess.over_16_check("2000-01-01", "2020-05-15")
+        age = preprocess.calculate_age_at_date("2000-01-01", "2020-05-15")
+        result = age >= 16
 
         assert result is True
 
@@ -271,7 +272,8 @@ class TestAgeCalculation:
         Real-world significance:
         - Notices sent to parent for students under 16
         """
-        result = preprocess.over_16_check("2010-01-01", "2020-05-15")
+        age = preprocess.calculate_age_at_date("2010-01-01", "2020-05-15")
+        result = age >= 16
 
         assert result is False
 
@@ -281,7 +283,8 @@ class TestAgeCalculation:
         Real-world significance:
         - Must correctly handle 16th birthday (inclusive)
         """
-        result = preprocess.over_16_check("2000-05-15", "2016-05-15")
+        age = preprocess.calculate_age_at_date("2000-05-15", "2016-05-15")
+        result = age >= 16
 
         assert result is True
 
@@ -489,7 +492,7 @@ class TestBuildPreprocessResult:
         - Affects disease coverage reporting in notices
         """
         df = preprocess.map_columns(sample_input.create_test_input_dataframe(num_clients=1))
-        df["IMMS_GIVEN"] = ["May 1, 2020 - DTaP"]
+        df["imms_given"] = ["May 1, 2020 - DTaP"]
 
         result = preprocess.build_preprocess_result(
             df,
@@ -529,8 +532,8 @@ class TestBuildPreprocessResult:
             encoding="utf-8",
         )
         df = preprocess.map_columns(sample_input.create_test_input_dataframe(num_clients=1))
-        df["OVERDUE_DISEASE"] = ["DTaP - 2"]
-        df["IMMS_GIVEN"] = ["May 1, 2020 - DTaP"]
+        df["overdue_disease"] = ["DTaP - 2"]
+        df["imms_given"] = ["May 1, 2020 - DTaP"]
 
         result = preprocess.build_preprocess_result(
             df,
@@ -641,8 +644,8 @@ class TestBuildPreprocessResult:
         """
         df = preprocess.map_columns(sample_input.create_test_input_dataframe(num_clients=2))
         # Force duplicate client IDs
-        df.loc[0, "CLIENT_ID"] = "C123456789"
-        df.loc[1, "CLIENT_ID"] = "C123456789"
+        df.loc[0, "client_id"] = "C123456789"
+        df.loc[1, "client_id"] = "C123456789"
 
         result = preprocess.build_preprocess_result(
             df,
@@ -672,11 +675,11 @@ class TestBuildPreprocessResult:
         """
         df = preprocess.map_columns(sample_input.create_test_input_dataframe(num_clients=5))
         # Create two sets of duplicates
-        df.loc[0, "CLIENT_ID"] = "C111111111"
-        df.loc[1, "CLIENT_ID"] = "C111111111"
-        df.loc[2, "CLIENT_ID"] = "C111111111"
-        df.loc[3, "CLIENT_ID"] = "C222222222"
-        df.loc[4, "CLIENT_ID"] = "C222222222"
+        df.loc[0, "client_id"] = "C111111111"
+        df.loc[1, "client_id"] = "C111111111"
+        df.loc[2, "client_id"] = "C111111111"
+        df.loc[3, "client_id"] = "C222222222"
+        df.loc[4, "client_id"] = "C222222222"
 
         result = preprocess.build_preprocess_result(
             df,
@@ -954,7 +957,7 @@ class TestClassifyDatasetValidity:
         """Verify NaN values and blank cells do not count as absent-suffix doses.
 
         Real-world significance:
-        - Clients with no immunization history have empty IMMS_GIVEN cells;
+        - Clients with no immunization history have empty imms_given cells;
           these must not trigger "mixed" when the rest of the dataset is clean
 
         Assertion: valid suffixed dose + NaN + "" → "all_present"
@@ -992,7 +995,7 @@ class TestParseDoseSegments:
     - replace_unspecified filtering
 
     Real-world significance:
-    - This function is the sole parser for IMMS_GIVEN strings; incorrect
+    - This function is the sole parser for imms_given strings; incorrect
       parsing silently omits or misrepresents a patient's immunization
       history on their printed notice.
     """
@@ -1291,7 +1294,7 @@ class TestBuildReceivedRows:
         - DTaP → Diphtheria, Tetanus, Pertussis columns populated.
         """
         df = preprocess.map_columns(sample_input.create_test_input_dataframe(num_clients=1))
-        df["IMMS_GIVEN"] = ["May 1, 2020 - DTaP"]
+        df["imms_given"] = ["May 1, 2020 - DTaP"]
 
         result = preprocess.build_preprocess_result(
             df,

@@ -253,7 +253,7 @@ class TestPreprocessOutputContracts:
         Assertion: vaccines_due_list contains "Polio", not the raw alias "Poliomyelitis"
         """
         df = preprocess.map_columns(sample_input.create_test_input_dataframe(num_clients=1))
-        df["OVERDUE_DISEASE"] = ["Poliomyelitis"]
+        df["overdue_disease"] = ["Poliomyelitis"]
 
         result = preprocess.build_preprocess_result(
             df,
@@ -301,7 +301,7 @@ class TestPreprocessOutputContracts:
         monkeypatch.setattr(preprocess, "PARAMETERS_PATH", params_path)
 
         df = preprocess.map_columns(sample_input.create_test_input_dataframe(num_clients=1))
-        df["IMMS_GIVEN"] = ["May 1, 2020 - DTaP"]
+        df["imms_given"] = ["May 1, 2020 - DTaP"]
 
         result = preprocess.build_preprocess_result(
             df,
@@ -353,7 +353,7 @@ class TestPreprocessOutputContracts:
 
         df = preprocess.map_columns(sample_input.create_test_input_dataframe(num_clients=2))
         # First client has a suffixed dose; second has an un-suffixed dose → mixed
-        df["IMMS_GIVEN"] = [
+        df["imms_given"] = [
             "May 1, 2020 - DTaP - Valid",
             "Jun 15, 2021 - MMR",
         ]
@@ -398,7 +398,7 @@ class TestPreprocessOutputContracts:
         monkeypatch.setattr(preprocess, "PARAMETERS_PATH", params_path)
 
         df = preprocess.map_columns(sample_input.create_test_input_dataframe(num_clients=2))
-        df["IMMS_GIVEN"] = [
+        df["imms_given"] = [
             "May 1, 2020 - DTaP - Valid",
             "Jun 15, 2021 - MMR",
         ]
@@ -449,7 +449,7 @@ class TestPreprocessOutputContracts:
         monkeypatch.setattr(preprocess, "PARAMETERS_PATH", params_path)
 
         df = preprocess.map_columns(sample_input.create_test_input_dataframe(num_clients=1))
-        df["OVERDUE_DISEASE"] = ["DTaP - 2"]
+        df["overdue_disease"] = ["DTaP - 2"]
 
         result = preprocess.build_preprocess_result(
             df,
@@ -480,7 +480,7 @@ class TestPreprocessOutputContracts:
             encoding="utf-8",
         )
         df = preprocess.map_columns(sample_input.create_test_input_dataframe(num_clients=1))
-        df["OVERDUE_DISEASE"] = ["Polio"]
+        df["overdue_disease"] = ["Polio"]
 
         with pytest.raises(ValueError, match="include_dose requires overdue entries"):
             preprocess.build_preprocess_result(
@@ -508,7 +508,7 @@ class TestPreprocessOutputContracts:
             encoding="utf-8",
         )
         df = preprocess.map_columns(sample_input.create_test_input_dataframe(num_clients=1))
-        df["OVERDUE_DISEASE"] = ["Polio - "]
+        df["overdue_disease"] = ["Polio - "]
 
         result = preprocess.build_preprocess_result(
             df,
@@ -688,7 +688,7 @@ class TestPhixStep2Contract:
                     normalized_test_df, tmp_path
                 )
 
-            has_phix = "PHIX_MATCH_TYPE" in result_df.columns
+            has_phix = "phix_match_type" in result_df.columns
             assert has_phix == expect_phix_cols, (
                 f"Expected PHIX columns={expect_phix_cols}, got {has_phix}"
             )

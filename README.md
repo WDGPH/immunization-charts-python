@@ -282,13 +282,21 @@ The preprocessed artifact contains:
   "warnings": [],
   "clients": [
     {
-      "sequence": 1,
+      "sequence": "00001",
       "client_id": "1009876545",
-      "person": {"first_name": "...", "last_name": "...", "date_of_birth": "..."},
-      "school": {"name": "...", "board": "..."},
-      "contact": {"street_address": "...", "city": "...", "postal_code": "...", "province": "..."},
-      "vaccines": {"due": "...", "received": [...]},
-      "metadata": {"recipient": "...", "over_16": false}
+      "language": "en",
+      "person": {
+        "first_name": "...", "last_name": "...",
+        "date_of_birth": "...", "date_of_birth_display": "...", "date_of_birth_iso": "...",
+        "age": "...", "over_16": true
+      },
+      "school": {"name": "...", "id": "..."},
+      "board": {"name": "...", "id": "..."},
+      "contact": {"street": "...", "city": "...", "province": "...", "postal_code": "..."},
+      "vaccines_due": "...",
+      "vaccines_due_list": ["..."],
+      "received": [...],
+      "metadata": {"version_id": null}
     },
     ...
   ]

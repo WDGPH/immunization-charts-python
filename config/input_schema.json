@@ -1,71 +1,75 @@
 {
-  "$schema": "https://specs.frictionlessdata.io/schemas/table-schema.json",
+  "$schema": "https://datapackage.org/profiles/2.0/tableschema.json",
+  "title": "input_schema",
+  "description": "Schema for input file for automated notice generation.",
+  "fieldsMatch": ["subset"],
   "fields": [
     {
-      "name": "School Type",
-      "type": "string"
-    },
-    {
       "name": "School Name",
-      "type": "string"
+      "type": "string",
+      "description": "School name with PHIX ID (if available) in format 'SCHOOL NAME - PHIX ID'"
     },
     {
       "name": "Client Id",
       "type": "string",
+      "description": "10-digit Panorama client identifier",
       "constraints": {
         "pattern": "^\\d{10}$"
       }
     },
     {
       "name": "First Name",
+      "description": "Client first name",
       "type": "string"
     },
     {
       "name": "Last Name",
+      "description": "Client last name",
       "type": "string"
     },
     {
-      "name": "Age",
-      "type": "integer"
-    },
-    {
       "name": "Date of Birth",
+      "description": "Client date of birth",
       "type": "date"
     },
     {
       "name": "Street Address Line 1",
+      "description": "Client street address (line 1)",
       "type": "string"
     },
     {
       "name": "Street Address Line 2",
+      "description": "Client street address (line 2)",
       "type": "string"
     },
     {
       "name": "City",
+      "description": "City of client address",
       "type": "string"
     },
     {
       "name": "Province/Territory",
+      "description": "Province / territory of client address",
       "type": "string"
     },
     {
       "name": "Postal Code",
+      "description": "Postal code of client address",
       "type": "string"
     },
     {
       "name": "Overdue Disease",
+      "description": "Comma-separated list of overdue diseases for client",
       "type": "string"
     },
     {
       "name": "Overdue Agent",
+      "description": "Comma-separated list of overdue agents for client",
       "type": "string"
     },
     {
       "name": "Imms Given",
-      "type": "string"
-    },
-    {
-      "name": "Birth Year",
+      "description": "List of immunizations given to client, separated by ';'. Each list entry is in the format 'Mon Day, YYYY - <received vaccine>'. Optionally, each entry may also include validity status of the dose appended as '- <dose validity>'",
       "type": "string"
     }
   ],

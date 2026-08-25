@@ -49,7 +49,6 @@ def create_test_input_dataframe(
         DataFrame with columns matching expected Excel input format
     """
     data: Dict[str, List[Any]] = {
-        "School Type": ["Public", "Public", "Catholic", "Catholic", "Public"][:num_clients],
         "School Name": [
             "Tunnel Academy",
             "Cheese Wheel Academy",
@@ -60,7 +59,6 @@ def create_test_input_dataframe(
         "Client Id": [f"{i:010d}" for i in range(1, num_clients + 1)],
         "First Name": ["Alice", "Benoit", "Chloe", "Diana", "Ethan"][:num_clients],
         "Last Name": ["Zephyr", "Arnaud", "Brown", "Davis", "Evans"][:num_clients],
-        "Age": ["10", "11", "12", "10", "11"][:num_clients],
         "Date of Birth": [
             "2015-01-02",
             "2014-05-06",
@@ -113,7 +111,6 @@ def create_test_input_dataframe(
             if include_immunization_history
             else [""] * num_clients
         ),
-        "Birth Year": ["2015", "2014", "2013", "2015", "2014"][:num_clients],
     }
 
     return pd.DataFrame(data)
@@ -188,14 +185,12 @@ def create_test_client_record(
 
     school_dict: Dict[str, Any] = {
         "id": f"sch_{sequence}",
-        "name": school_name,
-        "code": "SCH001",
+        "name": school_name
     }
 
     board_dict: Dict[str, Any] = {
         "id": f"brd_{sequence}",
-        "name": board_name,
-        "code": "BRD001",
+        "name": board_name
     }
 
     received: List[Dict[str, object]] = []

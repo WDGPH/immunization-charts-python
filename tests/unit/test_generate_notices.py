@@ -55,8 +55,8 @@ class TestReadArtifact:
                         "date_of_birth_display": "Jan 01, 2015",
                         "date_of_birth_iso": "2015-01-01",
                     },
-                    "school": {"name": "Test School", "code": "SCH001"},
-                    "board": {"name": "Test Board", "code": "BRD001"},
+                    "school": {"name": "Test School"},
+                    "board": {"name": "Test Board"},
                     "contact": {
                         "street": "123 Main St",
                         "city": "Toronto",

@@ -51,7 +51,6 @@ import re
 from datetime import datetime, timezone
 from hashlib import sha1
 from pathlib import Path
-from string import Formatter
 from typing import Any, Dict, List, Literal, Optional
 import pandas as pd
 import yaml
@@ -73,8 +72,6 @@ PARAMETERS_PATH = CONFIG_DIR / "parameters.yaml"
 
 LOG = logging.getLogger(__name__)
 
-_FORMATTER = Formatter()
-
 REPLACE_UNSPECIFIED = [
     "-unspecified",
     "unspecified",
@@ -86,29 +83,26 @@ REPLACE_UNSPECIFIED = [
 INPUT_SCHEMA_PATH = CONFIG_DIR / "input_schema.json"
 
 REQUIRED_COLUMN_MAP: dict[str, str] = {
-    "School Type":            "SCHOOL_TYPE",
-    "School Name":            "SCHOOL_NAME",
-    "Client Id":              "CLIENT_ID",
-    "First Name":             "FIRST_NAME",
-    "Last Name":              "LAST_NAME",
-    "Age":                    "AGE",
-    "Date of Birth":          "DATE_OF_BIRTH",
-    "Street Address Line 1":  "STREET_ADDRESS_LINE_1",
-    "Street Address Line 2":  "STREET_ADDRESS_LINE_2",
-    "City":                   "CITY",
-    "Province/Territory":     "PROVINCE",
-    "Postal Code":            "POSTAL_CODE",
-    "Overdue Disease":        "OVERDUE_DISEASE",
-    "Overdue Agent":          "OVERDUE_AGENT",
-    "Imms Given":             "IMMS_GIVEN",
-    "Birth Year":             "BIRTH_YEAR",
+    "School Name":            "school_name",
+    "Client Id":              "client_id",
+    "First Name":             "first_name",
+    "Last Name":              "last_name",
+    "Date of Birth":          "date_of_birth",
+    "Street Address Line 1":  "street_address_line_1",
+    "Street Address Line 2":  "street_address_line_2",
+    "City":                   "city",
+    "Province/Territory":     "province",
+    "Postal Code":            "postal_code",
+    "Overdue Disease":        "overdue_disease",
+    "Overdue Agent":          "overdue_agent",
+    "Imms Given":             "imms_given",
 }
 
 OPTIONAL_COLUMN_MAP: dict[str, str] = {
-    "Board Name":  "BOARD_NAME",
-    "Board Id":    "BOARD_ID",
-    "School Id":   "SCHOOL_ID",
-    "Unique Id":   "UNIQUE_ID",
+    "Board Name":  "board_name",
+    "Board Id":    "board_id",
+    "School Id":   "school_id",
+    "Version Id":   "version_id"
 }
 
 
@@ -202,31 +196,31 @@ def check_addresses_complete(df: pd.DataFrame) -> pd.DataFrame:
 
     # Normalize text fields: convert to string, strip whitespace, convert "" to NA
     address_cols = [
-        "STREET_ADDRESS_LINE_1",
-        "STREET_ADDRESS_LINE_2",
-        "CITY",
-        "PROVINCE",
-        "POSTAL_CODE",
+        "street_address_line_1",
+        "street_address_line_2",
+        "city",
+        "province",
+        "postal_code",
     ]
 
     for col in address_cols:
         df[col] = df[col].astype(str).str.strip().replace({"": pd.NA, "nan": pd.NA})
 
     # Build combined address line
-    df["ADDRESS"] = (
-        df["STREET_ADDRESS_LINE_1"].fillna("")
+    df["address"] = (
+        df["street_address_line_1"].fillna("")
         + " "
-        + df["STREET_ADDRESS_LINE_2"].fillna("")
+        + df["street_address_line_2"].fillna("")
     ).str.strip()
 
-    df["ADDRESS"] = df["ADDRESS"].replace({"": pd.NA})
+    df["address"] = df["address"].replace({"": pd.NA})
 
     # Check completeness
     df["address_complete"] = (
-        df["ADDRESS"].notna()
-        & df["CITY"].notna()
-        & df["PROVINCE"].notna()
-        & df["POSTAL_CODE"].notna()
+        df["address"].notna()
+        & df["city"].notna()
+        & df["province"].notna()
+        & df["postal_code"].notna()
     )
 
     if not df["address_complete"].all():
@@ -266,8 +260,8 @@ def convert_date_iso(date_str: str) -> str:
     return date_obj.strftime("%Y-%m-%d")
 
 
-def over_16_check(date_of_birth, date_notice_delivery):
-    """Check if a client is over 16 years old on notice delivery date.
+def calculate_age_at_date(date_of_birth, date_notice_delivery):
+    """Calculate a client's age on notice delivery date.
 
     Parameters
     ----------
@@ -278,8 +272,8 @@ def over_16_check(date_of_birth, date_notice_delivery):
 
     Returns
     -------
-    bool
-        True if the client is over 16 years old on date_notice_delivery, False otherwise.
+    int
+        The client's age on date_notice_delivery.
     """
 
     birth_datetime = datetime.strptime(date_of_birth, "%Y-%m-%d")
@@ -294,7 +288,7 @@ def over_16_check(date_of_birth, date_notice_delivery):
     ):
         age -= 1
 
-    return age >= 16
+    return age
 
 
 def configure_logging(output_dir: Path, run_id: str) -> Path:
@@ -435,7 +429,7 @@ def validate_input(file_path: Path) -> None:
 
 
 def map_columns(df: pd.DataFrame) -> pd.DataFrame:
-    """Rename input columns to internal UPPER_SNAKE_CASE keys.
+    """Rename input columns to internal lower_snake_case keys.
 
     Required columns are validated for presence; optional columns are renamed
     only when present. Columns outside both maps are dropped.
@@ -525,12 +519,12 @@ def format_vaccine_due_list(vaccine_due_list: list[str]) -> list[str]:
 def normalize_dataframe(df: pd.DataFrame) -> pd.DataFrame:
     """Normalize data types on a column-mapped DataFrame.
 
-    Expects columns already renamed to UPPER_SNAKE_CASE by map_columns().
+    Expects columns already renamed to lower_snake_case by map_columns().
     Applies string normalization, date parsing, and numeric coercion.
     """
     working = df.copy()
 
-    _skip = {"CLIENT_ID", "DATE_OF_BIRTH", "OVERDUE_DISEASE", "IMMS_GIVEN", "AGE"}
+    _skip = {"client_id", "date_of_birth", "overdue_disease", "imms_given"}
     string_required = [v for v in REQUIRED_COLUMN_MAP.values() if v not in _skip]
 
     for col in string_required:
@@ -542,8 +536,7 @@ def normalize_dataframe(df: pd.DataFrame) -> pd.DataFrame:
         else:
             working[col] = working[col].fillna(" ").astype(str).str.strip()
 
-    working["DATE_OF_BIRTH"] = pd.to_datetime(working["DATE_OF_BIRTH"], errors="coerce")
-    working["AGE"] = pd.to_numeric(working["AGE"], errors="coerce")
+    working["date_of_birth"] = pd.to_datetime(working["date_of_birth"], errors="coerce")
 
     return working
 
@@ -605,7 +598,7 @@ def normalize_validity_status(raw_status: Any) -> str:
     Parameters
     ----------
     raw_status : Any
-        Raw value extracted from an IMMS_GIVEN segment, or any value that
+        Raw value extracted from an imms_given segment, or any value that
         needs to be coerced to a canonical status. Typically a str, but
         accepts Any so callers need not guard against None or NaN.
 
@@ -663,7 +656,7 @@ def collapse_validity_statuses(statuses: List[Any]) -> str:
 def classify_dataset_validity(
     imms_given_series: pd.Series,
 ) -> Literal["all_present", "all_absent", "mixed"]:
-    """Scan all IMMS_GIVEN values and classify dataset-level validity coverage.
+    """Scan all imms_given values and classify dataset-level validity coverage.
 
     Performs a pre-pass over the full dataset before the per-client loop so
     that a single, accurate dataset-level decision can be made about whether
@@ -678,7 +671,7 @@ def classify_dataset_validity(
     Parameters
     ----------
     imms_given_series : pd.Series
-        The ``IMMS_GIVEN`` column of the normalized working DataFrame.
+        The ``imms_given`` column of the normalized working DataFrame.
         Each element is a semicolon-delimited string of dose segments such as
         ``"May 1, 2020 - DTaP - Valid; Jun 15, 2021 - MMR"``.
         NaN values and empty strings are silently skipped.
@@ -732,7 +725,7 @@ def classify_dataset_validity(
 def parse_dose_segments(
     received_agents: Any, replace_unspecified: List[str]
 ) -> List[Dict[str, str]]:
-    """Parse an IMMS_GIVEN string into a flat sorted list of individual dose entries.
+    """Parse an imms_given string into a flat sorted list of individual dose entries.
 
     Extracts individual dose entries from a semicolon-delimited string,
     normalizes dates to ISO format, normalizes validity to one of
@@ -744,7 +737,7 @@ def parse_dose_segments(
     Parameters
     ----------
     received_agents : Any
-        Raw IMMS_GIVEN cell value.  Must be a non-empty ``str`` to be
+        Raw imms_given cell value.  Must be a non-empty ``str`` to be
         parsed; any other type returns ``[]``.
         Expected format per segment: ``"MMM D, YYYY - VaccineName"`` or
         ``"MMM D, YYYY - VaccineName - Valid|Invalid"``.
@@ -944,7 +937,7 @@ def build_received_rows(
     chart_diseases_header: List[str],
     show_validity_markers: bool = False,
 ) -> List[Dict[str, Any]]:
-    """Parse IMMS_GIVEN into display rows with pre-computed per-column validity.
+    """Parse imms_given into display rows with pre-computed per-column validity.
 
     Orchestrates ``parse_dose_segments`` → ``_deduplicate_vaccines_for_date``
     → ``_split_into_rows`` for each administration date.  Dates whose
@@ -956,7 +949,7 @@ def build_received_rows(
     Parameters
     ----------
     received_agents : Any
-        Raw IMMS_GIVEN cell value.
+        Raw imms_given cell value.
     replace_unspecified : List[str]
         Vaccine names to suppress.
     vaccine_reference : Dict[str, Any]
@@ -1027,7 +1020,7 @@ def build_preprocess_result(
     df : pd.DataFrame
         Raw input DataFrame, typically loaded from an Excel or CSV file.
         Must have columns already renamed via map_columns() to the internal
-        UPPER_SNAKE_CASE keys defined in ``REQUIRED_COLUMN_MAP``.
+        lower_snake_case keys defined in ``REQUIRED_COLUMN_MAP``.
     language : str
         Language code for this batch (``"en"`` or ``"fr"``). Stored on
         every ``ClientRecord`` and used to format display dates.
@@ -1036,7 +1029,7 @@ def build_preprocess_result(
         ``enrich_grouped_records``.
     replace_unspecified : List[str]
         Vaccine names to suppress from immunization history. Passed
-        through to ``process_received_agents``.
+        through to ``build_received_rows``.
     config_path : Path, optional
         Path to ``parameters.yaml``. Defaults to the repository configuration.
 
@@ -1085,22 +1078,22 @@ def build_preprocess_result(
     include_dose: bool = preprocess_cfg.get("include_dose", False)
     show_validity_markers: bool = preprocess_cfg.get("show_validity_markers", False)
 
-    working["SCHOOL_ID"] = working.apply(
+    working["school_id"] = working.apply(
         lambda row: synthesize_identifier(
-            row.get("SCHOOL_ID", ""), row["SCHOOL_NAME"], "sch"
+            row.get("school_id", ""), row["school_name"], "sch"
         ),
         axis=1,
     )
-    working["BOARD_ID"] = working.apply(
+    working["board_id"] = working.apply(
         lambda row: synthesize_identifier(
-            row.get("BOARD_ID", ""), row.get("BOARD_NAME", ""), "brd"
+            row.get("board_id", ""), row.get("board_name", ""), "brd"
         ),
         axis=1,
     )
 
-    if (working["BOARD_NAME"] == "").any():
+    if (working["board_name"] == "").any():
         affected = (
-            working.loc[working["BOARD_NAME"] == "", "SCHOOL_NAME"].unique().tolist()
+            working.loc[working["board_name"] == "", "school_name"].unique().tolist()
         )
         warnings.add(
             "Missing board name for: " + ", ".join(sorted(filter(None, affected)))
@@ -1109,12 +1102,12 @@ def build_preprocess_result(
         )
 
     sorted_df = working.sort_values(
-        by=["SCHOOL_NAME", "LAST_NAME", "FIRST_NAME", "CLIENT_ID"],
+        by=["school_name", "last_name", "first_name", "client_id"],
         kind="stable",
     ).reset_index(drop=True)
-    sorted_df["SEQUENCE"] = [f"{idx + 1:05d}" for idx in range(len(sorted_df))]
+    sorted_df["sequence"] = [f"{idx + 1:05d}" for idx in range(len(sorted_df))]
 
-    validity_coverage = classify_dataset_validity(sorted_df["IMMS_GIVEN"])
+    validity_coverage = classify_dataset_validity(sorted_df["imms_given"])
     if validity_coverage == "mixed":
         if show_validity_markers:
             raise ValueError(
@@ -1134,11 +1127,11 @@ def build_preprocess_result(
 
     clients: List[ClientRecord] = []
     for row in sorted_df.itertuples(index=False):
-        client_id = str(row.CLIENT_ID)  # type: ignore[attr-defined]
-        sequence = row.SEQUENCE  # type: ignore[attr-defined]
+        client_id = str(row.client_id)  # type: ignore[attr-defined]
+        sequence = row.sequence  # type: ignore[attr-defined]
         dob_iso = (
-            row.DATE_OF_BIRTH.strftime("%Y-%m-%d")  # type: ignore[attr-defined]
-            if pd.notna(row.DATE_OF_BIRTH)  # type: ignore[attr-defined]
+            row.date_of_birth.strftime("%Y-%m-%d")  # type: ignore[attr-defined]
+            if pd.notna(row.date_of_birth)  # type: ignore[attr-defined]
             else None
         )
         if dob_iso is None:
@@ -1150,7 +1143,7 @@ def build_preprocess_result(
             if language_enum == Language.FRENCH and dob_iso
             else (convert_date_string(dob_iso, locale="en") if dob_iso else None)
         )
-        vaccines_due = process_vaccines_due(row.OVERDUE_DISEASE, language)  # type: ignore[attr-defined]
+        vaccines_due = process_vaccines_due(row.overdue_disease, language)  # type: ignore[attr-defined]
         vaccines_due_list = [
             item.strip() for item in vaccines_due.split(",") if item.strip()
         ]
@@ -1166,48 +1159,48 @@ def build_preprocess_result(
         else:
             vaccines_due_list = hide_vaccine_due_doses(vaccines_due_list)
         received = build_received_rows(
-            row.IMMS_GIVEN,  # type: ignore[attr-defined]
+            row.imms_given,  # type: ignore[attr-defined]
             replace_unspecified,
             vaccine_reference,
             chart_diseases_header,
             show_validity_markers,
         )
-        postal_code = row.POSTAL_CODE if row.POSTAL_CODE else "Not provided"  # type: ignore[attr-defined]
+        postal_code = row.postal_code if row.postal_code else "Not provided"  # type: ignore[attr-defined]
         address_line = " ".join(
-            filter(None, [row.STREET_ADDRESS_LINE_1, row.STREET_ADDRESS_LINE_2])  # type: ignore[attr-defined]
+            filter(None, [row.street_address_line_1, row.street_address_line_2])  # type: ignore[attr-defined]
         ).strip()
 
-        if not pd.isna(row.AGE):  # type: ignore[attr-defined]
-            over_16 = bool(row.AGE >= 16)  # type: ignore[attr-defined]
-        elif dob_iso and date_notice_delivery:
-            over_16 = over_16_check(dob_iso, date_notice_delivery)
+        if dob_iso and date_notice_delivery:
+            age = calculate_age_at_date(dob_iso, date_notice_delivery)
+            over_16 = age >= 16
         else:
+            age = None
             over_16 = False
 
         person = {
-            "first_name": row.FIRST_NAME or "",  # type: ignore[attr-defined]
-            "last_name": row.LAST_NAME or "",  # type: ignore[attr-defined]
+            "first_name": row.first_name or "",  # type: ignore[attr-defined]
+            "last_name": row.last_name or "",  # type: ignore[attr-defined]
             "date_of_birth": dob_iso or "",
             "date_of_birth_display": formatted_dob or "",
             "date_of_birth_iso": dob_iso or "",
-            "age": str(row.AGE) if not pd.isna(row.AGE) else "",  # type: ignore[attr-defined]
+            "age": str(age) or "",  # type: ignore[attr-defined]
             "over_16": over_16,
         }
 
         school = {
-            "name": row.SCHOOL_NAME,  # type: ignore[attr-defined]
-            "id": row.SCHOOL_ID,  # type: ignore[attr-defined]
+            "name": row.school_name,  # type: ignore[attr-defined]
+            "id": row.school_id,  # type: ignore[attr-defined]
         }
 
         board = {
-            "name": row.BOARD_NAME or "",  # type: ignore[attr-defined]
-            "id": row.BOARD_ID,  # type: ignore[attr-defined]
+            "name": row.board_name or "",  # type: ignore[attr-defined]
+            "id": row.board_id,  # type: ignore[attr-defined]
         }
 
         contact = {
             "street": address_line,
-            "city": row.CITY,  # type: ignore[attr-defined]
-            "province": row.PROVINCE,  # type: ignore[attr-defined]
+            "city": row.city,  # type: ignore[attr-defined]
+            "province": row.province,  # type: ignore[attr-defined]
             "postal_code": postal_code,
         }
 
@@ -1223,7 +1216,7 @@ def build_preprocess_result(
             vaccines_due_list=vaccines_due_list if vaccines_due_list else None,
             received=received if received else None,
             metadata={
-                "unique_id": row.UNIQUE_ID or None,  # type: ignore[attr-defined]
+                "version_id": row.version_id or None,  # type: ignore[attr-defined]
             },
         )
 
@@ -1300,7 +1293,7 @@ def run_phix_validation(
         target_phu=target_phu,
         output_dir=output_dir,
         unmatched_behavior=phix_config.get("unmatched_behavior", "warn"),
-        column_prefix=phix_config.get("column_prefix", "PHIX_"),
+        column_prefix=phix_config.get("column_prefix", "phix_"),
     )
 
 

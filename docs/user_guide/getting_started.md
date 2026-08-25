@@ -31,12 +31,10 @@ The pipeline enforces a strict column schema — column names must match exactly
 
 | Column name | Notes |
 |---|---|
-| `School Type` | |
 | `School Name` | |
 | `Client Id` | 10-digit numeric string |
 | `First Name` | |
 | `Last Name` | |
-| `Age` | Integer |
 | `Date of Birth` | ISO 8601 date (`YYYY-MM-DD`) |
 | `Street Address Line 1` | |
 | `Street Address Line 2` | May be blank |
@@ -46,7 +44,6 @@ The pipeline enforces a strict column schema — column names must match exactly
 | `Overdue Disease` | May be blank |
 | `Overdue Agent` | May be blank |
 | `Imms Given` | May be blank |
-| `Birth Year` | |
 
 The following columns are **optional** and will be used when present:
 
@@ -55,9 +52,9 @@ The following columns are **optional** and will be used when present:
 | `Board Name` |
 | `Board Id` |
 | `School Id` |
-| `Unique Id` |
+| `Version Id` |
 
-The full schema is defined in `config/input_schema.yaml`. If the file is missing any required column, the pipeline will stop immediately with a clear error message listing the missing columns.
+The full schema is defined in `config/input_schema.json`. If the file is missing any required column, the pipeline will stop immediately with a clear error message listing the missing columns.
 
 Place input files in the `input/` subdirectory (not tracked by Git):
 
