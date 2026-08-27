@@ -229,7 +229,8 @@ def run_step_2_preprocess(
     df = preprocess.normalize_dataframe(df_raw)
 
     # Check that addresses are complete, return only complete rows
-    df = preprocess.check_addresses_complete(df)
+    df = preprocess.check_addresses_complete(df, drop_incomplete=True)
+    df = preprocess.check_client_info_complete(df, drop_incomplete=True)
 
     # Validate schools against PHIX mapping
     df, phix_warnings = preprocess.run_phix_validation(df, output_dir)

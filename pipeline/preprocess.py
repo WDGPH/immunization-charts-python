@@ -161,11 +161,11 @@ def format_iso_date_for_language(iso_date: str, language: str) -> str:
     return format_date(date_obj, format="long", locale=locale)
 
 
-def check_addresses_complete(df: pd.DataFrame) -> pd.DataFrame:
+def check_addresses_complete(df: pd.DataFrame, drop_incomplete=True) -> pd.DataFrame:
     """
     Check if address fields are complete in the DataFrame.
 
-    Adds a boolean 'address_complete' column based on presence of
+    Adds a temporary boolean 'address_complete' column based on presence of
     street address, city, province, and postal code.
     """
 
@@ -213,8 +213,69 @@ def check_addresses_complete(df: pd.DataFrame) -> pd.DataFrame:
         incomplete_records.to_csv(incomplete_path, index=False)
         LOG.info("Incomplete address records written to %s", incomplete_path)
 
-    # Return only rows with complete addresses
-    return df.loc[df["address_complete"]].drop(columns=["address_complete"])
+    # Return only rows with complete addresses based on drop_incomplete flag
+    if drop_incomplete:
+        return df.loc[df["address_complete"]].drop(columns=["address_complete"])
+    else:
+        return df.drop(columns=["address_complete"])
+
+
+def check_client_info_complete(df: pd.DataFrame, drop_incomplete=True) -> pd.DataFrame:
+    """
+    Check if client fields are complete in the DataFrame.
+
+    Adds a temporary boolean 'client_info_complete' column based on presence of
+    first name, last name, DOB, school name, overdue disease, immunizations given, and client ID.
+    """
+
+    df = df.copy()
+
+    # Normalize text fields: convert to string, strip whitespace, convert "" to NA
+    client_info_cols = [
+        "school_name",
+        "client_id",
+        "first_name",
+        "last_name",
+        "date_of_birth",
+        "overdue_disease",
+        "imms_given",
+    ]
+
+    for col in client_info_cols:
+        df[col] = df[col].astype(str).str.strip().replace({"": pd.NA, "nan": pd.NA})
+
+    # Check completeness
+    df["client_info_complete"] = (
+        df["first_name"].notna()
+        & df["last_name"].notna()
+        & df["client_id"].notna()
+        & df["date_of_birth"].notna()
+        & df["overdue_disease"].notna()
+        & df["imms_given"].notna()
+    )
+
+    if not df["client_info_complete"].all():
+        incomplete_count = (~df["client_info_complete"]).sum()
+        LOG.warning(
+            "There are %d records with incomplete/invalid client information.",
+            incomplete_count,
+        )
+        print(
+            f"⚠️ There are {incomplete_count} total records with incomplete/invalid client information."
+        )
+
+        incomplete_records = df.loc[~df["client_info_complete"]]
+
+        incomplete_path = Path("output/incomplete_clients.csv")
+        incomplete_records.to_csv(incomplete_path, index=False)
+        LOG.info("Incomplete client records written to %s", incomplete_path)
+        print(f"Incomplete client records written to {incomplete_path}")
+
+    # Return only rows with complete client info based on drop_incomplete flag
+    if drop_incomplete:
+        return df.loc[df["client_info_complete"]].drop(columns=["client_info_complete"])
+    else:
+        return df.drop(columns=["client_info_complete"])
 
 
 def convert_date_iso(date_str: str) -> str:

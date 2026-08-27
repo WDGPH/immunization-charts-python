@@ -236,7 +236,11 @@ class TestPipelineSteps:
             patch(
                 "pipeline.orchestrator.preprocess.check_addresses_complete",
                 return_value=MagicMock(),
-            ) as mock_check_addresses,
+            ),
+            patch(
+                "pipeline.orchestrator.preprocess.check_client_info_complete",
+                return_value=MagicMock(),
+            ) as mock_check_client_info,
             patch(
                 "pipeline.orchestrator.preprocess.build_preprocess_result",
                 return_value=result,
@@ -257,7 +261,8 @@ class TestPipelineSteps:
             )
 
         assert total_clients == 0
-        assert mock_build_result.call_args.args[0] is mock_check_addresses.return_value
+        assert mock_build_result.call_args.args[0] is mock_check_client_info.return_value
+        
         assert mock_build_result.call_args.kwargs["config_path"] == (
             config_dir / "parameters.yaml"
         )
