@@ -252,7 +252,7 @@ class TestPreprocessOutputContracts:
 
         Assertion: vaccines_due_list contains "Polio", not the raw alias "Poliomyelitis"
         """
-        df = preprocess.map_columns(sample_input.create_test_input_dataframe(num_clients=1))
+        df = sample_input.create_test_input_dataframe(num_clients=1)
         df["overdue_disease"] = ["Poliomyelitis"]
 
         result = preprocess.build_preprocess_result(
@@ -300,7 +300,7 @@ class TestPreprocessOutputContracts:
         )
         monkeypatch.setattr(preprocess, "PARAMETERS_PATH", params_path)
 
-        df = preprocess.map_columns(sample_input.create_test_input_dataframe(num_clients=1))
+        df = sample_input.create_test_input_dataframe(num_clients=1)
         df["imms_given"] = ["May 1, 2020 - DTaP"]
 
         result = preprocess.build_preprocess_result(
@@ -351,7 +351,7 @@ class TestPreprocessOutputContracts:
         )
         monkeypatch.setattr(preprocess, "PARAMETERS_PATH", params_path)
 
-        df = preprocess.map_columns(sample_input.create_test_input_dataframe(num_clients=2))
+        df = sample_input.create_test_input_dataframe(num_clients=2)
         # First client has a suffixed dose; second has an un-suffixed dose → mixed
         df["imms_given"] = [
             "May 1, 2020 - DTaP - Valid",
@@ -397,7 +397,7 @@ class TestPreprocessOutputContracts:
         )
         monkeypatch.setattr(preprocess, "PARAMETERS_PATH", params_path)
 
-        df = preprocess.map_columns(sample_input.create_test_input_dataframe(num_clients=2))
+        df = sample_input.create_test_input_dataframe(num_clients=2)
         df["imms_given"] = [
             "May 1, 2020 - DTaP - Valid",
             "Jun 15, 2021 - MMR",
@@ -448,7 +448,7 @@ class TestPreprocessOutputContracts:
         )
         monkeypatch.setattr(preprocess, "PARAMETERS_PATH", params_path)
 
-        df = preprocess.map_columns(sample_input.create_test_input_dataframe(num_clients=1))
+        df = sample_input.create_test_input_dataframe(num_clients=1)
         df["overdue_disease"] = ["DTaP - 2"]
 
         result = preprocess.build_preprocess_result(
@@ -479,7 +479,7 @@ class TestPreprocessOutputContracts:
             "preprocess:\n  include_dose: true\n",
             encoding="utf-8",
         )
-        df = preprocess.map_columns(sample_input.create_test_input_dataframe(num_clients=1))
+        df = sample_input.create_test_input_dataframe(num_clients=1)
         df["overdue_disease"] = ["Polio"]
 
         with pytest.raises(ValueError, match="include_dose requires overdue entries"):
@@ -507,7 +507,7 @@ class TestPreprocessOutputContracts:
             "preprocess:\n  include_dose: true\n",
             encoding="utf-8",
         )
-        df = preprocess.map_columns(sample_input.create_test_input_dataframe(num_clients=1))
+        df = sample_input.create_test_input_dataframe(num_clients=1)
         df["overdue_disease"] = ["Polio - "]
 
         result = preprocess.build_preprocess_result(
@@ -552,13 +552,13 @@ def phix_mapping_file(tmp_path: Path) -> Path:
 
 @pytest.fixture
 def normalized_test_df() -> pd.DataFrame:
-    """Return a normalized DataFrame (post map_columns + normalize_dataframe).
+    """Return a normalized DataFrame (post normalize_dataframe).
 
     This is the shape of DataFrame that run_phix_validation receives in the
-    real pipeline — after column mapping and normalization, before artifact build.
+    real pipeline — after normalization, before artifact build.
     """
     raw = sample_input.create_test_input_dataframe(num_clients=3)
-    return preprocess.normalize_dataframe(preprocess.map_columns(raw))
+    return preprocess.normalize_dataframe(raw)
 
 
 @pytest.mark.integration

@@ -15,7 +15,7 @@ docs/user_guide/input_schema.md
 htmlcov/
 coverage.xml
 coverage.json
-!input/rodent_dataset.xlsx
+!input/rodent_dataset.csv
 input/*
 phu_templates/*
 !phu_templates/README.md

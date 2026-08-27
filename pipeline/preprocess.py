@@ -82,29 +82,6 @@ REPLACE_UNSPECIFIED = [
 
 INPUT_SCHEMA_PATH = CONFIG_DIR / "input_schema.json"
 
-REQUIRED_COLUMN_MAP: dict[str, str] = {
-    "School Name":            "school_name",
-    "Client Id":              "client_id",
-    "First Name":             "first_name",
-    "Last Name":              "last_name",
-    "Date of Birth":          "date_of_birth",
-    "Street Address Line 1":  "street_address_line_1",
-    "Street Address Line 2":  "street_address_line_2",
-    "City":                   "city",
-    "Province/Territory":     "province",
-    "Postal Code":            "postal_code",
-    "Overdue Disease":        "overdue_disease",
-    "Overdue Agent":          "overdue_agent",
-    "Imms Given":             "imms_given",
-}
-
-OPTIONAL_COLUMN_MAP: dict[str, str] = {
-    "Board Name":  "board_name",
-    "Board Id":    "board_id",
-    "School Id":   "school_id",
-    "Version Id":   "version_id"
-}
-
 
 def convert_date_string(
     date_str: str | datetime | pd.Timestamp, locale: str = "en"
@@ -372,7 +349,7 @@ def read_input(file_path: Path) -> pd.DataFrame:
 
     try:
         if ext in [".xlsx", ".xls"]:
-            df = pd.read_excel(file_path, engine="openpyxl", dtype={"Client Id": str})
+            df = pd.read_excel(file_path, engine="openpyxl", dtype={"client_id": str})
         elif ext == ".csv":
             # Try common encodings
             for enc in ["utf-8-sig", "latin-1", "cp1252"]:
@@ -427,39 +404,6 @@ def validate_input(file_path: Path) -> None:
             + "\n".join(f"  - {e[0]}" for e in errors)
         )
 
-
-def map_columns(df: pd.DataFrame) -> pd.DataFrame:
-    """Rename input columns to internal lower_snake_case keys.
-
-    Required columns are validated for presence; optional columns are renamed
-    only when present. Columns outside both maps are dropped.
-
-    Parameters
-    ----------
-    df : pd.DataFrame
-        Raw input DataFrame with source column names as loaded from the input file.
-
-    Returns
-    -------
-    pd.DataFrame
-        DataFrame with columns renamed to the internal keys defined in
-        ``REQUIRED_COLUMN_MAP`` and ``OPTIONAL_COLUMN_MAP``. Unrecognised
-        columns are dropped.
-
-    Raises
-    ------
-    ValueError
-        If any required column is missing from the DataFrame.
-    """
-    missing = [col for col in REQUIRED_COLUMN_MAP if col not in df.columns]
-    if missing:
-        raise ValueError(f"Input is missing required columns: {missing}")
-
-    present_optional = {k: v for k, v in OPTIONAL_COLUMN_MAP.items() if k in df.columns}
-    full_map = {**REQUIRED_COLUMN_MAP, **present_optional}
-    renamed = df.rename(columns=full_map)
-    known = set(full_map.values())
-    return renamed[[col for col in renamed.columns if col in known]]
 
 
 def split_vaccine_due_entry(item: str) -> tuple[str, str | None]:
@@ -516,21 +460,32 @@ def format_vaccine_due_list(vaccine_due_list: list[str]) -> list[str]:
     return formatted
 
 
-def normalize_dataframe(df: pd.DataFrame) -> pd.DataFrame:
-    """Normalize data types on a column-mapped DataFrame.
+_REQUIRED_STRING_COLS = [
+    "school_name",
+    "first_name",
+    "last_name",
+    "street_address_line_1",
+    "street_address_line_2",
+    "city",
+    "province",
+    "postal_code",
+    "overdue_agent",
+]
 
-    Expects columns already renamed to lower_snake_case by map_columns().
+_OPTIONAL_COLS = ["board_name", "board_id", "school_id", "version_id"]
+
+
+def normalize_dataframe(df: pd.DataFrame) -> pd.DataFrame:
+    """Normalize data types on a DataFrame with snake_case column names.
+
     Applies string normalization, date parsing, and numeric coercion.
     """
     working = df.copy()
 
-    _skip = {"client_id", "date_of_birth", "overdue_disease", "imms_given"}
-    string_required = [v for v in REQUIRED_COLUMN_MAP.values() if v not in _skip]
-
-    for col in string_required:
+    for col in _REQUIRED_STRING_COLS:
         working[col] = working[col].fillna(" ").astype(str).str.strip()
 
-    for col in OPTIONAL_COLUMN_MAP.values():
+    for col in _OPTIONAL_COLS:
         if col not in working.columns:
             working[col] = ""
         else:
@@ -1019,8 +974,7 @@ def build_preprocess_result(
     ----------
     df : pd.DataFrame
         Raw input DataFrame, typically loaded from an Excel or CSV file.
-        Must have columns already renamed via map_columns() to the internal
-        lower_snake_case keys defined in ``REQUIRED_COLUMN_MAP``.
+        Must have lower_snake_case column names matching the input schema.
     language : str
         Language code for this batch (``"en"`` or ``"fr"``). Stored on
         every ``ClientRecord`` and used to format display dates.

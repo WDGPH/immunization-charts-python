@@ -31,28 +31,28 @@ The pipeline enforces a strict column schema — column names must match exactly
 
 | Column name | Notes |
 |---|---|
-| `School Name` | |
-| `Client Id` | 10-digit numeric string |
-| `First Name` | |
-| `Last Name` | |
-| `Date of Birth` | ISO 8601 date (`YYYY-MM-DD`) |
-| `Street Address Line 1` | |
-| `Street Address Line 2` | May be blank |
-| `City` | |
-| `Province/Territory` | |
-| `Postal Code` | |
-| `Overdue Disease` | May be blank |
-| `Overdue Agent` | May be blank |
-| `Imms Given` | May be blank |
+| `school_name` | |
+| `client_id` | 10-digit numeric string |
+| `first_name` | |
+| `last_name` | |
+| `date_of_birth` | ISO 8601 date (`YYYY-MM-DD`) |
+| `street_address_line_1` | |
+| `street_address_line_2` | May be blank |
+| `city` | |
+| `province` | |
+| `postal_code` | |
+| `overdue_disease` | May be blank |
+| `overdue_agent` | May be blank |
+| `imms_given` | May be blank |
 
 The following columns are **optional** and will be used when present:
 
 | Column name |
 |---|
-| `Board Name` |
-| `Board Id` |
-| `School Id` |
-| `Version Id` |
+| `board_name` |
+| `board_id` |
+| `school_id` |
+| `version_id` |
 
 The full schema is defined in `config/input_schema.json`. If the file is missing any required column, the pipeline will stop immediately with a clear error message listing the missing columns.
 

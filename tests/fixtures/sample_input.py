@@ -49,42 +49,42 @@ def create_test_input_dataframe(
         DataFrame with columns matching expected Excel input format
     """
     data: Dict[str, List[Any]] = {
-        "School Name": [
+        "school_name": [
             "Tunnel Academy",
             "Cheese Wheel Academy",
             "Mountain Heights Public School",
             "River Valley Elementary",
             "Downtown Collegiate",
         ][:num_clients],
-        "Client Id": [f"{i:010d}" for i in range(1, num_clients + 1)],
-        "First Name": ["Alice", "Benoit", "Chloe", "Diana", "Ethan"][:num_clients],
-        "Last Name": ["Zephyr", "Arnaud", "Brown", "Davis", "Evans"][:num_clients],
-        "Date of Birth": [
+        "client_id": [f"{i:010d}" for i in range(1, num_clients + 1)],
+        "first_name": ["Alice", "Benoit", "Chloe", "Diana", "Ethan"][:num_clients],
+        "last_name": ["Zephyr", "Arnaud", "Brown", "Davis", "Evans"][:num_clients],
+        "date_of_birth": [
             "2015-01-02",
             "2014-05-06",
             "2013-08-15",
             "2015-03-22",
             "2014-11-10",
         ][:num_clients],
-        "Board Name": [
+        "board_name": [
             "Guelph Board of Education",
             "Guelph Board of Education",
             "Wellington Board of Education",
             "Wellington Board of Education",
             "Ontario Public Schools",
         ][:num_clients],
-        "Street Address Line 1": [
+        "street_address_line_1": [
             "123 Main St",
             "456 Side Rd",
             "789 Oak Ave",
             "321 Elm St",
             "654 Maple Dr",
         ][:num_clients],
-        "Street Address Line 2": ["", "Suite 5", "", "Apt 12", ""][:num_clients],
-        "City": ["Guelph", "Guelph", "Wellington", "Wellington", "Toronto"][:num_clients],
-        "Province/Territory": ["ON", "ON", "ON", "ON", "ON"][:num_clients],
-        "Postal Code": ["N1H 2T2", "N1H 2T3", "N1K 1B2", "N1K 1B3", "M5V 3A8"][:num_clients],
-        "Overdue Disease": (
+        "street_address_line_2": ["", "Suite 5", "", "Apt 12", ""][:num_clients],
+        "city": ["Guelph", "Guelph", "Wellington", "Wellington", "Toronto"][:num_clients],
+        "province": ["ON", "ON", "ON", "ON", "ON"][:num_clients],
+        "postal_code": ["N1H 2T2", "N1H 2T3", "N1K 1B2", "N1K 1B3", "M5V 3A8"][:num_clients],
+        "overdue_disease": (
             [
                 "Measles/Mumps/Rubella",
                 "Haemophilus influenzae infection, invasive",
@@ -95,12 +95,12 @@ def create_test_input_dataframe(
             if include_overdue
             else [""] * num_clients
         ),
-        "Overdue Agent": (
+        "overdue_agent": (
             ["MMR", "Hib", "DTaP", "IPV", "PCV13"][:num_clients]
             if include_overdue
             else [""] * num_clients
         ),
-        "Imms Given": (
+        "imms_given": (
             [
                 "May 01, 2020 - DTaP; Jun 15, 2021 - MMR",
                 "Apr 10, 2019 - IPV",

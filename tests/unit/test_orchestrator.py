@@ -230,10 +230,6 @@ class TestPipelineSteps:
             ),
             patch("pipeline.orchestrator.preprocess.validate_input"),
             patch(
-                "pipeline.orchestrator.preprocess.map_columns",
-                return_value=MagicMock(),
-            ),
-            patch(
                 "pipeline.orchestrator.preprocess.normalize_dataframe",
                 return_value=MagicMock(),
             ),

@@ -32,71 +32,23 @@ from tests.fixtures import sample_input
 def _make_conforming_df(**overrides) -> pd.DataFrame:
     """Build a minimal DataFrame with all required input columns."""
     row = {
-        "School Type": ["Public"],
-        "School Name": ["Test School"],
-        "Client Id": ["C001"],
-        "First Name": ["Alice"],
-        "Last Name": ["Zephyr"],
-        "Age": ["10"],
-        "Date of Birth": ["2015-01-01"],
-        "Street Address Line 1": ["123 Main St"],
-        "Street Address Line 2": [""],
-        "City": ["Guelph"],
-        "Province/Territory": ["ON"],
-        "Postal Code": ["N1H 2T2"],
-        "Overdue Disease": ["Measles"],
-        "Overdue Agent": ["MMR"],
-        "Imms Given": [""],
-        "Birth Year": ["2015"],
+        "school_name": ["Test School"],
+        "client_id": ["C001"],
+        "first_name": ["Alice"],
+        "last_name": ["Zephyr"],
+        "date_of_birth": ["2015-01-01"],
+        "street_address_line_1": ["123 Main St"],
+        "street_address_line_2": [""],
+        "city": ["Guelph"],
+        "province": ["ON"],
+        "postal_code": ["N1H 2T2"],
+        "overdue_disease": ["Measles"],
+        "overdue_agent": ["MMR"],
+        "imms_given": [""],
     }
     row.update(overrides)
     return pd.DataFrame(row)
 
-
-@pytest.mark.unit
-class TestMapColumns:
-    """Unit tests for map_columns() strict column mapping."""
-
-    def test_renames_required_columns_to_internal_keys(self):
-        df = _make_conforming_df()
-        result = preprocess.map_columns(df)
-        assert set(preprocess.REQUIRED_COLUMN_MAP.values()).issubset(set(result.columns))
-
-    def test_province_territory_maps_to_province(self):
-        df = _make_conforming_df()
-        result = preprocess.map_columns(df)
-        assert "province" in result.columns
-        assert "Province/Territory" not in result.columns
-
-    def test_drops_unknown_columns(self):
-        df = _make_conforming_df()
-        df["Extra Column"] = ["surprise"]
-        result = preprocess.map_columns(df)
-        assert "Extra Column" not in result.columns
-        assert "extra_column" not in result.columns
-
-    def test_includes_optional_column_when_present(self):
-        df = _make_conforming_df()
-        df["Board Name"] = ["District Board"]
-        result = preprocess.map_columns(df)
-        assert "board_name" in result.columns
-
-    def test_omits_optional_column_when_absent(self):
-        df = _make_conforming_df()
-        result = preprocess.map_columns(df)
-        assert "board_name" not in result.columns
-
-    def test_raises_on_missing_required_column(self):
-        df = _make_conforming_df()
-        df = df.drop(columns=["School Name"])
-        with pytest.raises(ValueError, match="missing required columns"):
-            preprocess.map_columns(df)
-
-    def test_raises_listing_all_missing_columns(self):
-        df = _make_conforming_df()
-        df = df.drop(columns=["School Name", "First Name"])
-        with pytest.raises(ValueError, match="missing required columns"):
-            preprocess.map_columns(df)
 
 
 @pytest.mark.unit
@@ -177,7 +129,7 @@ class TestReadInput:
         df_read = preprocess.read_input(input_path)
 
         assert len(df_read) == 3
-        assert "School Name" in df_read.columns
+        assert "school_name" in df_read.columns
 
     def test_read_input_missing_file_raises_error(self, tmp_test_dir: Path) -> None:
         """Verify error when input file doesn't exist.
@@ -211,7 +163,7 @@ class TestNormalizeDataFrame:
 
     def test_normalize_dataframe_passes_valid_dataframe(self) -> None:
         """Verify valid DataFrame passes normalization without errors."""
-        df = preprocess.map_columns(sample_input.create_test_input_dataframe(num_clients=3))
+        df = sample_input.create_test_input_dataframe(num_clients=3)
 
         result = preprocess.normalize_dataframe(df)
 
@@ -220,7 +172,7 @@ class TestNormalizeDataFrame:
 
     def test_normalize_dataframe_handles_missing_values(self) -> None:
         """Verify NaN/None values in string columns are filled."""
-        df = preprocess.map_columns(sample_input.create_test_input_dataframe(num_clients=3))
+        df = sample_input.create_test_input_dataframe(num_clients=3)
         df.loc[0, "street_address_line_2"] = None
         df.loc[1, "postal_code"] = float("nan")
 
@@ -231,7 +183,7 @@ class TestNormalizeDataFrame:
 
     def test_normalize_dataframe_converts_dates(self) -> None:
         """Verify date_of_birth is parsed to datetime."""
-        df = preprocess.map_columns(sample_input.create_test_input_dataframe(num_clients=2))
+        df = sample_input.create_test_input_dataframe(num_clients=2)
         df["date_of_birth"] = ["2015-01-02", "2014-05-06"]
 
         result = preprocess.normalize_dataframe(df)
@@ -240,7 +192,7 @@ class TestNormalizeDataFrame:
 
     def test_normalize_dataframe_trims_whitespace(self) -> None:
         """Verify string columns have leading/trailing whitespace stripped."""
-        df = preprocess.map_columns(sample_input.create_test_input_dataframe(num_clients=1))
+        df = sample_input.create_test_input_dataframe(num_clients=1)
         df["first_name"] = ["  Alice  "]
         df["last_name"] = ["  Zephyr  "]
 
@@ -395,7 +347,7 @@ class TestBuildPreprocessResult:
         - Sequence numbers (00001, 00002...) appear on notices
         - Must be deterministic: same input → same sequences
         """
-        df = preprocess.map_columns(sample_input.create_test_input_dataframe(num_clients=3))
+        df = sample_input.create_test_input_dataframe(num_clients=3)
 
         result = preprocess.build_preprocess_result(
             df,
@@ -419,7 +371,7 @@ class TestBuildPreprocessResult:
         - Required for comparing pipeline runs (reproducibility)
         - Enables batching by school to work correctly
         """
-        df = preprocess.map_columns(sample_input.create_test_input_dataframe(num_clients=3))
+        df = sample_input.create_test_input_dataframe(num_clients=3)
 
         result1 = preprocess.build_preprocess_result(
             df,
@@ -449,26 +401,23 @@ class TestBuildPreprocessResult:
         - Must be deterministic across pipeline runs
         - Affects sequence number assignment
         """
-        df = preprocess.map_columns(pd.DataFrame(
+        df = pd.DataFrame(
             {
-                "School Type": ["Public", "Public", "Public", "Public"],
-                "School Name": ["Zebra School", "Zebra School", "Apple School", "Apple School"],
-                "Client Id": ["C002", "C001", "C004", "C003"],
-                "First Name": ["Bob", "Alice", "Diana", "Chloe"],
-                "Last Name": ["Smith", "Smith", "Jones", "Jones"],
-                "Age": ["10", "10", "10", "10"],
-                "Date of Birth": ["2015-01-01", "2015-01-02", "2015-01-03", "2015-01-04"],
-                "Street Address Line 1": ["123 Main", "123 Main", "123 Main", "123 Main"],
-                "Street Address Line 2": ["", "", "", ""],
-                "City": ["Town", "Town", "Town", "Town"],
-                "Province/Territory": ["ON", "ON", "ON", "ON"],
-                "Postal Code": ["N1H 2T2", "N1H 2T2", "N1H 2T2", "N1H 2T2"],
-                "Overdue Disease": ["Measles", "Measles", "Measles", "Measles"],
-                "Overdue Agent": ["MMR", "MMR", "MMR", "MMR"],
-                "Imms Given": ["", "", "", ""],
-                "Birth Year": ["2015", "2015", "2015", "2015"],
+                "school_name": ["Zebra School", "Zebra School", "Apple School", "Apple School"],
+                "client_id": ["C002", "C001", "C004", "C003"],
+                "first_name": ["Bob", "Alice", "Diana", "Chloe"],
+                "last_name": ["Smith", "Smith", "Jones", "Jones"],
+                "date_of_birth": ["2015-01-01", "2015-01-02", "2015-01-03", "2015-01-04"],
+                "street_address_line_1": ["123 Main", "123 Main", "123 Main", "123 Main"],
+                "street_address_line_2": ["", "", "", ""],
+                "city": ["Town", "Town", "Town", "Town"],
+                "province": ["ON", "ON", "ON", "ON"],
+                "postal_code": ["N1H 2T2", "N1H 2T2", "N1H 2T2", "N1H 2T2"],
+                "overdue_disease": ["Measles", "Measles", "Measles", "Measles"],
+                "overdue_agent": ["MMR", "MMR", "MMR", "MMR"],
+                "imms_given": ["", "", "", ""],
             }
-        ))
+        )
         result = preprocess.build_preprocess_result(
             df,
             language="en",
@@ -491,7 +440,7 @@ class TestBuildPreprocessResult:
         - Vaccine mapping must preserve all components
         - Affects disease coverage reporting in notices
         """
-        df = preprocess.map_columns(sample_input.create_test_input_dataframe(num_clients=1))
+        df = sample_input.create_test_input_dataframe(num_clients=1)
         df["imms_given"] = ["May 1, 2020 - DTaP"]
 
         result = preprocess.build_preprocess_result(
@@ -531,7 +480,7 @@ class TestBuildPreprocessResult:
             ),
             encoding="utf-8",
         )
-        df = preprocess.map_columns(sample_input.create_test_input_dataframe(num_clients=1))
+        df = sample_input.create_test_input_dataframe(num_clients=1)
         df["overdue_disease"] = ["DTaP - 2"]
         df["imms_given"] = ["May 1, 2020 - DTaP"]
 
@@ -559,26 +508,23 @@ class TestBuildPreprocessResult:
         - Should auto-generate board ID and log warning
         - Allows pipeline to proceed without failing
         """
-        df = preprocess.map_columns(pd.DataFrame(
+        df = pd.DataFrame(
             {
-                "School Type": ["Public"],
-                "School Name": ["Test School"],
-                "Client Id": ["C001"],
-                "First Name": ["Alice"],
-                "Last Name": ["Zephyr"],
-                "Age": ["10"],
-                "Date of Birth": ["2015-01-01"],
-                "Street Address Line 1": ["123 Main"],
-                "Street Address Line 2": [""],
-                "City": ["Guelph"],
-                "Province/Territory": ["ON"],
-                "Postal Code": ["N1H 2T2"],
-                "Overdue Disease": ["Measles"],
-                "Overdue Agent": ["MMR"],
-                "Imms Given": [""],
-                "Birth Year": ["2015"],
+                "school_name": ["Test School"],
+                "client_id": ["C001"],
+                "first_name": ["Alice"],
+                "last_name": ["Zephyr"],
+                "date_of_birth": ["2015-01-01"],
+                "street_address_line_1": ["123 Main"],
+                "street_address_line_2": [""],
+                "city": ["Guelph"],
+                "province": ["ON"],
+                "postal_code": ["N1H 2T2"],
+                "overdue_disease": ["Measles"],
+                "overdue_agent": ["MMR"],
+                "imms_given": [""],
             }
-        ))
+        )
         result = preprocess.build_preprocess_result(
             df,
             language="en",
@@ -600,7 +546,7 @@ class TestBuildPreprocessResult:
         - Preprocessing must handle both language variants
         - Dates must convert to French format for display
         """
-        df = preprocess.map_columns(sample_input.create_test_input_dataframe(num_clients=1, language="fr"))
+        df = sample_input.create_test_input_dataframe(num_clients=1, language="fr")
 
         result = preprocess.build_preprocess_result(
             df,
@@ -621,7 +567,7 @@ class TestBuildPreprocessResult:
         - Input may contain "Not Specified" vaccine agents
         - Pipeline should filter these out to avoid confusing notices
         """
-        df = preprocess.map_columns(sample_input.create_test_input_dataframe(num_clients=1))
+        df = sample_input.create_test_input_dataframe(num_clients=1)
 
         result = preprocess.build_preprocess_result(
             df,
@@ -642,7 +588,7 @@ class TestBuildPreprocessResult:
         - Must warn about this data quality issue
         - Later records with same ID will overwrite earlier ones in notice generation
         """
-        df = preprocess.map_columns(sample_input.create_test_input_dataframe(num_clients=2))
+        df = sample_input.create_test_input_dataframe(num_clients=2)
         # Force duplicate client IDs
         df.loc[0, "client_id"] = "C123456789"
         df.loc[1, "client_id"] = "C123456789"
@@ -673,7 +619,7 @@ class TestBuildPreprocessResult:
         - May have multiple different client IDs that are duplicated
         - Each duplicate set should generate a separate warning
         """
-        df = preprocess.map_columns(sample_input.create_test_input_dataframe(num_clients=5))
+        df = sample_input.create_test_input_dataframe(num_clients=5)
         # Create two sets of duplicates
         df.loc[0, "client_id"] = "C111111111"
         df.loc[1, "client_id"] = "C111111111"
@@ -710,7 +656,7 @@ class TestBuildPreprocessResult:
         Real-world significance:
         - Normal case with clean data should not produce duplicate warnings
         """
-        df = preprocess.map_columns(sample_input.create_test_input_dataframe(num_clients=3))
+        df = sample_input.create_test_input_dataframe(num_clients=3)
 
         result = preprocess.build_preprocess_result(
             df,
@@ -1293,7 +1239,7 @@ class TestBuildReceivedRows:
         Real-world significance:
         - DTaP → Diphtheria, Tetanus, Pertussis columns populated.
         """
-        df = preprocess.map_columns(sample_input.create_test_input_dataframe(num_clients=1))
+        df = sample_input.create_test_input_dataframe(num_clients=1)
         df["imms_given"] = ["May 1, 2020 - DTaP"]
 
         result = preprocess.build_preprocess_result(

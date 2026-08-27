@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 <!-- insertion marker -->
+## [v1.1.0](https://github.com/WDGPH/ImmuKnow/releases/tag/v1.1.0) - 2026-08-25
+
+<small>[Compare with v1.0.0](https://github.com/WDGPH/ImmuKnow/compare/v1.0.0...v1.1.0)</small>
+
+### Changed
+
+- Switch input schema from fuzzy matching / data normalization to enforced Frictionless schema validation. Add schema page to mkdocs.
+- Minimize required columns by deriving where possible.
+- Adopt `lower_snake_case` column naming.
+
 ## [v1.0.0](https://github.com/WDGPH/ImmuKnow/releases/tag/v1.0.0) - 2026-08-13
 
 <small>[Compare with v0.3.0](https://github.com/WDGPH/ImmuKnow/compare/v0.3.0...v1.0.0)</small>
