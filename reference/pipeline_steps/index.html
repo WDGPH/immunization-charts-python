@@ -416,6 +416,8 @@
       
         
       
+        
+      
     
     
     
@@ -550,6 +552,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../user_guide/input_schema/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Input Schema
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../user_guide/pdf_validation/" class="md-nav__link">
         
   
@@ -601,7 +631,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_5" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_6" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -623,14 +653,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_2_5" id="__nav_2_5_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_2_6" id="__nav_2_6_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_5_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_2_5">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_6">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1550,6 +1580,8 @@
 <ul>
 <li><code>output/artifacts/preprocessed_clients_&lt;run_id&gt;.json</code> — canonical client artifact</li>
 <li><code>output/logs/preprocess_&lt;run_id&gt;.log</code> — processing log</li>
+<li><code>output/incomplete_addresses.csv</code> — records dropped due to missing address fields (written when any are found)</li>
+<li><code>output/incomplete_clients.csv</code> — records with missing required client fields, retained in processing (written when any are found)</li>
 <li><code>phix_exact.csv</code>, <code>phix_inexact.csv</code>, <code>phix_no_match.csv</code> — school match audit CSVs (when PHIX validation enabled)</li>
 </ul>
 <p><strong>Processing:</strong></p>
@@ -1560,6 +1592,8 @@
 <li>Expands vaccine codes to disease names using <code>vaccine_reference.json</code></li>
 <li>Filters diseases against <code>chart_diseases_header</code>; collapses unlisted diseases to "Other"</li>
 <li>Computes client ages relative to <code>date_notice_delivery</code> (determines parent vs. student addressing)</li>
+<li>Checks address completeness: records missing <code>address</code>, <code>city</code>, <code>province</code>, or <code>postal_code</code> are logged, written to <code>output/incomplete_addresses.csv</code>, and <strong>dropped</strong> by default from further processing</li>
+<li>Checks client information completeness: records missing <code>first_name</code>, <code>last_name</code>, <code>date_of_birth</code>, <code>client_id</code>, <code>school_name</code>, <code>overdue_disease</code>, or <code>imms_given</code> are logged and written to <code>output/incomplete_clients.csv</code>, and <strong>dropped</strong> by default from further processing</li>
 <li>Sorts clients deterministically: school → last name → first name → client ID</li>
 <li>Assigns stable sequence numbers (<code>00001</code>, <code>00002</code>, …)</li>
 <li>Synthesizes missing school/board identifiers where needed</li>

@@ -418,6 +418,8 @@
       
         
       
+        
+      
     
     
     
@@ -668,6 +670,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../input_schema/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Input Schema
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../pdf_validation/" class="md-nav__link">
         
   
@@ -719,7 +749,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_5" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_6" >
         
           
           <div class="md-nav__link md-nav__container">
@@ -741,14 +771,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_2_5" id="__nav_2_5_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_2_6" id="__nav_2_6_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_5_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_2_5">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_6">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1405,6 +1435,92 @@
 </span></code></pre></div>
 <h2 id="preparing-input-data">Preparing input data<a class="headerlink" href="#preparing-input-data" title="Permanent link">&para;</a></h2>
 <p>Input files must be <code>.xlsx</code> format with a single worksheet, extracted from <a href="https://accessonehealth.ca/">Panorama PEAR</a>.</p>
+<p>The pipeline enforces a strict column schema — column names must match exactly (no fuzzy matching). The following columns are <strong>required</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>Column name</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>school_name</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>client_id</code></td>
+<td>10-digit numeric string</td>
+</tr>
+<tr>
+<td><code>first_name</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>last_name</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>date_of_birth</code></td>
+<td>ISO 8601 date (<code>YYYY-MM-DD</code>)</td>
+</tr>
+<tr>
+<td><code>street_address_line_1</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>street_address_line_2</code></td>
+<td>May be blank</td>
+</tr>
+<tr>
+<td><code>city</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>province</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>postal_code</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>overdue_disease</code></td>
+<td>May be blank</td>
+</tr>
+<tr>
+<td><code>overdue_agent</code></td>
+<td>May be blank</td>
+</tr>
+<tr>
+<td><code>imms_given</code></td>
+<td>May be blank</td>
+</tr>
+</tbody>
+</table>
+<p>The following columns are <strong>optional</strong> and will be used when present:</p>
+<table>
+<thead>
+<tr>
+<th>Column name</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>board_name</code></td>
+</tr>
+<tr>
+<td><code>board_id</code></td>
+</tr>
+<tr>
+<td><code>school_id</code></td>
+</tr>
+<tr>
+<td><code>version_id</code></td>
+</tr>
+</tbody>
+</table>
+<p>The full schema is defined in <code>config/input_schema.json</code>. If the file is missing any required column, the pipeline will stop immediately with a clear error message listing the missing columns.</p>
 <p>Place input files in the <code>input/</code> subdirectory (not tracked by Git):</p>
 <div class="language-text highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>ImmuKnow/
 </span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>└── input/
