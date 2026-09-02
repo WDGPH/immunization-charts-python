@@ -6,6 +6,9 @@ name: Run Pytest
   pull_request:
     branches:
       - '*'
+permissions:
+  contents: read
+  id-token: write
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -40,5 +43,4 @@ jobs:
       - name: Upload results to Codecov
         uses: codecov/codecov-action@v7
         with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          slug: WDGPH/ImmuKnow
+          use_oidc: true
