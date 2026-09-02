@@ -69,7 +69,7 @@ def phix_config_yaml(tmp_path: Path, mapping_file: Path) -> Path:
             "mapping_file": str(mapping_file),
             "target_phu": "Test PHU",
             "unmatched_behavior": "warn",
-            "column_prefix": "PHIX_",
+            "column_prefix": "phix_",
         }
     }
     p = tmp_path / "parameters.yaml"
@@ -360,27 +360,27 @@ class TestValidateSchools:
 
     @pytest.fixture
     def base_df(self) -> pd.DataFrame:
-        """Minimal DataFrame with a SCHOOL_NAME column for validation tests."""
+        """Minimal DataFrame with a school_name column for validation tests."""
         return pd.DataFrame({
-            "SCHOOL_NAME": [
+            "school_name": [
                 "Springfield Elementary - 001",  # exact
                 "Shelbyville Middle",             # inexact/name_only (no ID)
                 "Unknown Academy",               # no_match
             ],
-            "CLIENT_ID": ["C1", "C2", "C3"],
+            "client_id": ["C1", "C2", "C3"],
         })
 
     def test_adds_phix_columns_to_dataframe(self, base_df, mapping_file, tmp_path):
-        """validate_schools adds four PHIX_ columns to the returned DataFrame.
+        """validate_schools adds four phix_ columns to the returned DataFrame.
 
         Real-world significance:
-        - Downstream audit steps depend on PHIX_MATCH_TYPE, PHIX_FACILITY_ID,
-          PHIX_MATCHED_NAME, and PHIX_MATCHED_PHU being present.
+        - Downstream audit steps depend on phix_match_type, phix_facility_id,
+          phix_matched_name, and phix_matched_phu being present.
 
         Assertion: all four columns present in result DataFrame.
         """
         result_df, _ = validate_phix.validate_schools(base_df, mapping_file, "Test PHU", tmp_path)
-        for col in ["PHIX_FACILITY_ID", "PHIX_MATCH_TYPE", "PHIX_MATCHED_NAME", "PHIX_MATCHED_PHU"]:
+        for col in ["phix_facility_id", "phix_match_type", "phix_matched_name", "phix_matched_phu"]:
             assert col in result_df.columns
 
     def test_exact_match_row_has_correct_values(self, base_df, mapping_file, tmp_path):
@@ -389,19 +389,19 @@ class TestValidateSchools:
         Assertion: PHIX columns correct for the exact-match row.
         """
         result_df, _ = validate_phix.validate_schools(base_df, mapping_file, "Test PHU", tmp_path)
-        exact_row = result_df[result_df["CLIENT_ID"] == "C1"].iloc[0]
-        assert exact_row["PHIX_MATCH_TYPE"] == "exact"
-        assert exact_row["PHIX_FACILITY_ID"] == "001"
-        assert exact_row["PHIX_MATCHED_PHU"] == "Test PHU"
+        exact_row = result_df[result_df["client_id"] == "C1"].iloc[0]
+        assert exact_row["phix_match_type"] == "exact"
+        assert exact_row["phix_facility_id"] == "001"
+        assert exact_row["phix_matched_phu"] == "Test PHU"
 
     def test_no_match_row_has_empty_phu(self, base_df, mapping_file, tmp_path):
-        """No-match row has empty PHIX_MATCHED_PHU.
+        """No-match row has empty phix_matched_phu.
 
-        Assertion: PHIX_MATCHED_PHU is empty string for no_match rows.
+        Assertion: phix_matched_phu is empty string for no_match rows.
         """
         result_df, _ = validate_phix.validate_schools(base_df, mapping_file, "Test PHU", tmp_path)
-        no_match_row = result_df[result_df["CLIENT_ID"] == "C3"].iloc[0]
-        assert no_match_row["PHIX_MATCHED_PHU"] == ""
+        no_match_row = result_df[result_df["client_id"] == "C3"].iloc[0]
+        assert no_match_row["phix_matched_phu"] == ""
 
     def test_warn_behavior_returns_all_rows_and_warning(self, base_df, mapping_file, tmp_path):
         """unmatched_behavior='warn' keeps all rows and returns a warning string.
@@ -444,21 +444,21 @@ class TestValidateSchools:
         """
         # Use raw values with and without ID suffix to exercise both code paths
         df = pd.DataFrame({
-            "SCHOOL_NAME": [
+            "school_name": [
                 "Springfield Elementary - 001",  # exact  (raw value has ' - ID' suffix)
                 "Shelbyville Middle",             # inexact/name_only
                 "Unknown Academy",               # no_match
             ],
-            "CLIENT_ID": ["C1", "C2", "C3"],
+            "client_id": ["C1", "C2", "C3"],
         })
         result_df, _ = validate_phix.validate_schools(
             df, mapping_file, "Test PHU", tmp_path, unmatched_behavior="skip"
         )
-        assert set(result_df["CLIENT_ID"]) == {"C1", "C2"}
-        assert "C3" not in result_df["CLIENT_ID"].values
+        assert set(result_df["client_id"]) == {"C1", "C2"}
+        assert "C3" not in result_df["client_id"].values
 
     def test_missing_school_column_returns_df_unchanged(self, mapping_file, tmp_path):
-        """DataFrame without SCHOOL_NAME column passes through unchanged.
+        """DataFrame without school_name column passes through unchanged.
 
         Real-world significance:
         - Prevents hard crashes when the input is missing the expected column;
@@ -472,32 +472,32 @@ class TestValidateSchools:
         assert warnings == []
 
     def test_nan_values_in_school_column_treated_as_no_match(self, mapping_file, tmp_path):
-        """NaN in SCHOOL_NAME column does not crash; those rows get no_match columns.
+        """NaN in school_name column does not crash; those rows get no_match columns.
 
         Real-world significance:
         - Sparse input files often have blank rows in the school column.
 
-        Assertion: NaN rows have PHIX_MATCH_TYPE='no_match' and empty PHU.
+        Assertion: NaN rows have phix_match_type='no_match' and empty PHU.
         """
         df = pd.DataFrame({
-            "SCHOOL_NAME": ["Springfield Elementary - 001", None],
-            "CLIENT_ID": ["C1", "C2"],
+            "school_name": ["Springfield Elementary - 001", None],
+            "client_id": ["C1", "C2"],
         })
         result_df, _ = validate_phix.validate_schools(df, mapping_file, "Test PHU", tmp_path)
-        nan_row = result_df[result_df["CLIENT_ID"] == "C2"].iloc[0]
-        assert nan_row["PHIX_MATCH_TYPE"] == "no_match"
-        assert nan_row["PHIX_MATCHED_PHU"] == ""
+        nan_row = result_df[result_df["client_id"] == "C2"].iloc[0]
+        assert nan_row["phix_match_type"] == "no_match"
+        assert nan_row["phix_matched_phu"] == ""
 
     def test_custom_column_prefix_applied(self, base_df, mapping_file, tmp_path):
         """column_prefix parameter changes output column names.
 
-        Assertion: columns use the supplied prefix instead of 'PHIX_'.
+        Assertion: columns use the supplied prefix instead of 'phix_'.
         """
         result_df, _ = validate_phix.validate_schools(
-            base_df, mapping_file, "Test PHU", tmp_path, column_prefix="VAL_"
+            base_df, mapping_file, "Test PHU", tmp_path, column_prefix="val_"
         )
-        assert "VAL_MATCH_TYPE" in result_df.columns
-        assert "PHIX_MATCH_TYPE" not in result_df.columns
+        assert "val_match_type" in result_df.columns
+        assert "phix_match_type" not in result_df.columns
 
     def test_writes_three_csv_audit_files(self, base_df, mapping_file, tmp_path):
         """CSV audit files are written to output_dir for non-empty categories.
@@ -521,7 +521,7 @@ class TestValidateSchools:
         - Callers must be able to compare original and enriched DataFrames;
           in-place mutation would break that and could cause subtle bugs.
 
-        Assertion: original DataFrame has no PHIX_ columns after the call.
+        Assertion: original DataFrame has no phix_ columns after the call.
         """
         original_cols = set(base_df.columns)
         validate_phix.validate_schools(base_df, mapping_file, "Test PHU", tmp_path)
@@ -545,8 +545,8 @@ class TestRunPhixValidation:
     def base_df(self) -> pd.DataFrame:
         """Minimal DataFrame for preprocess.run_phix_validation tests."""
         return pd.DataFrame({
-            "SCHOOL_NAME": ["Springfield Elementary - 001", "Unknown Academy"],
-            "CLIENT_ID": ["C1", "C2"],
+            "school_name": ["Springfield Elementary - 001", "Unknown Academy"],
+            "client_id": ["C1", "C2"],
         })
 
     def test_disabled_returns_df_unchanged_and_no_warnings(self, tmp_path, base_df):
@@ -619,13 +619,13 @@ class TestRunPhixValidation:
         - The happy path: Step 2 enriches client data with PHIX validation
           metadata used by public-health staff for audit.
 
-        Assertion: PHIX_ columns present; warnings returned for unmatched school.
+        Assertion: phix_ columns present; warnings returned for unmatched school.
         """
         with patch.object(preprocess, "PARAMETERS_PATH", phix_config_yaml):
             result_df, warnings = preprocess.run_phix_validation(base_df, tmp_path)
 
-        assert "PHIX_MATCH_TYPE" in result_df.columns
-        assert "PHIX_FACILITY_ID" in result_df.columns
+        assert "phix_match_type" in result_df.columns
+        assert "phix_facility_id" in result_df.columns
         # "Unknown Academy" has no match → warning issued
         assert len(warnings) > 0
 

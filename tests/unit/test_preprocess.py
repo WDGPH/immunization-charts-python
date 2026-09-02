@@ -29,88 +29,26 @@ from pipeline import preprocess
 from tests.fixtures import sample_input
 
 
-@pytest.mark.unit
-class TestMapColumns:
-    """Unit tests for map_columns() column mapping utility."""
+def _make_conforming_df(**overrides) -> pd.DataFrame:
+    """Build a minimal DataFrame with all required input columns."""
+    row = {
+        "school_name": ["Test School"],
+        "client_id": ["C001"],
+        "first_name": ["Alice"],
+        "last_name": ["Zephyr"],
+        "date_of_birth": ["2015-01-01"],
+        "street_address_line_1": ["123 Main St"],
+        "street_address_line_2": [""],
+        "city": ["Guelph"],
+        "province": ["ON"],
+        "postal_code": ["N1H 2T2"],
+        "overdue_disease": ["Measles"],
+        "overdue_agent": ["MMR"],
+        "imms_given": [""],
+    }
+    row.update(overrides)
+    return pd.DataFrame(row)
 
-    def test_maps_exact_column_names(self):
-        """Verify that exact column names are mapped correctly."""
-        df = pd.DataFrame(
-            {
-                "SCHOOL NAME": ["Test School"],
-                "CLIENT ID": ["C001"],
-                "FIRST NAME": ["Alice"],
-                "LAST NAME": ["Zephyr"],
-                "DATE OF BIRTH": ["2015-01-01"],
-                "CITY": ["Guelph"],
-                "POSTAL CODE": ["N1H 2T2"],
-                "PROVINCE/TERRITORY": ["ON"],
-                "OVERDUE DISEASE": ["Measles"],
-                "IMMS GIVEN": [""],
-                "STREET ADDRESS LINE 1": ["123 Main"],
-                "STREET ADDRESS LINE 2": [""],
-            }
-        )
-
-        mapped_df, col_map = preprocess.map_columns(df)
-
-        assert set(mapped_df.columns) == set(preprocess.REQUIRED_COLUMNS)
-        for col in preprocess.REQUIRED_COLUMNS:
-            assert col in col_map.values()
-
-    def test_maps_inexact_column_names(self):
-        """Verify that inexact column names are mapped correctly."""
-        df = pd.DataFrame(
-            {
-                "school-name": ["Test School"],
-                "client id": ["C001"],
-                "First Name": ["Alice"],
-                "last_name": ["Zephyr"],
-                "date-of-birth": ["2015-01-01"],
-                "City": ["Guelph"],
-                "postal_code": ["N1H 2T2"],
-                "province territory": ["ON"],
-                "overdue disease": ["Measles"],
-                "imms given": [""],
-                "street address line 1": ["123 Main"],
-                "street address line 2": [""],
-            }
-        )
-
-        mapped_df, col_map = preprocess.map_columns(df)
-
-        assert set(mapped_df.columns) == set(preprocess.REQUIRED_COLUMNS)
-        for col in preprocess.REQUIRED_COLUMNS:
-            assert col in col_map.values()
-
-
-@pytest.mark.unit
-class TestNormalize:
-    """Unit tests for normalize() column name formatter."""
-
-    def test_lowercases_text(self):
-        """Verify that text is converted to lowercase."""
-        assert preprocess.normalize("ColumnName") == "columnname"
-
-    def test_replaces_spaces_with_underscores(self):
-        """Verify that internal spaces are replaced with underscores."""
-        assert preprocess.normalize("Column_Name") == "column name"
-
-    def test_replaces_hyphens_with_underscores(self):
-        """Verify that hyphens are replaced with underscores."""
-        assert preprocess.normalize("Column-Name") == "column name"
-
-    def test_combined_transformations(self):
-        """Verify that multiple transformations apply together."""
-        assert preprocess.normalize("  Column - Name  ") == "column name"
-
-    def test_handles_empty_string(self):
-        """Verify that empty strings are handled safely."""
-        assert preprocess.normalize("") == ""
-
-    def test_handles_non_alphabetic_characters(self):
-        """Verify that non-letter characters are preserved."""
-        assert preprocess.normalize("123 Name!") == "123 name!"
 
 
 @pytest.mark.unit
@@ -172,73 +110,6 @@ class TestFormatVaccineDueList:
         assert result == ["Polio", "MMR"]
 
 
-@pytest.mark.unit
-class TestFilterColumns:
-    """Unit tests for filter_columns() column filtering utility."""
-
-    def test_returns_only_required_columns(self):
-        """Verify that only required columns are kept."""
-        df = pd.DataFrame(
-            {
-                "child_first_name": ["A"],
-                "child_last_name": ["B"],
-                "extra_column": [123],
-            }
-        )
-        required = ["child_first_name", "child_last_name"]
-        result = preprocess.filter_columns(df, required)
-
-        assert list(result.columns) == required
-        assert "extra_column" not in result.columns
-
-    def test_returns_empty_dataframe_when_no_required_columns_present(self):
-        """Verify behavior when none of the required columns are present."""
-        df = pd.DataFrame({"foo": [1], "bar": [2]})
-        required = ["child_first_name", "child_last_name"]
-        result = preprocess.filter_columns(df, required)
-
-        # Should return an empty DataFrame with no columns
-        assert result.shape[1] == 0
-        assert isinstance(result, pd.DataFrame)
-
-    def test_handles_empty_dataframe(self):
-        """Verify that an empty DataFrame is returned unchanged."""
-        df = pd.DataFrame(columns=pd.Index(["child_first_name", "child_last_name"]))
-        result = preprocess.filter_columns(df, ["child_first_name"])
-        assert result.empty
-
-    def test_handles_none_input(self):
-        """Verify that None input returns None safely."""
-        result = preprocess.filter_columns(None, ["child_first_name"])  # type: ignore[arg-type]
-        assert result is None
-
-    def test_order_of_columns_is_preserved(self):
-        """Verify that the order of columns in the required list is respected."""
-        df = pd.DataFrame(
-            {
-                "child_last_name": ["Doe"],
-                "child_first_name": ["John"],
-                "dob": ["2000-01-01"],
-            }
-        )
-        required = ["dob", "child_first_name"]
-        result = preprocess.filter_columns(df, required)
-
-        assert (
-            list(result.columns) == ["child_first_name", "dob"]
-            or list(result.columns) == required
-        )
-        # Either column order can appear depending on implementation; both are acceptable
-
-    def test_ignores_required_columns_not_in_df(self):
-        """Verify that missing required columns are ignored without error."""
-        df = pd.DataFrame({"child_first_name": ["A"]})
-        required = ["child_first_name", "missing_column"]
-        result = preprocess.filter_columns(df, required)
-
-        assert "child_first_name" in result.columns
-        assert "missing_column" not in result.columns
-
 
 @pytest.mark.unit
 class TestReadInput:
@@ -258,10 +129,7 @@ class TestReadInput:
         df_read = preprocess.read_input(input_path)
 
         assert len(df_read) == 3
-        assert (
-            "SCHOOL NAME" in df_read.columns
-            or "SCHOOL_NAME" in str(df_read.columns).upper()
-        )
+        assert "school_name" in df_read.columns
 
     def test_read_input_missing_file_raises_error(self, tmp_test_dir: Path) -> None:
         """Verify error when input file doesn't exist.
@@ -294,11 +162,7 @@ class TestNormalizeDataFrame:
     """Unit tests for normalize_dataframe function."""
 
     def test_normalize_dataframe_passes_valid_dataframe(self) -> None:
-        """Verify valid DataFrame passes validation.
-
-        Real-world significance:
-        - Valid school district input should process without errors
-        """
+        """Verify valid DataFrame passes normalization without errors."""
         df = sample_input.create_test_input_dataframe(num_clients=3)
 
         result = preprocess.normalize_dataframe(df)
@@ -306,100 +170,36 @@ class TestNormalizeDataFrame:
         assert result is not None
         assert len(result) == 3
 
-    def test_normalize_dataframe_normalizes_column_whitespace(self) -> None:
-        """Verify column names are normalized (whitespace, case).
-
-        Real-world significance:
-        - Input files may have inconsistent column naming
-        - Pipeline must handle variations in Excel headers
-        """
-        df = pd.DataFrame(
-            {
-                "  SCHOOL NAME  ": ["Test School"],
-                "  CLIENT ID  ": ["C001"],
-                "first name": ["Alice"],
-                "last name": ["Zephyr"],
-                "date of birth": ["2015-01-01"],
-                "city": ["Guelph"],
-                "postal code": ["N1H 2T2"],
-                "province/territory": ["ON"],
-                "overdue disease": ["Measles"],
-                "imms given": [""],
-                "street address line 1": ["123 Main"],
-                "street address line 2": [""],
-            }
-        )
+    def test_normalize_dataframe_handles_missing_values(self) -> None:
+        """Verify NaN/None values in string columns are filled."""
+        df = sample_input.create_test_input_dataframe(num_clients=3)
+        df.loc[0, "street_address_line_2"] = None
+        df.loc[1, "postal_code"] = float("nan")
 
         result = preprocess.normalize_dataframe(df)
 
-        # Should not raise error and column names should be normalized
-        assert len(result) == 1
-
-    def test_normalize_dataframe_missing_required_raises_error(self) -> None:
-        """Verify error when required columns are missing.
-
-        Real-world significance:
-        - Missing critical columns (e.g., OVERDUE DISEASE) means input is invalid
-        - Must fail early with clear error
-        """
-        df = pd.DataFrame(
-            {
-                "SCHOOL NAME": ["Test"],
-                "CLIENT ID": ["C001"],
-                # Missing required columns
-            }
-        )
-
-        with pytest.raises(ValueError, match="Missing required columns"):
-            preprocess.normalize_dataframe(df)
-
-    def test_normalize_dataframe_handles_missing_values(self) -> None:
-        """Verify NaN/None values are converted to empty strings.
-
-        Real-world significance:
-        - Input may have missing fields (e.g., no suite number)
-        - Must normalize to empty strings for consistent processing
-        """
-        df = sample_input.create_test_input_dataframe(num_clients=3)
-        # Normalize column names first, then inject NaN to test fill behavior
-        working = preprocess.normalize_dataframe(df)
-        working.loc[0, "STREET_ADDRESS_LINE_2"] = None
-        working.loc[1, "POSTAL_CODE"] = float("nan")
-
-        result = preprocess.normalize_dataframe(working)
-
-        assert result["STREET_ADDRESS_LINE_2"].iloc[0] == ""
-        assert result["POSTAL_CODE"].iloc[1] == ""
+        assert result["street_address_line_2"].iloc[0] == ""
+        assert result["postal_code"].iloc[1] == ""
 
     def test_normalize_dataframe_converts_dates(self) -> None:
-        """Verify dates are converted to datetime objects.
-
-        Real-world significance:
-        - Date fields must be parsed for age calculation
-        - Invalid dates must be detected early
-        """
+        """Verify date_of_birth is parsed to datetime."""
         df = sample_input.create_test_input_dataframe(num_clients=2)
-        df["DATE OF BIRTH"] = ["2015-01-02", "2014-05-06"]
+        df["date_of_birth"] = ["2015-01-02", "2014-05-06"]
 
         result = preprocess.normalize_dataframe(df)
 
-        assert pd.api.types.is_datetime64_any_dtype(result["DATE_OF_BIRTH"])
+        assert pd.api.types.is_datetime64_any_dtype(result["date_of_birth"])
 
     def test_normalize_dataframe_trims_whitespace(self) -> None:
-        """Verify string columns have whitespace trimmed.
-
-        Real-world significance:
-        - Input may have accidental leading/trailing spaces
-        - Must normalize for consistent matching
-        """
+        """Verify string columns have leading/trailing whitespace stripped."""
         df = sample_input.create_test_input_dataframe(num_clients=1)
-        df["FIRST NAME"] = ["  Alice  "]
-        df["LAST NAME"] = ["  Zephyr  "]
+        df["first_name"] = ["  Alice  "]
+        df["last_name"] = ["  Zephyr  "]
 
         result = preprocess.normalize_dataframe(df)
 
-        assert result["FIRST_NAME"].iloc[0] == "Alice"
-        assert result["LAST_NAME"].iloc[0] == "Zephyr"
+        assert result["first_name"].iloc[0] == "Alice"
+        assert result["last_name"].iloc[0] == "Zephyr"
 
 
 @pytest.mark.unit
@@ -413,7 +213,8 @@ class TestAgeCalculation:
         - Notices sent to student (not parent) if over 16
         - Must correctly classify students by age
         """
-        result = preprocess.over_16_check("2000-01-01", "2020-05-15")
+        age = preprocess.calculate_age_at_date("2000-01-01", "2020-05-15")
+        result = age >= 16
 
         assert result is True
 
@@ -423,7 +224,8 @@ class TestAgeCalculation:
         Real-world significance:
         - Notices sent to parent for students under 16
         """
-        result = preprocess.over_16_check("2010-01-01", "2020-05-15")
+        age = preprocess.calculate_age_at_date("2010-01-01", "2020-05-15")
+        result = age >= 16
 
         assert result is False
 
@@ -433,7 +235,8 @@ class TestAgeCalculation:
         Real-world significance:
         - Must correctly handle 16th birthday (inclusive)
         """
-        result = preprocess.over_16_check("2000-05-15", "2016-05-15")
+        age = preprocess.calculate_age_at_date("2000-05-15", "2016-05-15")
+        result = age >= 16
 
         assert result is True
 
@@ -600,33 +403,19 @@ class TestBuildPreprocessResult:
         """
         df = pd.DataFrame(
             {
-                "SCHOOL NAME": [
-                    "Zebra School",
-                    "Zebra School",
-                    "Apple School",
-                    "Apple School",
-                ],
-                "CLIENT ID": ["C002", "C001", "C004", "C003"],
-                "FIRST NAME": ["Bob", "Alice", "Diana", "Chloe"],
-                "LAST NAME": ["Smith", "Smith", "Jones", "Jones"],
-                "DATE OF BIRTH": [
-                    "2015-01-01",
-                    "2015-01-02",
-                    "2015-01-03",
-                    "2015-01-04",
-                ],
-                "CITY": ["Town", "Town", "Town", "Town"],
-                "POSTAL CODE": ["N1H 2T2", "N1H 2T2", "N1H 2T2", "N1H 2T2"],
-                "PROVINCE/TERRITORY": ["ON", "ON", "ON", "ON"],
-                "OVERDUE DISEASE": ["Measles", "Measles", "Measles", "Measles"],
-                "IMMS GIVEN": ["", "", "", ""],
-                "STREET ADDRESS LINE 1": [
-                    "123 Main",
-                    "123 Main",
-                    "123 Main",
-                    "123 Main",
-                ],
-                "STREET ADDRESS LINE 2": ["", "", "", ""],
+                "school_name": ["Zebra School", "Zebra School", "Apple School", "Apple School"],
+                "client_id": ["C002", "C001", "C004", "C003"],
+                "first_name": ["Bob", "Alice", "Diana", "Chloe"],
+                "last_name": ["Smith", "Smith", "Jones", "Jones"],
+                "date_of_birth": ["2015-01-01", "2015-01-02", "2015-01-03", "2015-01-04"],
+                "street_address_line_1": ["123 Main", "123 Main", "123 Main", "123 Main"],
+                "street_address_line_2": ["", "", "", ""],
+                "city": ["Town", "Town", "Town", "Town"],
+                "province": ["ON", "ON", "ON", "ON"],
+                "postal_code": ["N1H 2T2", "N1H 2T2", "N1H 2T2", "N1H 2T2"],
+                "overdue_disease": ["Measles", "Measles", "Measles", "Measles"],
+                "overdue_agent": ["MMR", "MMR", "MMR", "MMR"],
+                "imms_given": ["", "", "", ""],
             }
         )
         result = preprocess.build_preprocess_result(
@@ -652,7 +441,7 @@ class TestBuildPreprocessResult:
         - Affects disease coverage reporting in notices
         """
         df = sample_input.create_test_input_dataframe(num_clients=1)
-        df["IMMS GIVEN"] = ["May 1, 2020 - DTaP"]
+        df["imms_given"] = ["May 1, 2020 - DTaP"]
 
         result = preprocess.build_preprocess_result(
             df,
@@ -692,8 +481,8 @@ class TestBuildPreprocessResult:
             encoding="utf-8",
         )
         df = sample_input.create_test_input_dataframe(num_clients=1)
-        df["OVERDUE DISEASE"] = ["DTaP - 2"]
-        df["IMMS GIVEN"] = ["May 1, 2020 - DTaP"]
+        df["overdue_disease"] = ["DTaP - 2"]
+        df["imms_given"] = ["May 1, 2020 - DTaP"]
 
         result = preprocess.build_preprocess_result(
             df,
@@ -721,18 +510,19 @@ class TestBuildPreprocessResult:
         """
         df = pd.DataFrame(
             {
-                "SCHOOL NAME": ["Test School"],
-                "CLIENT ID": ["C001"],
-                "FIRST NAME": ["Alice"],
-                "LAST NAME": ["Zephyr"],
-                "DATE OF BIRTH": ["2015-01-01"],
-                "CITY": ["Guelph"],
-                "POSTAL CODE": ["N1H 2T2"],
-                "PROVINCE/TERRITORY": ["ON"],
-                "OVERDUE DISEASE": ["Measles"],
-                "IMMS GIVEN": [""],
-                "STREET ADDRESS LINE 1": ["123 Main"],
-                "STREET ADDRESS LINE 2": [""],
+                "school_name": ["Test School"],
+                "client_id": ["C001"],
+                "first_name": ["Alice"],
+                "last_name": ["Zephyr"],
+                "date_of_birth": ["2015-01-01"],
+                "street_address_line_1": ["123 Main"],
+                "street_address_line_2": [""],
+                "city": ["Guelph"],
+                "province": ["ON"],
+                "postal_code": ["N1H 2T2"],
+                "overdue_disease": ["Measles"],
+                "overdue_agent": ["MMR"],
+                "imms_given": [""],
             }
         )
         result = preprocess.build_preprocess_result(
@@ -800,8 +590,8 @@ class TestBuildPreprocessResult:
         """
         df = sample_input.create_test_input_dataframe(num_clients=2)
         # Force duplicate client IDs
-        df.loc[0, "CLIENT ID"] = "C123456789"
-        df.loc[1, "CLIENT ID"] = "C123456789"
+        df.loc[0, "client_id"] = "C123456789"
+        df.loc[1, "client_id"] = "C123456789"
 
         result = preprocess.build_preprocess_result(
             df,
@@ -831,11 +621,11 @@ class TestBuildPreprocessResult:
         """
         df = sample_input.create_test_input_dataframe(num_clients=5)
         # Create two sets of duplicates
-        df.loc[0, "CLIENT ID"] = "C111111111"
-        df.loc[1, "CLIENT ID"] = "C111111111"
-        df.loc[2, "CLIENT ID"] = "C111111111"
-        df.loc[3, "CLIENT ID"] = "C222222222"
-        df.loc[4, "CLIENT ID"] = "C222222222"
+        df.loc[0, "client_id"] = "C111111111"
+        df.loc[1, "client_id"] = "C111111111"
+        df.loc[2, "client_id"] = "C111111111"
+        df.loc[3, "client_id"] = "C222222222"
+        df.loc[4, "client_id"] = "C222222222"
 
         result = preprocess.build_preprocess_result(
             df,
@@ -1113,7 +903,7 @@ class TestClassifyDatasetValidity:
         """Verify NaN values and blank cells do not count as absent-suffix doses.
 
         Real-world significance:
-        - Clients with no immunization history have empty IMMS_GIVEN cells;
+        - Clients with no immunization history have empty imms_given cells;
           these must not trigger "mixed" when the rest of the dataset is clean
 
         Assertion: valid suffixed dose + NaN + "" → "all_present"
@@ -1151,7 +941,7 @@ class TestParseDoseSegments:
     - replace_unspecified filtering
 
     Real-world significance:
-    - This function is the sole parser for IMMS_GIVEN strings; incorrect
+    - This function is the sole parser for imms_given strings; incorrect
       parsing silently omits or misrepresents a patient's immunization
       history on their printed notice.
     """
@@ -1379,7 +1169,7 @@ class TestBuildReceivedRows:
         header = ["Diphtheria", "Other"]
         rows = preprocess.build_received_rows(
             "May 1, 2020 - VaxA - Valid; May 1, 2020 - VaxB - Invalid",
-            [], ref, header,
+            [], ref, header, show_validity_markers=True,
         )
         assert len(rows) == 2
         assert rows[0]["date_rowspan"] == 2
@@ -1395,7 +1185,7 @@ class TestBuildReceivedRows:
         header = ["Diphtheria", "Other"]
         rows = preprocess.build_received_rows(
             "May 1, 2020 - VaxA - Valid; May 1, 2020 - VaxB - Invalid",
-            [], ref, header,
+            [], ref, header, show_validity_markers=True,
         )
         assert rows[1]["date_rowspan"] == 0
 
@@ -1403,7 +1193,7 @@ class TestBuildReceivedRows:
         """HBV(valid) + HPV(invalid) both map to Other → Other is mixed → split."""
         rows = preprocess.build_received_rows(
             "May 1, 2020 - HBV - Valid; May 1, 2020 - HPV - Invalid",
-            [], vaccine_ref, header,
+            [], vaccine_ref, header, show_validity_markers=True,
         )
         assert len(rows) == 2
         assert rows[0]["columns"].get("Other") == "valid"
@@ -1450,7 +1240,7 @@ class TestBuildReceivedRows:
         - DTaP → Diphtheria, Tetanus, Pertussis columns populated.
         """
         df = sample_input.create_test_input_dataframe(num_clients=1)
-        df["IMMS GIVEN"] = ["May 1, 2020 - DTaP"]
+        df["imms_given"] = ["May 1, 2020 - DTaP"]
 
         result = preprocess.build_preprocess_result(
             df,

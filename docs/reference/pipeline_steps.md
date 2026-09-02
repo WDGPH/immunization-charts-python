@@ -57,6 +57,8 @@ Reads the raw Excel input, validates the schema, normalizes all client and vacci
 
 - `output/artifacts/preprocessed_clients_<run_id>.json` — canonical client artifact
 - `output/logs/preprocess_<run_id>.log` — processing log
+- `output/incomplete_addresses.csv` — records dropped due to missing address fields (written when any are found)
+- `output/incomplete_clients.csv` — records with missing required client fields, retained in processing (written when any are found)
 - `phix_exact.csv`, `phix_inexact.csv`, `phix_no_match.csv` — school match audit CSVs (when PHIX validation enabled)
 
 **Processing:**
@@ -67,10 +69,12 @@ Reads the raw Excel input, validates the schema, normalizes all client and vacci
 4. Expands vaccine codes to disease names using `vaccine_reference.json`
 5. Filters diseases against `chart_diseases_header`; collapses unlisted diseases to "Other"
 6. Computes client ages relative to `date_notice_delivery` (determines parent vs. student addressing)
-7. Sorts clients deterministically: school → last name → first name → client ID
-8. Assigns stable sequence numbers (`00001`, `00002`, …)
-9. Synthesizes missing school/board identifiers where needed
-10. Writes the canonical JSON artifact
+7. Checks address completeness: records missing `address`, `city`, `province`, or `postal_code` are logged, written to `output/incomplete_addresses.csv`, and **dropped** by default from further processing
+8. Checks client information completeness: records missing `first_name`, `last_name`, `date_of_birth`, `client_id`, `school_name`, `overdue_disease`, or `imms_given` are logged and written to `output/incomplete_clients.csv`, and **dropped** by default from further processing
+9. Sorts clients deterministically: school → last name → first name → client ID
+10. Assigns stable sequence numbers (`00001`, `00002`, …)
+11. Synthesizes missing school/board identifiers where needed
+12. Writes the canonical JSON artifact
 
 ---
 

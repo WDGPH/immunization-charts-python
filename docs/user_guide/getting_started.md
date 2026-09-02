@@ -27,6 +27,35 @@ uv run pre-commit install
 
 Input files must be `.xlsx` format with a single worksheet, extracted from [Panorama PEAR](https://accessonehealth.ca/).
 
+The pipeline enforces a strict column schema — column names must match exactly (no fuzzy matching). The following columns are **required**:
+
+| Column name | Notes |
+|---|---|
+| `school_name` | |
+| `client_id` | 10-digit numeric string |
+| `first_name` | |
+| `last_name` | |
+| `date_of_birth` | ISO 8601 date (`YYYY-MM-DD`) |
+| `street_address_line_1` | |
+| `street_address_line_2` | May be blank |
+| `city` | |
+| `province` | |
+| `postal_code` | |
+| `overdue_disease` | May be blank |
+| `overdue_agent` | May be blank |
+| `imms_given` | May be blank |
+
+The following columns are **optional** and will be used when present:
+
+| Column name |
+|---|
+| `board_name` |
+| `board_id` |
+| `school_id` |
+| `version_id` |
+
+The full schema is defined in `config/input_schema.json`. If the file is missing any required column, the pipeline will stop immediately with a clear error message listing the missing columns.
+
 Place input files in the `input/` subdirectory (not tracked by Git):
 
 ```

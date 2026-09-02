@@ -51,12 +51,11 @@ import re
 from datetime import datetime, timezone
 from hashlib import sha1
 from pathlib import Path
-from string import Formatter
-from typing import Any, Dict, List, Literal, Optional, overload
+from typing import Any, Dict, List, Literal, Optional
 import pandas as pd
 import yaml
 from babel.dates import format_date
-from rapidfuzz import fuzz, process
+from frictionless import Detector, Schema, validate as fl_validate
 
 from .data_models import (
     ArtifactPayload,
@@ -73,8 +72,6 @@ PARAMETERS_PATH = CONFIG_DIR / "parameters.yaml"
 
 LOG = logging.getLogger(__name__)
 
-_FORMATTER = Formatter()
-
 REPLACE_UNSPECIFIED = [
     "-unspecified",
     "unspecified",
@@ -83,22 +80,7 @@ REPLACE_UNSPECIFIED = [
     "Not Specified-unspecified",
 ]
 
-REQUIRED_COLUMNS = [
-    "SCHOOL NAME",
-    "CLIENT ID",
-    "FIRST NAME",
-    "LAST NAME",
-    "DATE OF BIRTH",
-    "CITY",
-    "POSTAL CODE",
-    "PROVINCE/TERRITORY",
-    "OVERDUE DISEASE",
-    "IMMS GIVEN",
-    "STREET ADDRESS LINE 1",
-    "STREET ADDRESS LINE 2",
-]
-
-THRESHOLD = 80
+INPUT_SCHEMA_PATH = CONFIG_DIR / "input_schema.json"
 
 
 def convert_date_string(
@@ -179,11 +161,11 @@ def format_iso_date_for_language(iso_date: str, language: str) -> str:
     return format_date(date_obj, format="long", locale=locale)
 
 
-def check_addresses_complete(df: pd.DataFrame) -> pd.DataFrame:
+def check_addresses_complete(df: pd.DataFrame, drop_incomplete=True) -> pd.DataFrame:
     """
     Check if address fields are complete in the DataFrame.
 
-    Adds a boolean 'address_complete' column based on presence of
+    Adds a temporary boolean 'address_complete' column based on presence of
     street address, city, province, and postal code.
     """
 
@@ -191,31 +173,31 @@ def check_addresses_complete(df: pd.DataFrame) -> pd.DataFrame:
 
     # Normalize text fields: convert to string, strip whitespace, convert "" to NA
     address_cols = [
-        "STREET_ADDRESS_LINE_1",
-        "STREET_ADDRESS_LINE_2",
-        "CITY",
-        "PROVINCE",
-        "POSTAL_CODE",
+        "street_address_line_1",
+        "street_address_line_2",
+        "city",
+        "province",
+        "postal_code",
     ]
 
     for col in address_cols:
         df[col] = df[col].astype(str).str.strip().replace({"": pd.NA, "nan": pd.NA})
 
     # Build combined address line
-    df["ADDRESS"] = (
-        df["STREET_ADDRESS_LINE_1"].fillna("")
+    df["address"] = (
+        df["street_address_line_1"].fillna("")
         + " "
-        + df["STREET_ADDRESS_LINE_2"].fillna("")
+        + df["street_address_line_2"].fillna("")
     ).str.strip()
 
-    df["ADDRESS"] = df["ADDRESS"].replace({"": pd.NA})
+    df["address"] = df["address"].replace({"": pd.NA})
 
     # Check completeness
     df["address_complete"] = (
-        df["ADDRESS"].notna()
-        & df["CITY"].notna()
-        & df["PROVINCE"].notna()
-        & df["POSTAL_CODE"].notna()
+        df["address"].notna()
+        & df["city"].notna()
+        & df["province"].notna()
+        & df["postal_code"].notna()
     )
 
     if not df["address_complete"].all():
@@ -231,8 +213,69 @@ def check_addresses_complete(df: pd.DataFrame) -> pd.DataFrame:
         incomplete_records.to_csv(incomplete_path, index=False)
         LOG.info("Incomplete address records written to %s", incomplete_path)
 
-    # Return only rows with complete addresses
-    return df.loc[df["address_complete"]].drop(columns=["address_complete"])
+    # Return only rows with complete addresses based on drop_incomplete flag
+    if drop_incomplete:
+        return df.loc[df["address_complete"]].drop(columns=["address_complete"])
+    else:
+        return df.drop(columns=["address_complete"])
+
+
+def check_client_info_complete(df: pd.DataFrame, drop_incomplete=True) -> pd.DataFrame:
+    """
+    Check if client fields are complete in the DataFrame.
+
+    Adds a temporary boolean 'client_info_complete' column based on presence of
+    first name, last name, DOB, school name, overdue disease, immunizations given, and client ID.
+    """
+
+    df = df.copy()
+
+    # Normalize text fields: convert to string, strip whitespace, convert "" to NA
+    client_info_cols = [
+        "school_name",
+        "client_id",
+        "first_name",
+        "last_name",
+        "date_of_birth",
+        "overdue_disease",
+        "imms_given",
+    ]
+
+    for col in client_info_cols:
+        df[col] = df[col].astype(str).str.strip().replace({"": pd.NA, "nan": pd.NA})
+
+    # Check completeness
+    df["client_info_complete"] = (
+        df["first_name"].notna()
+        & df["last_name"].notna()
+        & df["client_id"].notna()
+        & df["date_of_birth"].notna()
+        & df["overdue_disease"].notna()
+        & df["imms_given"].notna()
+    )
+
+    if not df["client_info_complete"].all():
+        incomplete_count = (~df["client_info_complete"]).sum()
+        LOG.warning(
+            "There are %d records with incomplete/invalid client information.",
+            incomplete_count,
+        )
+        print(
+            f"⚠️ There are {incomplete_count} total records with incomplete/invalid client information."
+        )
+
+        incomplete_records = df.loc[~df["client_info_complete"]]
+
+        incomplete_path = Path("output/incomplete_clients.csv")
+        incomplete_records.to_csv(incomplete_path, index=False)
+        LOG.info("Incomplete client records written to %s", incomplete_path)
+        print(f"Incomplete client records written to {incomplete_path}")
+
+    # Return only rows with complete client info based on drop_incomplete flag
+    if drop_incomplete:
+        return df.loc[df["client_info_complete"]].drop(columns=["client_info_complete"])
+    else:
+        return df.drop(columns=["client_info_complete"])
 
 
 def convert_date_iso(date_str: str) -> str:
@@ -255,8 +298,8 @@ def convert_date_iso(date_str: str) -> str:
     return date_obj.strftime("%Y-%m-%d")
 
 
-def over_16_check(date_of_birth, date_notice_delivery):
-    """Check if a client is over 16 years old on notice delivery date.
+def calculate_age_at_date(date_of_birth, date_notice_delivery):
+    """Calculate a client's age on notice delivery date.
 
     Parameters
     ----------
@@ -267,8 +310,8 @@ def over_16_check(date_of_birth, date_notice_delivery):
 
     Returns
     -------
-    bool
-        True if the client is over 16 years old on date_notice_delivery, False otherwise.
+    int
+        The client's age on date_notice_delivery.
     """
 
     birth_datetime = datetime.strptime(date_of_birth, "%Y-%m-%d")
@@ -283,7 +326,7 @@ def over_16_check(date_of_birth, date_notice_delivery):
     ):
         age -= 1
 
-    return age >= 16
+    return age
 
 
 def configure_logging(output_dir: Path, run_id: str) -> Path:
@@ -367,7 +410,7 @@ def read_input(file_path: Path) -> pd.DataFrame:
 
     try:
         if ext in [".xlsx", ".xls"]:
-            df = pd.read_excel(file_path, engine="openpyxl", dtype={"CLIENT ID": str})
+            df = pd.read_excel(file_path, engine="openpyxl", dtype={"client_id": str})
         elif ext == ".csv":
             # Try common encodings
             for enc in ["utf-8-sig", "latin-1", "cp1252"]:
@@ -392,16 +435,36 @@ def read_input(file_path: Path) -> pd.DataFrame:
         raise
 
 
-def normalize(col: str) -> str:
-    """Normalize formatting prior to matching."""
+def validate_input(file_path: Path) -> None:
+    """Validate that the input file conforms to the expected column schema.
 
-    # Trim whitespaces
-    col_normalized = col.lower().strip().replace("_", " ").replace("-", " ")
+    Parameters
+    ----------
+    file_path : Path
+        Path to the input file (.xlsx or .csv).
 
-    # Check to see if double whitespace
-    col_normalized = re.sub(r"\s+", " ", col_normalized)
+    Raises
+    ------
+    ValueError
+        If the file does not conform to the schema defined in
+        ``config/input_schema.json``.
+    """
+    descriptor = json.loads(INPUT_SCHEMA_PATH.read_text(encoding="utf-8"))
+    schema = Schema.from_descriptor(descriptor)
+    report = fl_validate(
+        file_path.name,
+        basepath=str(file_path.parent),
+        schema=schema,
+        detector=Detector(schema_sync=True),
+    )
 
-    return col_normalized
+    if not report.valid:
+        errors = report.flatten(["message"])
+        raise ValueError(
+            "Input file does not conform to expected schema:\n"
+            + "\n".join(f"  - {e[0]}" for e in errors)
+        )
+
 
 
 def split_vaccine_due_entry(item: str) -> tuple[str, str | None]:
@@ -458,161 +521,38 @@ def format_vaccine_due_list(vaccine_due_list: list[str]) -> list[str]:
     return formatted
 
 
-def map_columns(df: pd.DataFrame, required_columns=REQUIRED_COLUMNS):
-    """
-    Map dataframe columns to a set of required column names using fuzzy matching.
-    Parameters
-    ----------
-    df : pandas.DataFrame
-        Input dataframe whose columns will be matched and optionally renamed.
-    required_columns : Sequence[str], optional
-        Sequence of expected/required column names to match against. Defaults to REQUIRED_COLUMNS.
-    Returns
-    -------
-    tuple[pandas.DataFrame, dict]
-        A tuple (renamed_df, col_map) where `renamed_df` is `df` with columns renamed according to successful matches,
-        and `col_map` is a dict mapping original column names (keys) to matched required column names (values).
-    Behavior
-    --------
-    - Normalizes input column names and required column names using `normalize(...)` before matching.
-    - For each normalized input column, finds the best fuzzy match among normalized `required_columns` using
-      `process.extractOne(..., scorer=fuzz.partial_ratio)`.
-    - If the best match score is >= 80 (threshold in the implementation), the original input column name is mapped to the
-      corresponding required column name; the mapping is recorded and the dataframe is renamed accordingly.
-    - A debug line is printed for each accepted match: "Matching '<normalized_input>' to '<best_match>' with score <score>".
-    - Columns with a best match score < 80 are ignored (not included in `col_map`); matches with score 0 are effectively dropped.
-    - The code resolves the original column name by locating the first column whose normalized form equals the normalized input.
-      If multiple original columns normalize to the same value, the first encountered is used.
-    Notes
-    -----
-    - The function depends on external helpers: `normalize`, `process.extractOne`, and `fuzz.partial_ratio`.
-    - The match threshold (80) is adjustable; lowering it makes matching more permissive, raising it makes it stricter.
-    - A `StopIteration` may occur if a normalized input column cannot be resolved back to an original column name.
-    - `required_columns` should be an iterable of strings; `df.columns` are expected to be convertible to strings.
-    Examples
-    --------
-    # Example usage (illustrative only):
-    # renamed_df, mapping = map_columns(df, required_columns=['state', 'date', 'count'])
-    """
-    input_cols = df.columns
-    col_map = {}
-    normalized_required = [normalize(req) for req in required_columns]
-    best_matches = {}
+_REQUIRED_STRING_COLS = [
+    "school_name",
+    "first_name",
+    "last_name",
+    "street_address_line_1",
+    "street_address_line_2",
+    "city",
+    "province",
+    "postal_code",
+    "overdue_agent",
+]
 
-    # Check each input column against required columns
-    for actual_in_col in input_cols:
-        input_col = normalize(actual_in_col)
-        result = process.extractOne(
-            query=input_col,
-            choices=normalized_required,
-            scorer=fuzz.partial_ratio,
-        )
-        if result is None:
-            continue
-
-        _, score, index = result
-        if score < THRESHOLD:
-            continue
-
-        best_match = required_columns[index]
-        print(f"Matching '{input_col}' to '{best_match}' with score {score}")
-
-        prior = best_matches.get(best_match)
-        if prior is None:
-            print(
-                f"The value {best_match} does not exist in the dictionary - adding value."
-            )
-            col_map[actual_in_col] = best_match
-            best_matches[best_match] = {"actual_in_col": actual_in_col, "score": score}
-        elif score > prior["score"]:
-            print(
-                f"{input_col} has a higher score than current best match in the dictionary - replacing value."
-            )
-            col_map.pop(prior["actual_in_col"], None)
-            col_map[actual_in_col] = best_match
-            best_matches[best_match] = {"actual_in_col": actual_in_col, "score": score}
-
-    return df.rename(columns=col_map), col_map
-
-
-@overload
-def filter_columns(
-    df: pd.DataFrame, required_columns: list[str] = REQUIRED_COLUMNS
-) -> pd.DataFrame: ...
-
-
-@overload
-def filter_columns(
-    df: None, required_columns: list[str] = REQUIRED_COLUMNS
-) -> None: ...
-
-
-def filter_columns(
-    df: pd.DataFrame | None, required_columns: list[str] = REQUIRED_COLUMNS
-) -> pd.DataFrame | None:
-    """Filter dataframe to only include required columns."""
-    if df is None or df.empty:
-        return df
-
-    return df[[col for col in df.columns if col in required_columns]]
+_OPTIONAL_COLS = ["board_name", "board_id", "school_id", "version_id"]
 
 
 def normalize_dataframe(df: pd.DataFrame) -> pd.DataFrame:
-    """Validate, rename, and normalize the input DataFrame.
+    """Normalize data types on a DataFrame with snake_case column names.
 
-    Combines column validation with type normalization. Standardizes column
-    names to uppercase with underscores, validates all required columns are
-    present, then normalizes data types and fills missing values.
-
-    Parameters
-    ----------
-    df : pd.DataFrame
-        Input DataFrame with raw client data (column names may have mixed
-        case/spacing).
-
-    Returns
-    -------
-    pd.DataFrame
-        Copy of DataFrame with validated, renamed, and normalized columns.
-
-    Raises
-    ------
-    ValueError
-        If any required columns are missing from the DataFrame.
+    Applies string normalization, date parsing, and numeric coercion.
     """
     working = df.copy()
 
-    # Normalize and validate column names in a single pass
-    def _normalize_col(col: str) -> str:
-        col = col.strip().upper().replace(" ", "_")
-        return "PROVINCE" if col == "PROVINCE/TERRITORY" else col
+    for col in _REQUIRED_STRING_COLS:
+        working[col] = working[col].fillna(" ").astype(str).str.strip()
 
-    working.columns = [_normalize_col(col) for col in working.columns]
+    for col in _OPTIONAL_COLS:
+        if col not in working.columns:
+            working[col] = ""
+        else:
+            working[col] = working[col].fillna(" ").astype(str).str.strip()
 
-    _required_normalized = {_normalize_col(col) for col in REQUIRED_COLUMNS}
-    missing = [col for col in _required_normalized if col not in working.columns]
-    if missing:
-        raise ValueError(
-            f"Missing required columns: {missing} \n Found columns: {list(working.columns)} "
-        )
-
-    # Normalize data types and fill missing values.
-    # Required string columns are derived from REQUIRED_COLUMNS; optional
-    # supplemental columns are listed separately.
-    _non_string_required = {"CLIENT_ID", "DATE_OF_BIRTH", "OVERDUE_DISEASE", "IMMS_GIVEN"}
-    required_string_cols = [col for col in _required_normalized if col not in _non_string_required]
-    optional_string_cols = ["SCHOOL_TYPE", "BOARD_NAME", "BOARD_ID", "SCHOOL_ID", "UNIQUE_ID"]
-
-    for column in required_string_cols + optional_string_cols:
-        if column not in working.columns:
-            working[column] = ""
-        working[column] = working[column].fillna(" ").astype(str).str.strip()
-
-    working["DATE_OF_BIRTH"] = pd.to_datetime(working["DATE_OF_BIRTH"], errors="coerce")
-    if "AGE" in working.columns:
-        working["AGE"] = pd.to_numeric(working["AGE"], errors="coerce")
-    else:
-        working["AGE"] = pd.NA
+    working["date_of_birth"] = pd.to_datetime(working["date_of_birth"], errors="coerce")
 
     return working
 
@@ -674,7 +614,7 @@ def normalize_validity_status(raw_status: Any) -> str:
     Parameters
     ----------
     raw_status : Any
-        Raw value extracted from an IMMS_GIVEN segment, or any value that
+        Raw value extracted from an imms_given segment, or any value that
         needs to be coerced to a canonical status. Typically a str, but
         accepts Any so callers need not guard against None or NaN.
 
@@ -732,7 +672,7 @@ def collapse_validity_statuses(statuses: List[Any]) -> str:
 def classify_dataset_validity(
     imms_given_series: pd.Series,
 ) -> Literal["all_present", "all_absent", "mixed"]:
-    """Scan all IMMS_GIVEN values and classify dataset-level validity coverage.
+    """Scan all imms_given values and classify dataset-level validity coverage.
 
     Performs a pre-pass over the full dataset before the per-client loop so
     that a single, accurate dataset-level decision can be made about whether
@@ -747,7 +687,7 @@ def classify_dataset_validity(
     Parameters
     ----------
     imms_given_series : pd.Series
-        The ``IMMS_GIVEN`` column of the normalized working DataFrame.
+        The ``imms_given`` column of the normalized working DataFrame.
         Each element is a semicolon-delimited string of dose segments such as
         ``"May 1, 2020 - DTaP - Valid; Jun 15, 2021 - MMR"``.
         NaN values and empty strings are silently skipped.
@@ -801,7 +741,7 @@ def classify_dataset_validity(
 def parse_dose_segments(
     received_agents: Any, replace_unspecified: List[str]
 ) -> List[Dict[str, str]]:
-    """Parse an IMMS_GIVEN string into a flat sorted list of individual dose entries.
+    """Parse an imms_given string into a flat sorted list of individual dose entries.
 
     Extracts individual dose entries from a semicolon-delimited string,
     normalizes dates to ISO format, normalizes validity to one of
@@ -813,7 +753,7 @@ def parse_dose_segments(
     Parameters
     ----------
     received_agents : Any
-        Raw IMMS_GIVEN cell value.  Must be a non-empty ``str`` to be
+        Raw imms_given cell value.  Must be a non-empty ``str`` to be
         parsed; any other type returns ``[]``.
         Expected format per segment: ``"MMM D, YYYY - VaccineName"`` or
         ``"MMM D, YYYY - VaccineName - Valid|Invalid"``.
@@ -1011,8 +951,9 @@ def build_received_rows(
     replace_unspecified: List[str],
     vaccine_reference: Dict[str, Any],
     chart_diseases_header: List[str],
+    show_validity_markers: bool = False,
 ) -> List[Dict[str, Any]]:
-    """Parse IMMS_GIVEN into display rows with pre-computed per-column validity.
+    """Parse imms_given into display rows with pre-computed per-column validity.
 
     Orchestrates ``parse_dose_segments`` → ``_deduplicate_vaccines_for_date``
     → ``_split_into_rows`` for each administration date.  Dates whose
@@ -1024,7 +965,7 @@ def build_received_rows(
     Parameters
     ----------
     received_agents : Any
-        Raw IMMS_GIVEN cell value.
+        Raw imms_given cell value.
     replace_unspecified : List[str]
         Vaccine names to suppress.
     vaccine_reference : Dict[str, Any]
@@ -1058,7 +999,11 @@ def build_received_rows(
     rows: List[Dict[str, Any]] = []
     for date, doses in by_date.items():
         vaccines = _deduplicate_vaccines_for_date(doses, vaccine_reference)
-        date_rows = _split_into_rows(vaccines, chart_diseases_header)
+        if show_validity_markers:
+            date_rows = _split_into_rows(vaccines, chart_diseases_header)
+        else:
+            columns = compute_column_statuses(vaccines, chart_diseases_header)
+            date_rows = [{"vaccines": vaccines, "columns": columns}]
         n = len(date_rows)
         for i, row in enumerate(date_rows):
             rows.append({
@@ -1090,8 +1035,7 @@ def build_preprocess_result(
     ----------
     df : pd.DataFrame
         Raw input DataFrame, typically loaded from an Excel or CSV file.
-        Must contain all columns listed in ``REQUIRED_COLUMNS`` (column
-        names are fuzzy-matched, so spacing and case variants are accepted).
+        Must have lower_snake_case column names matching the input schema.
     language : str
         Language code for this batch (``"en"`` or ``"fr"``). Stored on
         every ``ClientRecord`` and used to format display dates.
@@ -1100,7 +1044,7 @@ def build_preprocess_result(
         ``enrich_grouped_records``.
     replace_unspecified : List[str]
         Vaccine names to suppress from immunization history. Passed
-        through to ``process_received_agents``.
+        through to ``build_received_rows``.
     config_path : Path, optional
         Path to ``parameters.yaml``. Defaults to the repository configuration.
 
@@ -1149,22 +1093,22 @@ def build_preprocess_result(
     include_dose: bool = preprocess_cfg.get("include_dose", False)
     show_validity_markers: bool = preprocess_cfg.get("show_validity_markers", False)
 
-    working["SCHOOL_ID"] = working.apply(
+    working["school_id"] = working.apply(
         lambda row: synthesize_identifier(
-            row.get("SCHOOL_ID", ""), row["SCHOOL_NAME"], "sch"
+            row.get("school_id", ""), row["school_name"], "sch"
         ),
         axis=1,
     )
-    working["BOARD_ID"] = working.apply(
+    working["board_id"] = working.apply(
         lambda row: synthesize_identifier(
-            row.get("BOARD_ID", ""), row.get("BOARD_NAME", ""), "brd"
+            row.get("board_id", ""), row.get("board_name", ""), "brd"
         ),
         axis=1,
     )
 
-    if (working["BOARD_NAME"] == "").any():
+    if (working["board_name"] == "").any():
         affected = (
-            working.loc[working["BOARD_NAME"] == "", "SCHOOL_NAME"].unique().tolist()
+            working.loc[working["board_name"] == "", "school_name"].unique().tolist()
         )
         warnings.add(
             "Missing board name for: " + ", ".join(sorted(filter(None, affected)))
@@ -1173,12 +1117,12 @@ def build_preprocess_result(
         )
 
     sorted_df = working.sort_values(
-        by=["SCHOOL_NAME", "LAST_NAME", "FIRST_NAME", "CLIENT_ID"],
+        by=["school_name", "last_name", "first_name", "client_id"],
         kind="stable",
     ).reset_index(drop=True)
-    sorted_df["SEQUENCE"] = [f"{idx + 1:05d}" for idx in range(len(sorted_df))]
+    sorted_df["sequence"] = [f"{idx + 1:05d}" for idx in range(len(sorted_df))]
 
-    validity_coverage = classify_dataset_validity(sorted_df["IMMS_GIVEN"])
+    validity_coverage = classify_dataset_validity(sorted_df["imms_given"])
     if validity_coverage == "mixed":
         if show_validity_markers:
             raise ValueError(
@@ -1198,11 +1142,11 @@ def build_preprocess_result(
 
     clients: List[ClientRecord] = []
     for row in sorted_df.itertuples(index=False):
-        client_id = str(row.CLIENT_ID)  # type: ignore[attr-defined]
-        sequence = row.SEQUENCE  # type: ignore[attr-defined]
+        client_id = str(row.client_id)  # type: ignore[attr-defined]
+        sequence = row.sequence  # type: ignore[attr-defined]
         dob_iso = (
-            row.DATE_OF_BIRTH.strftime("%Y-%m-%d")  # type: ignore[attr-defined]
-            if pd.notna(row.DATE_OF_BIRTH)  # type: ignore[attr-defined]
+            row.date_of_birth.strftime("%Y-%m-%d")  # type: ignore[attr-defined]
+            if pd.notna(row.date_of_birth)  # type: ignore[attr-defined]
             else None
         )
         if dob_iso is None:
@@ -1214,7 +1158,7 @@ def build_preprocess_result(
             if language_enum == Language.FRENCH and dob_iso
             else (convert_date_string(dob_iso, locale="en") if dob_iso else None)
         )
-        vaccines_due = process_vaccines_due(row.OVERDUE_DISEASE, language)  # type: ignore[attr-defined]
+        vaccines_due = process_vaccines_due(row.overdue_disease, language)  # type: ignore[attr-defined]
         vaccines_due_list = [
             item.strip() for item in vaccines_due.split(",") if item.strip()
         ]
@@ -1230,47 +1174,48 @@ def build_preprocess_result(
         else:
             vaccines_due_list = hide_vaccine_due_doses(vaccines_due_list)
         received = build_received_rows(
-            row.IMMS_GIVEN,  # type: ignore[attr-defined]
+            row.imms_given,  # type: ignore[attr-defined]
             replace_unspecified,
             vaccine_reference,
             chart_diseases_header,
+            show_validity_markers,
         )
-        postal_code = row.POSTAL_CODE if row.POSTAL_CODE else "Not provided"  # type: ignore[attr-defined]
+        postal_code = row.postal_code if row.postal_code else "Not provided"  # type: ignore[attr-defined]
         address_line = " ".join(
-            filter(None, [row.STREET_ADDRESS_LINE_1, row.STREET_ADDRESS_LINE_2])  # type: ignore[attr-defined]
+            filter(None, [row.street_address_line_1, row.street_address_line_2])  # type: ignore[attr-defined]
         ).strip()
 
-        if not pd.isna(row.AGE):  # type: ignore[attr-defined]
-            over_16 = bool(row.AGE >= 16)  # type: ignore[attr-defined]
-        elif dob_iso and date_notice_delivery:
-            over_16 = over_16_check(dob_iso, date_notice_delivery)
+        if dob_iso and date_notice_delivery:
+            age = calculate_age_at_date(dob_iso, date_notice_delivery)
+            over_16 = age >= 16
         else:
+            age = None
             over_16 = False
 
         person = {
-            "first_name": row.FIRST_NAME or "",  # type: ignore[attr-defined]
-            "last_name": row.LAST_NAME or "",  # type: ignore[attr-defined]
+            "first_name": row.first_name or "",  # type: ignore[attr-defined]
+            "last_name": row.last_name or "",  # type: ignore[attr-defined]
             "date_of_birth": dob_iso or "",
             "date_of_birth_display": formatted_dob or "",
             "date_of_birth_iso": dob_iso or "",
-            "age": str(row.AGE) if not pd.isna(row.AGE) else "",  # type: ignore[attr-defined]
+            "age": str(age) or "",  # type: ignore[attr-defined]
             "over_16": over_16,
         }
 
         school = {
-            "name": row.SCHOOL_NAME,  # type: ignore[attr-defined]
-            "id": row.SCHOOL_ID,  # type: ignore[attr-defined]
+            "name": row.school_name,  # type: ignore[attr-defined]
+            "id": row.school_id,  # type: ignore[attr-defined]
         }
 
         board = {
-            "name": row.BOARD_NAME or "",  # type: ignore[attr-defined]
-            "id": row.BOARD_ID,  # type: ignore[attr-defined]
+            "name": row.board_name or "",  # type: ignore[attr-defined]
+            "id": row.board_id,  # type: ignore[attr-defined]
         }
 
         contact = {
             "street": address_line,
-            "city": row.CITY,  # type: ignore[attr-defined]
-            "province": row.PROVINCE,  # type: ignore[attr-defined]
+            "city": row.city,  # type: ignore[attr-defined]
+            "province": row.province,  # type: ignore[attr-defined]
             "postal_code": postal_code,
         }
 
@@ -1286,7 +1231,7 @@ def build_preprocess_result(
             vaccines_due_list=vaccines_due_list if vaccines_due_list else None,
             received=received if received else None,
             metadata={
-                "unique_id": row.UNIQUE_ID or None,  # type: ignore[attr-defined]
+                "version_id": row.version_id or None,  # type: ignore[attr-defined]
             },
         )
 
@@ -1363,7 +1308,7 @@ def run_phix_validation(
         target_phu=target_phu,
         output_dir=output_dir,
         unmatched_behavior=phix_config.get("unmatched_behavior", "warn"),
-        column_prefix=phix_config.get("column_prefix", "PHIX_"),
+        column_prefix=phix_config.get("column_prefix", "phix_"),
     )
 
 

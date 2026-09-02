@@ -6,6 +6,18 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 <!-- insertion marker -->
+## [v1.1.0](https://github.com/WDGPH/ImmuKnow/releases/tag/v1.1.0) - 2026-08-27
+
+<small>[Compare with v1.0.0](https://github.com/WDGPH/ImmuKnow/compare/v1.0.0...v1.1.0)</small>
+
+### Changed
+
+- Switch input schema from fuzzy matching / data normalization to enforced Frictionless schema validation. Add schema page to mkdocs.
+- Minimize required columns by deriving where possible.
+- Adopt `lower_snake_case` column naming.
+- Check client information completeness during preprocessing: records missing `first_name`, `last_name`, `date_of_birth`, `client_id`, `school_name`, `overdue_disease`, or `imms_given` are logged and written to `output/incomplete_clients.csv`; like the address completeness check, by default incomplete records are dropped before further processing.
+- Address and client info completeness checks able to be toggled to drop or retain incomplete records (e.g. students with incomplete address may still receive their notice through email).
+
 ## [v1.0.0](https://github.com/WDGPH/ImmuKnow/releases/tag/v1.0.0) - 2026-08-13
 
 <small>[Compare with v0.3.0](https://github.com/WDGPH/ImmuKnow/compare/v0.3.0...v1.0.0)</small>

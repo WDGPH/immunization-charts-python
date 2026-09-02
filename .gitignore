@@ -10,11 +10,12 @@ __pycache__/
 build/
 dist/
 site/
+docs/user_guide/input_schema.md
 .coverage
 htmlcov/
 coverage.xml
 coverage.json
-!input/rodent_dataset.xlsx
+!input/rodent_dataset.csv
 input/*
 phu_templates/*
 !phu_templates/README.md

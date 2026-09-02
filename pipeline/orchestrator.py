@@ -225,12 +225,12 @@ def run_step_2_preprocess(
     # Load and process input data
     input_path = input_dir / input_file
     df_raw = preprocess.read_input(input_path)
-    mapped_df, column_mapping = preprocess.map_columns(df_raw)
-    df_filtered = preprocess.filter_columns(mapped_df)
-    df = preprocess.normalize_dataframe(df_filtered)
+    preprocess.validate_input(input_path)
+    df = preprocess.normalize_dataframe(df_raw)
 
     # Check that addresses are complete, return only complete rows
-    df = preprocess.check_addresses_complete(df)
+    df = preprocess.check_addresses_complete(df, drop_incomplete=True)
+    df = preprocess.check_client_info_complete(df, drop_incomplete=True)
 
     # Validate schools against PHIX mapping
     df, phix_warnings = preprocess.run_phix_validation(df, output_dir)

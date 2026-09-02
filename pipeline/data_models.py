@@ -40,20 +40,19 @@ class ClientRecord:
     person : Dict[str, Any]
 
         - Person details:
-            - full_name: Combined first and last name
-            - first_name: Given name (optional)
-            - last_name: Family name (optional)
+            - first_name: Given name
+            - last_name: Family name
             - date_of_birth: Display format (e.g., "Jan 8, 2025")
             - date_of_birth_iso: ISO format (YYYY-MM-DD)
             - date_of_birth_display: Localized display format
-            - age: Calculated age in years
+            - age: Calculated age in years (as string)
             - over_16: Boolean flag for age >= 16
 
     school : Dict[str, Any]
-        School information: name, id, code, type.
+        School information: name, id.
 
     board : Dict[str, Any]
-        School board information: name, id, code.
+        School board information: name, id.
 
     contact : Dict[str, Any]
         Contact address: street, city, province, postal_code.
