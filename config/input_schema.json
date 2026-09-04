@@ -88,7 +88,7 @@
       "type": "string",
       "stripWhitespace": true,
       "constraints": {
-        "required": true
+        "required": false
       }
     },
     {
@@ -97,7 +97,7 @@
       "type": "string",
       "stripWhitespace": true,
       "constraints": {
-        "required": true
+        "required": false
       }
     },
     {
