@@ -1239,15 +1239,15 @@ class TestProcessVaccinesDue:
     """Unit tests for process_vaccines_due."""
 
     def test_normalizes_disease_names(self) -> None:
-        result = preprocess.process_vaccines_due("Poliomyelitis;Measles", "en")
+        result = preprocess.process_vaccines_due("Poliomyelitis;Measles", "disease")
         assert "Polio" in result
         assert "Measles" in result
 
     def test_empty_input_returns_empty_string(self) -> None:
-        assert preprocess.process_vaccines_due("", "en") == ""
+        assert preprocess.process_vaccines_due("", "disease") == ""
 
     def test_non_string_input_returns_empty_string(self) -> None:
-        assert preprocess.process_vaccines_due(None, "en") == ""
+        assert preprocess.process_vaccines_due(None, "disease") == ""
 
 
 # ---------------------------------------------------------------------------

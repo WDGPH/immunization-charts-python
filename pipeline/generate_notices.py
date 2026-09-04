@@ -578,6 +578,10 @@ def build_template_context(
         else ""
     )
 
+    # Agent list requires no translation — pass through as-is
+    vaccines_due_agents_array = client.vaccines_due_agent_list or []
+    vaccines_due_agents_str = ", ".join(vaccines_due_agents_array)
+
     # Translate received records' column keys
     received_translated: List[Dict[str, object]] = []
     if client.received:
@@ -599,6 +603,8 @@ def build_template_context(
         "client_data": to_typ_value(client_data),
         "vaccines_due_str": to_typ_value(vaccines_due_str_translated),
         "vaccines_due_array": to_typ_value(vaccines_due_array_translated),
+        "vaccines_due_agents_str": to_typ_value(vaccines_due_agents_str),
+        "vaccines_due_agents_array": to_typ_value(vaccines_due_agents_array),
         "received": to_typ_value(received_translated),
         "num_rows": str(len(received_translated)),
         "chart_diseases_translated": to_typ_value(chart_diseases_translated),

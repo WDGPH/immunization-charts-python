@@ -570,7 +570,7 @@ def synthesize_identifier(existing: str, source: str, prefix: str) -> str:
     return f"{prefix}_{digest}"
 
 
-def process_vaccines_due(vaccines_due: Any, language: str) -> str:
+def process_vaccines_due(vaccines_due: Any, mode: str) -> str:
     """Map overdue diseases to canonical disease names.
 
     Normalizes raw input disease strings to canonical disease names using
@@ -581,8 +581,8 @@ def process_vaccines_due(vaccines_due: Any, language: str) -> str:
     ----------
     vaccines_due : Any
         Raw string of comma-separated disease names from input.
-    language : str
-        Language code (e.g., "en", "fr"). Used for logging.
+    mode : str
+        Code for whether vaccine due list contains overdue "agent" or "disease".
 
     Returns
     -------
@@ -595,9 +595,17 @@ def process_vaccines_due(vaccines_due: Any, language: str) -> str:
 
     items: List[str] = []
     for token in vaccines_due.split(";"):
-        # Normalize: raw input -> canonical disease name
-        normalized = normalize_disease(token.strip())
-        items.append(normalized)
+        token = token.strip()
+
+        # If list ends with ';', do not create enmpty entry in items
+        if not token:
+            continue
+
+        if mode == "disease":
+            # Normalize: raw input -> canonical disease name
+            token: str = normalize_disease(token)
+        
+        items.append(token)
 
     # Filter empty items and clean quotes
     return ", ".join(
@@ -1173,10 +1181,17 @@ def build_preprocess_result(
             if language_enum == Language.FRENCH and dob_iso
             else (convert_date_string(dob_iso, locale="en") if dob_iso else None)
         )
-        vaccines_due = process_vaccines_due(row.overdue_disease, language)  # type: ignore[attr-defined]
+        vaccines_due = process_vaccines_due(row.overdue_disease, "disease")  # type: ignore[attr-defined]
+        vaccines_due_agent = process_vaccines_due(row.overdue_agent, "agent")  # type: ignore[attr-defined]
+        
         vaccines_due_list = [
             item.strip() for item in vaccines_due.split(",") if item.strip()
         ]
+
+        vaccines_due_agent_list = [
+            item.strip() for item in vaccines_due_agent.split(",") if item.strip()
+        ]
+
         for item in vaccines_due_list:
             disease, dose = split_vaccine_due_entry(item)
             if dose == "":
@@ -1184,10 +1199,13 @@ def build_preprocess_result(
                     f"Blank overdue dose number for client {client_id}: {disease}. "
                     "Displaying disease without a dose number."
                 )
+
         if include_dose:
             vaccines_due_list = format_vaccine_due_list(vaccines_due_list)
         else:
             vaccines_due_list = hide_vaccine_due_doses(vaccines_due_list)
+
+            
         received = build_received_rows(
             row.imms_given,  # type: ignore[attr-defined]
             replace_unspecified,
@@ -1195,6 +1213,7 @@ def build_preprocess_result(
             chart_diseases_header,
             show_validity_markers,
         )
+
         postal_code = row.postal_code if row.postal_code else "Not provided"  # type: ignore[attr-defined]
         address_line = " ".join(
             filter(None, [row.street_address_line_1, row.street_address_line_2])  # type: ignore[attr-defined]
@@ -1244,6 +1263,7 @@ def build_preprocess_result(
             contact=contact,
             vaccines_due=vaccines_due if vaccines_due else None,
             vaccines_due_list=vaccines_due_list if vaccines_due_list else None,
+            vaccines_due_agent_list=vaccines_due_agent_list if vaccines_due_agent_list else None,
             received=received if received else None,
             metadata={
                 "version_id": row.version_id or None,  # type: ignore[attr-defined]
@@ -1451,6 +1471,7 @@ def write_artifact(
                 },
                 "vaccines_due": client.vaccines_due,
                 "vaccines_due_list": client.vaccines_due_list or [],
+                "vaccines_due_agent_list": client.vaccines_due_agent_list or [],
                 "received": client.received or [],
                 "metadata": client.metadata,
             }

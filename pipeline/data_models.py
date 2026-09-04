@@ -62,7 +62,10 @@ class ClientRecord:
         Comma-separated string of vaccines due (display format).
 
     vaccines_due_list : Optional[List[str]]
-        List of vaccine names/codes due.
+        List of canonical disease names due.
+
+    vaccines_due_agent_list : Optional[List[str]]
+        List of vaccine agent names due.
 
     received : Optional[Sequence[Dict[str, object]]]
         List of vaccine records already received (structured data).
@@ -87,6 +90,7 @@ class ClientRecord:
     contact: Dict[str, Any]
     vaccines_due: Optional[str]
     vaccines_due_list: Optional[List[str]]
+    vaccines_due_agent_list: Optional[List[str]]
     received: Optional[Sequence[Dict[str, object]]]
     metadata: Dict[str, object]
     qr: Optional[Dict[str, Any]] = None
