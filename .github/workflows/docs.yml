@@ -21,6 +21,7 @@ on:
       - '**.png'
       - '**.svg'
       - '**.jpeg'
+      - 'config/input_schema.json'
   pull_request:
     branches:
       - main
@@ -38,6 +39,7 @@ on:
       - '**.png'
       - '**.svg'
       - '**.jpeg'
+      - 'config/input_schema.json'
 
 jobs:
   build:
@@ -58,6 +60,9 @@ jobs:
 
       - name: Install the project with docs dependencies
         run: uv sync --group docs
+
+      - name: Generate schema docs
+        run: uv run python docs/generate_schema_docs.py
 
       - name: Build docs
         run: uv run mkdocs build --strict

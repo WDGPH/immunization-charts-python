@@ -251,18 +251,18 @@ def validate_schools(
     mapping_path: Path,
     target_phu: str,
     output_dir: Path,
-    school_column: str = "SCHOOL_NAME",
+    school_column: str = "school_name",
     unmatched_behavior: str = "warn",
-    column_prefix: str = "PHIX_",
+    column_prefix: str = "phix_",
 ) -> tuple[pd.DataFrame, list[str]]:
     """Validate school names in *df* against the PHIX mapping for *target_phu*.
 
     Adds four columns to the DataFrame (with *column_prefix*):
 
-    - ``{prefix}FACILITY_ID`` :   Matched facility ID, or ``""``
-    - ``{prefix}MATCH_TYPE`` :    ``"exact"`` | ``"inexact"`` | ``"no_match"``
-    - ``{prefix}MATCHED_NAME`` :  Canonical name from mapping, or ``""``
-    - ``{prefix}MATCHED_PHU`` :   *target_phu* for matched rows, ``""`` otherwise
+    - ``{prefix}facility_id`` :   Matched facility ID, or ``""``
+    - ``{prefix}match_type`` :    ``"exact"`` | ``"inexact"`` | ``"no_match"``
+    - ``{prefix}matched_name`` :  Canonical name from mapping, or ``""``
+    - ``{prefix}matched_phu`` :   *target_phu* for matched rows, ``""`` otherwise
 
 
 
@@ -328,16 +328,16 @@ def validate_schools(
     def col(suffix: str) -> str:
         return f"{column_prefix}{suffix}"
 
-    df[col("FACILITY_ID")] = df[school_column].apply(
+    df[col("facility_id")] = df[school_column].apply(
         lambda x: _attr(x, "matched_id") if pd.notna(x) else ""
     )
-    df[col("MATCH_TYPE")] = df[school_column].apply(
+    df[col("match_type")] = df[school_column].apply(
         lambda x: _attr(x, "match_type", "no_match") if pd.notna(x) else "no_match"
     )
-    df[col("MATCHED_NAME")] = df[school_column].apply(
+    df[col("matched_name")] = df[school_column].apply(
         lambda x: _attr(x, "matched_name") if pd.notna(x) else ""
     )
-    df[col("MATCHED_PHU")] = df[school_column].apply(
+    df[col("matched_phu")] = df[school_column].apply(
         lambda x: target_phu if pd.notna(x) and _attr(x, "match_type", "no_match") != "no_match" else ""
     )
 

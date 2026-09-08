@@ -55,8 +55,8 @@ class TestReadArtifact:
                         "date_of_birth_display": "Jan 01, 2015",
                         "date_of_birth_iso": "2015-01-01",
                     },
-                    "school": {"name": "Test School", "code": "SCH001"},
-                    "board": {"name": "Test Board", "code": "BRD001"},
+                    "school": {"name": "Test School"},
+                    "board": {"name": "Test Board"},
                     "contact": {
                         "street": "123 Main St",
                         "city": "Toronto",
@@ -252,6 +252,21 @@ class TestToTypValue:
         assert "name" in result
         assert "John Doe" in result
         assert "age" in result
+
+    def test_to_typ_value_dict_with_non_identifier_keys(self) -> None:
+        """Verify dict keys with spaces/special chars are quoted in Typst output.
+
+        Real-world significance:
+        - Disease names used as column-dict keys can contain spaces (e.g. "Hepatitis B")
+        - Bare identifiers with spaces are invalid Typst syntax
+        - Simple identifier keys (e.g. qr_url) must stay unquoted for dot-notation access
+        """
+        data = {"Hepatitis B": "valid", "qr_url": "https://example.com"}
+        result = generate_notices.to_typ_value(data)
+
+        assert '"Hepatitis B":' in result
+        assert "qr_url:" in result
+        assert '"https://example.com"' in result
 
     def test_to_typ_value_unsupported_type_raises_error(self) -> None:
         """Verify error for unsupported types.
